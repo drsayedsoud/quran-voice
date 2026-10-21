@@ -68,8 +68,8 @@ class AdminDashboard {
   bindAuthEvents() {
     const handleLogin = () => {
       const pin = this.dom.pinInput.value.trim();
-      // الرمز الافتراضي 2026 أو أي رمز مخصص
-      if (pin === '2026') {
+      // رمز مرور المشرف: 1153
+      if (pin === '1153') {
         sessionStorage.setItem('quran_admin_auth', 'true');
         this.unlockDashboard();
       } else {
