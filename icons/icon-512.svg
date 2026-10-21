@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#064e3b" />
+      <stop offset="100%" stop-color="#022c22" />
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#bg)" />
+  <circle cx="256" cy="256" r="210" fill="none" stroke="url(#gold)" stroke-width="8" stroke-dasharray="8 6" opacity="0.6"/>
+  <circle cx="256" cy="256" r="190" fill="none" stroke="url(#gold)" stroke-width="3" opacity="0.4"/>
+  <!-- كتاب القرآن الكريم المفتوح -->
+  <g transform="translate(106, 126) scale(0.6)">
+    <path d="M250 80 C180 30, 80 40, 20 80 L20 400 C80 360, 180 360, 250 410 C320 360, 420 360, 480 400 L480 80 C420 40, 320 30, 250 80 Z" fill="#0f766e" stroke="url(#gold)" stroke-width="12"/>
+    <path d="M250 80 L250 410" stroke="url(#gold)" stroke-width="10" stroke-linecap="round"/>
+    <!-- تموجات الصوت -->
+    <path d="M120 180 C150 170, 190 170, 220 180" stroke="url(#gold)" stroke-width="8" stroke-linecap="round" fill="none"/>
+    <path d="M120 220 C150 210, 190 210, 220 220" stroke="url(#gold)" stroke-width="8" stroke-linecap="round" fill="none"/>
+    <path d="M120 260 C150 250, 190 250, 220 260" stroke="url(#gold)" stroke-width="8" stroke-linecap="round" fill="none"/>
+    
+    <path d="M280 180 C310 170, 350 170, 380 180" stroke="url(#gold)" stroke-width="8" stroke-linecap="round" fill="none"/>
+    <path d="M280 220 C310 210, 350 210, 380 220" stroke="url(#gold)" stroke-width="8" stroke-linecap="round" fill="none"/>
+    <path d="M280 260 C310 250, 350 250, 380 260" stroke="url(#gold)" stroke-width="8" stroke-linecap="round" fill="none"/>
+  </g>
+  <!-- أيقونة الصوت الميكروفون المركزية -->
+  <circle cx="256" cy="380" r="48" fill="#d97706" />
+  <path d="M256 360 C250 360 246 364 246 370 L246 385 C246 390 250 395 256 395 C262 395 266 390 266 385 L266 370 C266 364 262 360 256 360 Z" fill="#ffffff"/>
+  <path d="M240 378 C240 388 248 396 256 396 C264 396 272 388 272 378" stroke="#ffffff" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <path d="M256 396 L256 404 M248 404 L264 404" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+</svg>

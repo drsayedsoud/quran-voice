@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة تحكم الأدمن | المصحف الصوتي الميسر</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-['Cairo']">
+
+  <!-- نافذة تسجيل دخول المشرف (Admin PIN Protection) -->
+  <div id="loginOverlay" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-md">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center">
+      <div class="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-3xl flex items-center justify-center mx-auto mb-4">
+        🔐
+      </div>
+      <h2 class="text-xl font-bold text-white mb-1">لوحة تحكم المشرف</h2>
+      <p class="text-xs text-slate-400 mb-6">أدخل رمز المرور السري للدخول للوحة الإحصائيات</p>
+      
+      <input type="password" id="pinInput" placeholder="رمز المرور (الافتراضي: 2026)" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-center text-lg tracking-widest text-amber-300 focus:outline-none focus:border-amber-400 mb-4">
+      
+      <button id="pinSubmitBtn" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl shadow-lg transition-all active:scale-95">
+        دخول اللوحة
+      </button>
+      <p id="pinError" class="text-red-400 text-xs mt-3 hidden">رمز المرور غير صحيح</p>
+    </div>
+  </div>
+
+  <!-- الهيكل الرئيسي للوحة بعد الدخول -->
+  <div id="dashboardContent" class="hidden">
+    <!-- شريط التنقل العلوي -->
+    <header class="bg-slate-900/90 border-b border-slate-800 sticky top-0 z-40 backdrop-blur-md px-6 py-4">
+      <div class="max-w-7xl mx-auto flex items-center justify-between">
+        <div class="flex items-center space-x-3 space-x-reverse">
+          <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center text-xl font-bold">
+            📊
+          </div>
+          <div>
+            <h1 class="text-lg font-black text-white">إدارة وتحليلات المصحف الصوتي</h1>
+            <p class="text-xs text-slate-400">مراقبة تفاعل المستخدمين والأوامر الصوتية لحظياً</p>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-3 space-x-reverse">
+          <a href="index.html" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow transition-all flex items-center space-x-1 space-x-reverse">
+            <span>📖</span>
+            <span>فتح المصحف</span>
+          </a>
+          <button id="logoutBtn" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl transition-all">
+            خروج
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto p-6 space-y-6">
+
+      <!-- 1. بطاقات المؤشرات الرئيسية (KPI Cards) -->
+      <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <!-- إجمالي المستخدمين المسجلين -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+          <div class="text-xs font-bold text-slate-400 mb-1">إجمالي المستخدمين</div>
+          <div id="statTotalUsers" class="text-3xl font-black text-white">--</div>
+          <div class="text-[11px] text-emerald-400 mt-2 flex items-center">
+            <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 ml-1.5 animate-ping"></span>
+            مزامنة حية من Firestore
+          </div>
+        </div>
+
+        <!-- إجمالي الآيات المستمع إليها -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+          <div class="text-xs font-bold text-slate-400 mb-1">الآيات المستمع إليها</div>
+          <div id="statTotalAyahs" class="text-3xl font-black text-amber-400">--</div>
+          <div class="text-[11px] text-slate-400 mt-2">إجمالي كل الجلسات التراكمية</div>
+        </div>
+
+        <!-- نسبة نجاح الأوامر الصوتية -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+          <div class="text-xs font-bold text-slate-400 mb-1">دقة التعرف الصوتي</div>
+          <div id="statVoiceAccuracy" class="text-3xl font-black text-emerald-400">--%</div>
+          <div id="statVoiceCount" class="text-[11px] text-slate-400 mt-2">0 أمر صوتي مسجل</div>
+        </div>
+
+        <!-- القارئ الأكثر شعبية -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+          <div class="text-xs font-bold text-slate-400 mb-1">القارئ الأكثر اختياراً</div>
+          <div id="statTopReciter" class="text-xl font-black text-white truncate">الحصري</div>
+          <div class="text-[11px] text-amber-400 mt-2">بناءً على تفضيلات المستخدمين</div>
+        </div>
+      </section>
+
+      <!-- 2. بث تنبيه أو رسالة صوتية للمستخدمين (Broadcast Controller) -->
+      <section class="bg-slate-900/90 border border-amber-500/30 rounded-2xl p-6 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center space-x-2 space-x-reverse">
+            <span class="text-2xl">📢</span>
+            <div>
+              <h2 class="text-base font-bold text-white">إرسال بث وتنبيه فوري لجميع المستخدمين</h2>
+              <p class="text-xs text-slate-400">تظهر الرسالة في شريط علوي أو يقرؤها التطبيق بصوت آلي فور فتح التطبيق</p>
+            </div>
+          </div>
+          <span id="broadcastStatus" class="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-300">جاهز</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <input type="text" id="broadcastInput" placeholder="اكتب نص الرسالة هنا (مثال: تقبل الله طاعتكم، تم تحسين التعرف على اللهجة المصرية)..." class="md:col-span-2 bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-amber-400">
+          
+          <div class="flex items-center space-x-2 space-x-reverse">
+            <label class="flex items-center space-x-2 space-x-reverse text-xs text-slate-300 cursor-pointer">
+              <input type="checkbox" id="broadcastVoiceToggle" class="rounded border-slate-700 text-amber-500 focus:ring-0">
+              <span>تنبيه صوتي (نطق الرسالة)</span>
+            </label>
+
+            <button id="sendBroadcastBtn" class="flex-1 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-md">
+              نشر التنبيه
+            </button>
+            <button id="clearBroadcastBtn" class="py-3 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl">
+              مسح
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. سجل الأوامر الصوتية وتحليل اللهجات (Voice Telemetry Audit Log) -->
+      <section class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 class="text-base font-bold text-white flex items-center space-x-2 space-x-reverse">
+              <span>🎙️</span>
+              <span>سجل الأوامر الصوتية الحي (Voice Telemetry)</span>
+            </h2>
+            <p class="text-xs text-slate-400">مراقبة دقيقة لكل ما ينطق به المستخدمون لمعرفة اللهجات والمصطلحات الشائعة</p>
+          </div>
+
+          <div class="flex items-center space-x-2 space-x-reverse">
+            <input type="text" id="voiceSearchInput" placeholder="بحث في النصوص المنطوقة..." class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400">
+            <select id="voiceFilterSelect" class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white">
+              <option value="all">جميع الأوامر</option>
+              <option value="success">الناجحة فقط</option>
+              <option value="failed">غير المفهومة</option>
+            </select>
+            <button id="exportVoiceLogsBtn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-xl">
+              تصدير JSON
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto max-h-96">
+          <table class="w-full text-right text-xs">
+            <thead class="bg-slate-950 text-slate-400 sticky top-0">
+              <tr>
+                <th class="p-3">الوقت</th>
+                <th class="p-3">معرف المستخدم (UID)</th>
+                <th class="p-3">الجملة المنطوقة حرفياً</th>
+                <th class="p-3">النية المستخرجة</th>
+                <th class="p-3">الحالة</th>
+                <th class="p-3">الجهاز</th>
+              </tr>
+            </thead>
+            <tbody id="voiceLogsTableBody" class="divide-y divide-slate-800">
+              <tr>
+                <td colspan="6" class="p-6 text-center text-slate-500">جاري تحميل سجلات الصوت من Firestore...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 4. دليل المستخدمين وتفاصيل كل حساب (User Profiles & Behavior) -->
+      <section class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-base font-bold text-white flex items-center space-x-2 space-x-reverse">
+              <span>👥</span>
+              <span>سجل تفاصيل وسلوك المستخدمين (Users Directory)</span>
+            </h2>
+            <p class="text-xs text-slate-400">بيانات الأجهزة، آخر موضع توقف عنده كل مستخدم، وإجمالي الاستماع</p>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto max-h-96">
+          <table class="w-full text-right text-xs">
+            <thead class="bg-slate-950 text-slate-400 sticky top-0">
+              <tr>
+                <th class="p-3">معرف المستخدم (UID)</th>
+                <th class="p-3">نوع الجهاز / المتصفح</th>
+                <th class="p-3">تطبيق مثبت (PWA)؟</th>
+                <th class="p-3">آخر سورة وآية</th>
+                <th class="p-3">القارئ المفضل</th>
+                <th class="p-3">الآيات المستمعة</th>
+                <th class="p-3">آخر نشاط</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody" class="divide-y divide-slate-800">
+              <tr>
+                <td colspan="7" class="p-6 text-center text-slate-500">جاري تحميل بيانات المستخدمين من Firestore...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script type="module" src="admin.js"></script>
+</body>
+</html>

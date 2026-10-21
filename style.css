@@ -1,0 +1,73 @@
+/* تنسيقات مخصصة لتطبيق المصحف الصوتي الميسر */
+
+:root {
+  --primary-emerald: #064e3b;
+  --dark-emerald: #022c22;
+  --accent-gold: #f59e0b;
+}
+
+body {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* أمواج النبض التفاعلي للزر الصوتي عند الاستماع */
+.mic-button {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+}
+
+.mic-button.mic-active {
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 35px rgba(239, 68, 68, 0.7) !important;
+  transform: scale(1.08);
+}
+
+.mic-wave {
+  position: absolute;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  pointer-events: none;
+  border: 2px solid rgba(245, 158, 11, 0.5);
+  opacity: 0;
+}
+
+.mic-active + .mic-wave {
+  animation: pulse-ring 1.4s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  border-color: rgba(239, 68, 68, 0.8);
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+/* شريط تمرير أنيق */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(2, 44, 34, 0.6);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(245, 158, 11, 0.3);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(245, 158, 11, 0.6);
+}
