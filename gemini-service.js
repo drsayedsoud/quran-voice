@@ -150,7 +150,7 @@ ${recitersInfo}
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000); // مهلة 6 ثواني كحد أقصى
+    const timeoutId = setTimeout(() => controller.abort(), 3500); // مهلة 3.5 ثواني كحد أقصى لسرعة الاستجابة الصوتية
 
     const response = await fetch(url, {
       method: 'POST',

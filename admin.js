@@ -60,6 +60,7 @@ class AdminDashboard {
       resetGeminiKeyBtn: document.getElementById('resetGeminiKeyBtn'),
       geminiTestResult: document.getElementById('geminiTestResult'),
       geminiLiveStatusBadge: document.getElementById('geminiLiveStatusBadge'),
+      adminSpeechLangSelect: document.getElementById('adminSpeechLangSelect'),
 
       // المستخدمين
       usersTableBody: document.getElementById('usersTableBody')
@@ -385,6 +386,16 @@ class AdminDashboard {
 
     // ملء المفتاح الحالي
     this.dom.geminiApiKeyInput.value = getGeminiApiKey();
+
+    // ربط اختيار لهجة التعرف الصوتي الافتراضية
+    if (this.dom.adminSpeechLangSelect) {
+      const currentLang = localStorage.getItem('speech_lang') || 'ar-EG';
+      this.dom.adminSpeechLangSelect.value = currentLang;
+      this.dom.adminSpeechLangSelect.onchange = (e) => {
+        localStorage.setItem('speech_lang', e.target.value);
+        this.showGeminiResult('success', `تم ضبط لهجة التعرف الصوتي إلى: ${e.target.options[e.target.selectedIndex].text}`);
+      };
+    }
 
     // إظهار/إخفاء
     if (this.dom.toggleGeminiKeyVisBtn) {

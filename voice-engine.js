@@ -8,7 +8,7 @@ import { SURAHS, RECITERS } from './quran-data.js';
 // تنظيف وتوحيد النص العربي لتسهيل المطابقة الدقيقة
 export function normalizeArabic(text) {
   if (!text) return '';
-  return text
+  let cleaned = text
     .trim()
     .toLowerCase()
     // إزالة التشكيل
@@ -26,7 +26,121 @@ export function normalizeArabic(text) {
     // دمج المسافات الزائدة
     .replace(/\s+/g, ' ')
     .trim();
+
+  // تحويل "صوره" إلى "سوره" لضمان المطابقة في حال اشتبه التعرف الصوتي بين الصاد والسين
+  cleaned = cleaned.replace(/\b(صوره|صورة)\b/g, 'سوره');
+  return cleaned;
 }
+
+// تصحيح الأخطاء الشائعة في تحويل الصوت لكتابة (Speech-to-Text) للألفاظ القرآنية
+export function cleanQuranicTranscript(text) {
+  if (!text) return '';
+  let cleaned = text.trim();
+  // تصحيح الأخطاء الشائعة لكلمة سورة
+  cleaned = cleaned.replace(/\b(صورة|صوره)\b/g, 'سورة');
+  // تصحيح كتابة آية
+  cleaned = cleaned.replace(/\b(ايه|اية|أيه|أية)\b/g, 'آية');
+  // تصحيح أسماء السور المشهورة بأخطاء الإملاء الصوتي
+  cleaned = cleaned.replace(/\b(طاها|طاهه)\b/g, 'طه');
+  cleaned = cleaned.replace(/\b(ياسين)\b/g, 'يس');
+  cleaned = cleaned.replace(/\b(ال عمران|ال عِمران)\b/g, 'آل عمران');
+  cleaned = cleaned.replace(/\b(الكرسى)\b/g, 'الكرسي');
+  return cleaned;
+}
+
+// مطابقة اسم السورة ككلمة كاملة لتفادي تشابه الحروف القصيرة (مثل "ص" في "الصلاة" أو "ق" في "وقف")
+export function matchesSurahWord(normText, normCandidate) {
+  if (!normText || !normCandidate) return false;
+  if (normText.includes('سوره ' + normCandidate) || normText.includes('سورة ' + normCandidate)) {
+    return true;
+  }
+  const words = normText.split(/\s+/);
+  if (words.includes(normCandidate)) {
+    return true;
+  }
+  if (normCandidate.length >= 3) {
+    if (words.some(w => w === normCandidate || w === ('ال' + normCandidate) || ('ال' + w) === normCandidate)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// اختيار أفضل بديل مقترح من متصفح التعرف الصوتي (Chrome / Safari Web Speech)
+export function pickBestAlternative(resultItem) {
+  if (!resultItem || !resultItem.length) return '';
+  if (resultItem.length === 1) return resultItem[0].transcript;
+
+  for (let i = 0; i < resultItem.length; i++) {
+    const raw = resultItem[i].transcript || '';
+    const norm = normalizeArabic(raw);
+    if (norm.includes('سوره') || norm.includes('ايه') || norm.includes('القران') || norm.includes('تفسير') || norm.includes('ايات')) {
+      return raw;
+    }
+    for (const surah of SURAHS) {
+      const normName = normalizeArabic(surah.name);
+      if (matchesSurahWord(norm, normName)) {
+        return raw;
+      }
+    }
+  }
+  return resultItem[0].transcript;
+}
+
+// فحص إذا كان الأمر بحثاً موضوعياً (Thematic Query)
+export function isThematicQuery(text) {
+  if (!text) return false;
+  const norm = normalizeArabic(text);
+  const thematicKeywords = ['ايات', 'موضوع', 'عن', 'قصة', 'احاديث', 'فضل', 'تحدث عن', 'عايز ايات', 'هات ايات'];
+  return thematicKeywords.some(kw => norm.includes(kw));
+}
+
+// باقات مدمجة لأشهر الموضوعات القرآنية للعمل اللحظي الفوري بدون انتظار الشبكة
+export const COMMON_TOPICS = {
+  'صلاه': {
+    topic: 'آيات الصلاة',
+    passages: [
+      { surahId: 2, ayahNumber: 43, label: 'سورة البقرة (43)' },
+      { surahId: 2, ayahNumber: 238, label: 'سورة البقرة (238)' },
+      { surahId: 17, ayahNumber: 78, label: 'سورة الإسراء (78)' },
+      { surahId: 20, ayahNumber: 14, label: 'سورة طه (14)' },
+      { surahId: 29, ayahNumber: 45, label: 'سورة العنكبوت (45)' }
+    ]
+  },
+  'صبر': {
+    topic: 'آيات الصبر',
+    passages: [
+      { surahId: 2, ayahNumber: 153, label: 'سورة البقرة (153)' },
+      { surahId: 2, ayahNumber: 155, label: 'سورة البقرة (155)' },
+      { surahId: 3, ayahNumber: 200, label: 'سورة آل عمران (200)' },
+      { surahId: 39, ayahNumber: 10, label: 'سورة الزمر (10)' }
+    ]
+  },
+  'والدين': {
+    topic: 'آيات بر الوالدين',
+    passages: [
+      { surahId: 17, ayahNumber: 23, label: 'سورة الإسراء (23)' },
+      { surahId: 31, ayahNumber: 14, label: 'سورة لقمان (14)' },
+      { surahId: 46, ayahNumber: 15, label: 'سورة الأحقاف (15)' }
+    ]
+  },
+  'جنه': {
+    topic: 'آيات الجنة ونعيمها',
+    passages: [
+      { surahId: 2, ayahNumber: 25, label: 'سورة البقرة (25)' },
+      { surahId: 18, ayahNumber: 107, label: 'سورة الكهف (107)' },
+      { surahId: 55, ayahNumber: 46, label: 'سورة الرحمن (46)' }
+    ]
+  },
+  'رزق': {
+    topic: 'آيات الرزق والبركة',
+    passages: [
+      { surahId: 51, ayahNumber: 22, label: 'سورة الذاريات (22)' },
+      { surahId: 65, ayahNumber: 3, label: 'سورة الطلاق (3)' },
+      { surahId: 11, ayahNumber: 6, label: 'سورة هود (6)' }
+    ]
+  }
+};
 
 // تحويل الكلمات الرقمية المنطوقة إلى أرقام صحيحة
 const ARABIC_NUMBERS = {
@@ -74,6 +188,36 @@ export function parseVoiceCommand(rawTranscript) {
 
   if (!norm) {
     result.intent = 'EMPTY';
+    return result;
+  }
+
+  // 0. فحص الاستفسارات والبحث الموضوعي (مثل "آيات الصلاة", "آيات الصبر")
+  if (isThematicQuery(norm)) {
+    for (const [key, topicData] of Object.entries(COMMON_TOPICS)) {
+      if (norm.includes(key)) {
+        const passages = topicData.passages.map(p => {
+          const s = SURAHS.find(sur => sur.id === p.surahId);
+          return s ? { surah: s, ayahNumber: p.ayahNumber, label: p.label } : null;
+        }).filter(Boolean);
+
+        if (passages.length > 0) {
+          result.intent = 'PLAY_TOPIC';
+          result.payload = {
+            topic: topicData.topic,
+            passages: passages,
+            surah: passages[0].surah,
+            ayahNumber: passages[0].ayahNumber,
+            reciter: null
+          };
+          result.message = `تشغيل ${topicData.topic} من مواضع متفرقة في القرآن الكريم`;
+          return result;
+        }
+      }
+    }
+
+    result.intent = 'THEMATIC_QUERY';
+    result.payload = { query: rawTranscript };
+    result.message = 'جاري البحث الموضوعي الذكي بالذكاء الاصطناعي...';
     return result;
   }
 
@@ -184,10 +328,10 @@ export function parseVoiceCommand(rawTranscript) {
   // 3. البحث عن السورة ورقم الآية
   let matchedSurah = null;
 
-  // فحص أسماء السور ومرادفاتها
+  // فحص أسماء السور ومرادفاتها بالمطابقة الدقيقة للكلمة لتفادي تشابه الحروف
   for (const surah of SURAHS) {
     const normSurahName = normalizeArabic(surah.name);
-    if (norm.includes('سوره ' + normSurahName) || norm.includes('سورة ' + normSurahName) || norm.includes(normSurahName)) {
+    if (matchesSurahWord(norm, normSurahName)) {
       matchedSurah = surah;
       break;
     }
@@ -195,7 +339,7 @@ export function parseVoiceCommand(rawTranscript) {
     if (surah.aliases) {
       for (const alias of surah.aliases) {
         const normAlias = normalizeArabic(alias);
-        if (norm.includes(normAlias)) {
+        if (matchesSurahWord(norm, normAlias)) {
           matchedSurah = surah;
           break;
         }

@@ -4,7 +4,13 @@
  */
 
 import { SURAHS, RECITERS, getAyahAudioUrl } from './quran-data.js';
-import { parseVoiceCommand, normalizeArabic } from './voice-engine.js';
+import { 
+  parseVoiceCommand, 
+  normalizeArabic, 
+  cleanQuranicTranscript, 
+  pickBestAlternative, 
+  isThematicQuery 
+} from './voice-engine.js';
 import { parseWithGemini } from './gemini-service.js';
 import { sound } from './sound-effects.js';
 import { 
@@ -30,6 +36,7 @@ class QuranVoiceApp {
     this.topicIndex = 0; // مؤشر الآية الحالية في الموضوع
     this.accumulatedSeconds = 0; // ثواني الاستماع المتراكمة
     this.listeningTimer = null;
+    this.speechLang = localStorage.getItem('speech_lang') || 'ar-EG'; // الافتراضي اللهجة المصرية
 
     // عناصر الصوت والتعرف الصوتي
     this.audioPlayer = new Audio();
@@ -55,7 +62,10 @@ class QuranVoiceApp {
       tafsirModal: document.getElementById('tafsirModal'),
       tafsirText: document.getElementById('tafsirText'),
       closeTafsirBtn: document.getElementById('closeTafsirBtn'),
-      adminBanner: document.getElementById('adminBanner')
+      adminBanner: document.getElementById('adminBanner'),
+      dialectToggleBtn: document.getElementById('dialectToggleBtn'),
+      dialectFlag: document.getElementById('dialectFlag'),
+      dialectLabel: document.getElementById('dialectLabel')
     };
 
     this.init();
@@ -209,23 +219,45 @@ class QuranVoiceApp {
     }
 
     this.recognition = new SpeechClass();
-    this.recognition.lang = 'ar-SA';
+    this.recognition.lang = this.speechLang;
     this.recognition.continuous = false;
-    this.recognition.interimResults = false;
-    this.recognition.maxAlternatives = 1;
+    this.recognition.interimResults = true; // إظهار الكلمات لحظياً أثناء النطق
+    this.recognition.maxAlternatives = 5;   // جلب 5 احتمالات للمفاضلة واختيار السورة الصحيحة
 
     this.recognition.onstart = () => {
       this.isListening = true;
       this.dom.micBtn.classList.add('mic-active');
       this.dom.voiceStatus.textContent = 'أنا أستمع إليك الآن... تحدث';
       this.dom.voiceTranscript.textContent = '';
-      sound.playListeningChime();
+      sound.vibrate([60]);
     };
 
     this.recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      this.dom.voiceTranscript.textContent = `"${transcript}"`;
-      this.executeVoiceCommand(transcript);
+      let interimTranscript = '';
+      let finalTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        const res = event.results[i];
+        if (res.isFinal) {
+          finalTranscript = pickBestAlternative(res) || res[0].transcript;
+        } else {
+          interimTranscript += res[0].transcript;
+        }
+      }
+
+      // إظهار الكلمات المنطوقة لحظة بلحظة مع تصحيح الألفاظ القرآنية
+      if (interimTranscript) {
+        const cleanedInterim = cleanQuranicTranscript(interimTranscript);
+        this.dom.voiceTranscript.textContent = `🎤 "${cleanedInterim}"`;
+        this.dom.voiceStatus.textContent = 'جاري الاستماع...';
+      }
+
+      // عند اكتمال نطق الجملة
+      if (finalTranscript) {
+        const cleanedFinal = cleanQuranicTranscript(finalTranscript);
+        this.dom.voiceTranscript.textContent = `"${cleanedFinal}"`;
+        this.executeVoiceCommand(cleanedFinal);
+      }
     };
 
     this.recognition.onerror = (event) => {
@@ -236,7 +268,7 @@ class QuranVoiceApp {
         sound.playErrorChime();
         this.dom.voiceStatus.textContent = 'لم أتمكن من سماعك بوضوح، اضغط وتحدث ثانية';
       } else {
-        this.dom.voiceStatus.textContent = 'اضغط مطولاً على الشاشة للتحدث';
+        this.dom.voiceStatus.textContent = 'اضغط مطولاً على الشاشة أو انقر الميكروفون';
       }
     };
 
@@ -248,20 +280,53 @@ class QuranVoiceApp {
 
   // معالجة وتنفيذ الأمر الصوتي
   async executeVoiceCommand(transcript) {
-    this.dom.voiceStatus.textContent = 'جاري الفهم بالذكاء الاصطناعي...';
-    
-    // استدعاء Gemini مع التراجع التلقائي للمحرك المحلي عند الحاجة
-    const parsed = await parseWithGemini(transcript, {
-      currentSurah: this.currentSurah,
-      currentAyah: this.currentAyah,
-      currentReciter: this.currentReciter
-    });
-    console.log('Voice Command Parsed:', parsed);
+    const cleaned = cleanQuranicTranscript(transcript);
+    console.log('Voice Command Input:', cleaned);
 
-    if (parsed.source === 'gemini') {
-      this.dom.voiceTranscript.textContent = `✨ "${transcript}"`;
+    // 1. المسار فائق السرعة اللحظي (Fast-Path 0ms): فحص المحرك المحلي أولاً بدون انتظار الشبكة
+    const localParsed = parseVoiceCommand(cleaned);
+
+    // إذا كان أمراً مباشراً معلوماً محلياً أو باقة مدمجة لموضوع شائع: نفذه فوراً!
+    if (localParsed && localParsed.intent !== 'UNKNOWN' && localParsed.intent !== 'EMPTY' && localParsed.intent !== 'THEMATIC_QUERY') {
+      console.log('Executed via Instant Local Fast-Path (0ms):', localParsed);
+      this.dom.voiceTranscript.textContent = `"${cleaned}"`;
+      this.dispatchVoiceResult(localParsed, cleaned);
+      return;
     }
 
+    // 2. إذا كان بحثاً موضوعياً عاماً أو أمراً معقداً غير معروف محلياً: الذكاء الاصطناعي Gemini AI
+    this.dom.voiceStatus.textContent = 'جاري البحث الذكي بالذكاء الاصطناعي...';
+    
+    try {
+      const geminiParsed = await parseWithGemini(cleaned, {
+        currentSurah: this.currentSurah,
+        currentAyah: this.currentAyah,
+        currentReciter: this.currentReciter
+      });
+
+      if (geminiParsed && geminiParsed.intent !== 'UNKNOWN') {
+        console.log('Executed via Gemini AI:', geminiParsed);
+        this.dom.voiceTranscript.textContent = `✨ "${cleaned}"`;
+        this.dispatchVoiceResult(geminiParsed, cleaned);
+        return;
+      }
+    } catch (e) {
+      console.warn('Gemini query error, falling back:', e);
+    }
+
+    // 3. التراجع الآمن في حال تعذر اتصال الذكاء الاصطناعي
+    if (localParsed && localParsed.intent !== 'UNKNOWN' && localParsed.intent !== 'THEMATIC_QUERY') {
+      this.dispatchVoiceResult(localParsed, cleaned);
+    } else {
+      sound.playErrorChime();
+      sound.speak('لم أتمكن من فهم طلبك، يرجى تحديد اسم السورة أو الموضوع بوضوح');
+      this.dom.voiceStatus.textContent = 'لم يتم التعرف على الطلب، اضغط للتحدث ثانية';
+      logVoiceCommand(cleaned, localParsed || { intent: 'UNKNOWN' }, false);
+    }
+  }
+
+  // تنفيذ نتيجة التحليل الصوتي وتوجيه المشغل
+  dispatchVoiceResult(parsed, transcript) {
     let success = true;
 
     switch (parsed.intent) {
@@ -515,11 +580,31 @@ class QuranVoiceApp {
 
   startListening() {
     if (!this.recognition) return;
-    try {
-      this.recognition.start();
-    } catch (e) {
-      // Recognition might already be running
+
+    // Toggle: إذا كان الميكروفون يستمع بالفعل، نوقفه
+    if (this.isListening) {
+      try {
+        this.recognition.stop();
+      } catch (e) {}
+      return;
     }
+
+    // إيقاف مؤقت لأي تلاوة جارية فوراً لمنع تداخل صوت القارئ مع لاقط الصوت
+    if (this.isPlaying && !this.audioPlayer.paused) {
+      this.audioPlayer.pause();
+    }
+
+    // عزف نغمة التنبيه أولاً قبل فتح الميكروفون
+    sound.playListeningChime();
+
+    // تشغيل الميكروفون بعد انتهاء النغمة لتفادي التقاط صوتها في الميكروفون
+    setTimeout(() => {
+      try {
+        this.recognition.start();
+      } catch (e) {
+        console.warn('Recognition start error:', e);
+      }
+    }, 220);
   }
 
   // نظام إيماءات اللمس للمكفوفين (Touch Gestures)
@@ -706,6 +791,38 @@ class QuranVoiceApp {
       this.dom.closeTafsirBtn.addEventListener('click', () => {
         this.dom.tafsirModal.classList.add('hidden');
       });
+    }
+
+    if (this.dom.dialectToggleBtn) {
+      this.dom.dialectToggleBtn.addEventListener('click', () => this.toggleSpeechLang());
+      this.updateDialectUI();
+    }
+  }
+
+  toggleSpeechLang() {
+    this.speechLang = (this.speechLang === 'ar-EG') ? 'ar-SA' : 'ar-EG';
+    localStorage.setItem('speech_lang', this.speechLang);
+    if (this.recognition) {
+      this.recognition.lang = this.speechLang;
+    }
+    this.updateDialectUI();
+    const name = this.speechLang === 'ar-EG' ? 'اللهجة المصرية' : 'العربية الفصحى';
+    sound.speak(`تم التحويل إلى ${name}`);
+    this.dom.voiceStatus.textContent = `لغة التعرف الصوتي: ${name}`;
+  }
+
+  updateDialectUI() {
+    const isEg = this.speechLang === 'ar-EG';
+    if (this.dom.dialectFlag) {
+      this.dom.dialectFlag.textContent = isEg ? '🇪🇬' : '🇸🇦';
+    }
+    if (this.dom.dialectLabel) {
+      this.dom.dialectLabel.textContent = isEg ? 'مصرية' : 'فصحى';
+    }
+    if (this.dom.dialectToggleBtn) {
+      this.dom.dialectToggleBtn.title = isEg 
+        ? 'التعرف الصوتي: اللهجة المصرية (انقر للتحويل إلى الفصحى)' 
+        : 'التعرف الصوتي: العربية الفصحى (انقر للتحويل للمصرية)';
     }
   }
 }
