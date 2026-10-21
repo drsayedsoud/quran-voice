@@ -142,6 +142,13 @@ export function parseVoiceCommand(rawTranscript) {
     return result;
   }
 
+  // فتح صفحة الإدارة ولوحة التحكم
+  if (norm.includes('لوحه الاداره') || norm.includes('لوحة الادارة') || norm.includes('صفحه الاداره') || norm.includes('صفحة الادارة') || norm.includes('لوحه التحكم') || norm.includes('لوحة التحكم') || norm.includes('لوحه المشرف') || norm.includes('لوحة المشرف')) {
+    result.intent = 'OPEN_ADMIN';
+    result.message = 'جاري فتح لوحة تحكم المشرف';
+    return result;
+  }
+
   // تغيير القارئ فقط دون تحديد سورة
   if (matchedReciter && (norm.startsWith('بصوت') || norm.includes('غير القارئ') || norm.includes('حول صوت'))) {
     result.intent = 'SET_RECITER';

@@ -21,16 +21,88 @@
         🔐
       </div>
       <h2 class="text-xl font-bold text-white mb-1">لوحة تحكم المشرف</h2>
-      <p class="text-xs text-slate-400 mb-6">أدخل رمز المرور السري للدخول للوحة الإحصائيات</p>
+      <p class="text-xs text-slate-400 mb-4">أدخل رمز المرور السري للدخول للوحة الإحصائيات</p>
       
-      <input type="password" id="pinInput" placeholder="أدخل رمز المرور السري" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-center text-lg tracking-widest text-amber-300 focus:outline-none focus:border-amber-400 mb-4">
+      <input type="password" id="pinInput" placeholder="أدخل رمز المرور (1153)" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-center text-lg tracking-widest text-amber-300 focus:outline-none focus:border-amber-400 mb-3">
       
-      <button id="pinSubmitBtn" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl shadow-lg transition-all active:scale-95">
+      <button id="pinSubmitBtn" type="button" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl shadow-lg transition-all active:scale-95 mb-2">
         دخول اللوحة
       </button>
-      <p id="pinError" class="text-red-400 text-xs mt-3 hidden">رمز المرور غير صحيح</p>
+
+      <p id="pinError" class="text-red-400 text-xs my-2 hidden">رمز المرور غير صحيح</p>
+      
+      <p class="text-[11px] text-slate-400">رمز المرور الافتراضي: <span class="text-amber-400 font-bold font-mono">1153</span></p>
+
+      <div class="mt-4 pt-4 border-t border-slate-800 flex justify-center">
+        <a href="index.html" class="text-xs text-emerald-400 hover:underline">← العودة للمصحف الصوتي</a>
+      </div>
     </div>
   </div>
+
+  <script>
+    // تفعيل فوري ومباشر دون الاعتماد على تحميل الموديولات أو حالة البروتوكول
+    (function() {
+      function checkAuth() {
+        if (sessionStorage.getItem('quran_admin_auth') === 'true' || localStorage.getItem('quran_admin_auth') === 'true') {
+          const overlay = document.getElementById('loginOverlay');
+          const content = document.getElementById('dashboardContent');
+          if (overlay) overlay.classList.add('hidden');
+          if (content) content.classList.remove('hidden');
+          if (window.adminDashboardInstance) {
+            window.adminDashboardInstance.unlockDashboard();
+          }
+        }
+      }
+
+      function doLogin() {
+        const pinInput = document.getElementById('pinInput');
+        const pinError = document.getElementById('pinError');
+        const overlay = document.getElementById('loginOverlay');
+        const content = document.getElementById('dashboardContent');
+        const pin = pinInput ? pinInput.value.trim() : '';
+
+        // يقبل الرمز 1153 أو 2026
+        if (pin === '1153' || pin === '2026') {
+          sessionStorage.setItem('quran_admin_auth', 'true');
+          localStorage.setItem('quran_admin_auth', 'true');
+          if (overlay) overlay.classList.add('hidden');
+          if (content) content.classList.remove('hidden');
+          if (pinError) pinError.classList.add('hidden');
+          if (window.adminDashboardInstance) {
+            window.adminDashboardInstance.unlockDashboard();
+          }
+        } else {
+          if (pinError) {
+            pinError.textContent = 'رمز المرور غير صحيح (الرمز هو 1153)';
+            pinError.classList.remove('hidden');
+          }
+        }
+      }
+
+      // تشغيل فوري إذا كانت الجلسة محفوظة
+      checkAuth();
+
+      // ربط أحداث الإدخال فور جاهزية الـ DOM
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initEvents);
+      } else {
+        initEvents();
+      }
+
+      function initEvents() {
+        checkAuth();
+        const btn = document.getElementById('pinSubmitBtn');
+        const input = document.getElementById('pinInput');
+        if (btn) btn.onclick = doLogin;
+        if (input) {
+          input.onkeypress = function(e) {
+            if (e.key === 'Enter') doLogin();
+          };
+          input.focus();
+        }
+      }
+    })();
+  </script>
 
   <!-- الهيكل الرئيسي للوحة بعد الدخول -->
   <div id="dashboardContent" class="hidden">

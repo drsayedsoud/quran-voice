@@ -259,6 +259,15 @@ class QuranVoiceApp {
         this.fetchAndShowTafsir();
         break;
 
+      case 'OPEN_ADMIN':
+        sound.playSuccessChime();
+        sound.speak('جاري فتح لوحة تحكم المشرف');
+        this.dom.voiceStatus.textContent = parsed.message;
+        setTimeout(() => {
+          window.location.href = 'admin.html';
+        }, 1200);
+        break;
+
       default:
         success = false;
         sound.playErrorChime();

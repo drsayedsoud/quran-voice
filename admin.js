@@ -60,32 +60,40 @@ class AdminDashboard {
   init() {
     this.bindAuthEvents();
     // التحقق من جلسة الأدمن المخزنة محلياً
-    if (sessionStorage.getItem('quran_admin_auth') === 'true') {
+    if (sessionStorage.getItem('quran_admin_auth') === 'true' || localStorage.getItem('quran_admin_auth') === 'true') {
       this.unlockDashboard();
     }
   }
 
   bindAuthEvents() {
     const handleLogin = () => {
-      const pin = this.dom.pinInput.value.trim();
-      // رمز مرور المشرف: 1153
-      if (pin === '1153') {
+      const pin = this.dom.pinInput ? this.dom.pinInput.value.trim() : '';
+      // يقبل الرمز 1153 أو 2026
+      if (pin === '1153' || pin === '2026') {
         sessionStorage.setItem('quran_admin_auth', 'true');
+        localStorage.setItem('quran_admin_auth', 'true');
         this.unlockDashboard();
       } else {
-        this.dom.pinError.classList.remove('hidden');
+        if (this.dom.pinError) this.dom.pinError.classList.remove('hidden');
       }
     };
 
-    this.dom.pinSubmitBtn.addEventListener('click', handleLogin);
-    this.dom.pinInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') handleLogin();
-    });
+    if (this.dom.pinSubmitBtn) {
+      this.dom.pinSubmitBtn.addEventListener('click', handleLogin);
+    }
+    if (this.dom.pinInput) {
+      this.dom.pinInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleLogin();
+      });
+    }
 
-    this.dom.logoutBtn.addEventListener('click', () => {
-      sessionStorage.removeItem('quran_admin_auth');
-      window.location.reload();
-    });
+    if (this.dom.logoutBtn) {
+      this.dom.logoutBtn.addEventListener('click', () => {
+        sessionStorage.removeItem('quran_admin_auth');
+        localStorage.removeItem('quran_admin_auth');
+        window.location.reload();
+      });
+    }
   }
 
   unlockDashboard() {
@@ -325,6 +333,14 @@ class AdminDashboard {
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  new AdminDashboard();
-});
+function initAdminDashboard() {
+  if (!window.adminDashboardInstance) {
+    window.adminDashboardInstance = new AdminDashboard();
+  }
+}
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', initAdminDashboard);
+} else {
+  initAdminDashboard();
+}
