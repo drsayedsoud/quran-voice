@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>لوحة تحكم الأدمن | المصحف الصوتي الميسر</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,7 +12,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen font-['Cairo']">
+<body class="bg-slate-950 text-slate-100 min-h-[100dvh] font-['Cairo'] safe-area-inset">
 
   <!-- نافذة تسجيل دخول المشرف (Admin PIN Protection) -->
   <div id="loginOverlay" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-md">
@@ -107,62 +107,69 @@
   <!-- الهيكل الرئيسي للوحة بعد الدخول -->
   <div id="dashboardContent" class="hidden">
     <!-- شريط التنقل العلوي -->
-    <header class="bg-slate-900/90 border-b border-slate-800 sticky top-0 z-40 backdrop-blur-md px-6 py-4">
+    <header class="bg-slate-900/90 border-b border-slate-800 sticky top-0 z-40 backdrop-blur-md px-3 sm:px-6 py-3 sm:py-4 safe-top">
       <div class="max-w-7xl mx-auto flex items-center justify-between">
-        <div class="flex items-center space-x-3 space-x-reverse">
-          <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center text-xl font-bold">
+        <div class="flex items-center space-x-2 sm:space-x-3 space-x-reverse">
+          <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center text-lg sm:text-xl font-bold">
             📊
           </div>
           <div>
-            <h1 class="text-lg font-black text-white">إدارة وتحليلات المصحف الصوتي</h1>
-            <p class="text-xs text-slate-400">مراقبة تفاعل المستخدمين والأوامر الصوتية لحظياً</p>
+            <h1 class="text-sm sm:text-lg font-black text-white">إدارة وتحليلات المصحف الصوتي</h1>
+            <p class="text-[10px] sm:text-xs text-slate-400">مراقبة تفاعل المستخدمين والأوامر الصوتية لحظياً</p>
           </div>
         </div>
 
-        <div class="flex items-center space-x-3 space-x-reverse">
-          <a href="index.html" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow transition-all flex items-center space-x-1 space-x-reverse">
+        <div class="flex items-center space-x-2 sm:space-x-3 space-x-reverse">
+          <a href="index.html" class="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-[11px] sm:text-xs font-bold rounded-xl shadow transition-all flex items-center space-x-1 space-x-reverse">
             <span>📖</span>
-            <span>فتح المصحف</span>
+            <span class="hidden xs:inline sm:inline">فتح المصحف</span>
           </a>
-          <button id="logoutBtn" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl transition-all">
+          <button id="logoutBtn" class="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] sm:text-xs rounded-xl transition-all">
             خروج
           </button>
         </div>
       </div>
     </header>
 
-    <div class="max-w-7xl mx-auto p-6 space-y-6">
+    <div class="max-w-7xl mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
 
       <!-- 1. بطاقات المؤشرات الرئيسية (KPI Cards) -->
-      <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         <!-- إجمالي المستخدمين المسجلين -->
-        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg relative overflow-hidden">
           <div class="text-xs font-bold text-slate-400 mb-1">إجمالي المستخدمين</div>
-          <div id="statTotalUsers" class="text-3xl font-black text-white">--</div>
+          <div id="statTotalUsers" class="text-2xl sm:text-3xl font-black text-white">--</div>
           <div class="text-[11px] text-emerald-400 mt-2 flex items-center">
             <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 ml-1.5 animate-ping"></span>
             مزامنة حية من Firestore
           </div>
         </div>
 
+        <!-- إجمالي وقت الاستماع التراكمي -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg relative overflow-hidden">
+          <div class="text-xs font-bold text-slate-400 mb-1">إجمالي وقت الاستماع</div>
+          <div id="statTotalMinutes" class="text-2xl sm:text-3xl font-black text-emerald-400">0 دقيقة</div>
+          <div class="text-[11px] text-slate-400 mt-2">لكافة المستخدمين والجلسات</div>
+        </div>
+
         <!-- إجمالي الآيات المستمع إليها -->
-        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg relative overflow-hidden">
           <div class="text-xs font-bold text-slate-400 mb-1">الآيات المستمع إليها</div>
-          <div id="statTotalAyahs" class="text-3xl font-black text-amber-400">--</div>
+          <div id="statTotalAyahs" class="text-2xl sm:text-3xl font-black text-amber-400">--</div>
           <div class="text-[11px] text-slate-400 mt-2">إجمالي كل الجلسات التراكمية</div>
         </div>
 
         <!-- نسبة نجاح الأوامر الصوتية -->
-        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg relative overflow-hidden">
           <div class="text-xs font-bold text-slate-400 mb-1">دقة التعرف الصوتي</div>
-          <div id="statVoiceAccuracy" class="text-3xl font-black text-emerald-400">--%</div>
+          <div id="statVoiceAccuracy" class="text-2xl sm:text-3xl font-black text-emerald-400">--%</div>
           <div id="statVoiceCount" class="text-[11px] text-slate-400 mt-2">0 أمر صوتي مسجل</div>
         </div>
 
         <!-- القارئ الأكثر شعبية -->
-        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg relative overflow-hidden col-span-2 sm:col-span-1">
           <div class="text-xs font-bold text-slate-400 mb-1">القارئ الأكثر اختياراً</div>
-          <div id="statTopReciter" class="text-xl font-black text-white truncate">الحصري</div>
+          <div id="statTopReciter" class="text-lg sm:text-xl font-black text-white truncate">الحصري</div>
           <div class="text-[11px] text-amber-400 mt-2">بناءً على تفضيلات المستخدمين</div>
         </div>
       </section>
@@ -194,6 +201,55 @@
             </button>
             <button id="clearBroadcastBtn" class="py-3 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl">
               مسح
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2.5. إعدادات محرك الذكاء الاصطناعي (Google Gemini AI Engine) -->
+      <section class="bg-gradient-to-r from-slate-900/90 via-emerald-950/40 to-slate-900/90 border border-emerald-500/40 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+        <div class="absolute -top-10 -left-10 w-28 h-28 bg-emerald-500/10 rounded-full blur-2xl"></div>
+
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+          <div class="flex items-center space-x-3 space-x-reverse">
+            <span class="text-3xl">✨</span>
+            <div>
+              <h2 class="text-base font-bold text-white flex items-center gap-2">
+                <span>إعدادات محرك الذكاء الاصطناعي (Google Gemini)</span>
+                <span id="geminiLiveStatusBadge" class="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">مفعّل ونشط</span>
+              </h2>
+              <p class="text-xs text-slate-400">الفهم الدلالي والموضوعي للقرآن (مثل آيات الصلاة، الصبر، الرزق) وتحليل اللهجات العامية بدقة متناهية</p>
+            </div>
+          </div>
+          <div class="text-xs text-slate-400 font-mono bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-800">
+            النموذج: <span class="text-amber-400 font-bold">gemini-flash-lite-latest</span>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">مفتاح API Key لـ Gemini:</label>
+            <div class="flex flex-col md:flex-row gap-2">
+              <input type="password" id="geminiApiKeyInput" placeholder="أدخل مفتاح Gemini API Key هنا..." class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-amber-400">
+              <button id="toggleGeminiKeyVisBtn" type="button" class="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl" title="إظهار / إخفاء المفتاح">
+                👁️ إظهار
+              </button>
+              <button id="saveGeminiKeyBtn" type="button" class="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-md">
+                💾 حفظ المفتاح
+              </button>
+              <button id="testGeminiKeyBtn" type="button" class="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white font-semibold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-1">
+                <span>⚡</span>
+                <span>فحص الاتصال الحي</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="geminiTestResult" class="hidden p-3 rounded-xl text-xs font-medium border"></div>
+
+          <div class="flex flex-wrap items-center justify-between text-[11px] text-slate-400 pt-1">
+            <span>💡 النظام مزود بنظام أمان تلقائي (Hybrid Fallback): في حال انقطاع النت يعمل المحرك المحلي فوراً بدون أي تأخير.</span>
+            <button id="resetGeminiKeyBtn" type="button" class="text-amber-400/80 hover:text-amber-300 underline">
+              استعادة المفتاح الافتراضي المدمج
             </button>
           </div>
         </div>
@@ -266,12 +322,13 @@
                 <th class="p-3">آخر سورة وآية</th>
                 <th class="p-3">القارئ المفضل</th>
                 <th class="p-3">الآيات المستمعة</th>
+                <th class="p-3 text-emerald-400 font-bold">وقت الاستماع (مدة الاستخدام)</th>
                 <th class="p-3">آخر نشاط</th>
               </tr>
             </thead>
             <tbody id="usersTableBody" class="divide-y divide-slate-800">
               <tr>
-                <td colspan="7" class="p-6 text-center text-slate-500">جاري تحميل بيانات المستخدمين من Firestore...</td>
+                <td colspan="8" class="p-6 text-center text-slate-500">جاري تحميل بيانات المستخدمين من Firestore...</td>
               </tr>
             </tbody>
           </table>

@@ -1,42 +1,77 @@
-/* تنسيقات مخصصة لتطبيق المصحف الصوتي الميسر */
+/* ==============================================================
+   تنسيقات التصميم المتجاوب وتجربة المستخدم على الهواتف الذكية (Mobile Responsive)
+   المصحف الصوتي الميسر - يدعم مختلف أحجام الشاشات ونتوءات الكاميرا (Notches)
+   ============================================================== */
 
 :root {
   --primary-emerald: #064e3b;
   --dark-emerald: #022c22;
   --accent-gold: #f59e0b;
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
+/* ضبط ارتفاع الصفحة الحقيقي على المتصفحات الذكية (iOS Safari & Chrome Android) */
+html {
+  height: 100%;
+  height: -webkit-fill-available;
 }
 
 body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
   user-select: none;
+  -webkit-user-select: none;
+  overscroll-behavior-y: none;
+  padding-top: var(--sat);
+  padding-bottom: var(--sab);
+  padding-left: var(--sal);
+  padding-right: var(--sar);
+}
+
+/* فئات مساحات الأمان للهواتف الحديثة (Safe Area Insets) */
+.safe-top {
+  padding-top: max(0.75rem, var(--sat));
+}
+
+.safe-bottom {
+  padding-bottom: max(0.75rem, var(--sab));
 }
 
 /* أمواج النبض التفاعلي للزر الصوتي عند الاستماع */
 .mic-button {
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease, background 0.3s ease;
+  touch-action: manipulation;
 }
 
 .mic-button.mic-active {
   background: linear-gradient(135deg, #ef4444, #dc2626) !important;
   color: #ffffff !important;
-  box-shadow: 0 0 35px rgba(239, 68, 68, 0.7) !important;
+  box-shadow: 0 0 35px rgba(239, 68, 68, 0.8) !important;
   transform: scale(1.08);
 }
 
 .mic-wave {
   position: absolute;
-  width: 96px;
-  height: 96px;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
   pointer-events: none;
   border: 2px solid rgba(245, 158, 11, 0.5);
   opacity: 0;
+  top: 0;
+  left: 0;
 }
 
 .mic-active + .mic-wave {
   animation: pulse-ring 1.4s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
-  border-color: rgba(239, 68, 68, 0.8);
+  border-color: rgba(239, 68, 68, 0.85);
 }
 
 @keyframes pulse-ring {
@@ -45,18 +80,23 @@ body {
     opacity: 0.9;
   }
   50% {
-    opacity: 0.4;
+    opacity: 0.45;
   }
   100% {
-    transform: scale(1.8);
+    transform: scale(1.9);
     opacity: 0;
   }
 }
 
-/* شريط تمرير أنيق */
+/* مساحات اللمس لسهولة الاستخدام لكبار السن (Touch Target Standard 48px) */
+button, select, a {
+  min-height: 44px;
+}
+
+/* شريط تمرير أنيق متجاوب */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -70,4 +110,101 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(245, 158, 11, 0.6);
+}
+
+/* ==============================================================
+   تجاوب خاص للشاشات الصغيرة والمتوسطة (Compact / Small Screen Mobile)
+   (مثل: iPhone SE, iPhone 6/7/8, Galaxy A-Series, شاشات الهواتف القابلة للطي)
+   ============================================================== */
+@media (max-height: 720px) {
+  header {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.25rem !important;
+  }
+
+  .main-card {
+    padding: 1rem !important;
+    border-radius: 1.25rem !important;
+  }
+
+  .surah-title {
+    font-size: 2rem !important;
+    margin-bottom: 0.25rem !important;
+  }
+
+  .mic-container {
+    margin-top: 0.75rem !important;
+    margin-bottom: 0.75rem !important;
+  }
+
+  .mic-button {
+    width: 4.75rem !important;
+    height: 4.75rem !important;
+  }
+
+  .controls-row {
+    margin-bottom: 0.5rem !important;
+  }
+
+  .guide-grid {
+    padding-top: 0.25rem !important;
+    padding-bottom: 0.25rem !important;
+  }
+}
+
+/* ==============================================================
+   الوضع الأفقي في الهواتف الذكية (Landscape Mobile Orientation)
+   ============================================================== */
+@media (max-height: 520px) and (orientation: landscape) {
+  body {
+    justify-content: flex-start;
+    overflow-y: auto !important;
+  }
+
+  header {
+    padding: 0.25rem 1rem !important;
+  }
+
+  main {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    justify-content: space-around !important;
+    align-items: center !important;
+    max-width: 900px !important;
+    padding: 0.5rem 1rem !important;
+  }
+
+  .main-card {
+    width: 58% !important;
+    padding: 0.85rem !important;
+  }
+
+  .surah-title {
+    font-size: 1.75rem !important;
+  }
+
+  .landscape-controls {
+    width: 38% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .mic-container {
+    margin: 0.5rem 0 !important;
+  }
+
+  .mic-button {
+    width: 4.25rem !important;
+    height: 4.25rem !important;
+  }
+
+  .guide-grid {
+    display: none !important;
+  }
+
+  footer {
+    padding: 0.5rem 1rem !important;
+  }
 }

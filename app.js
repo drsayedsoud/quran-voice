@@ -5,12 +5,14 @@
 
 import { SURAHS, RECITERS, getAyahAudioUrl } from './quran-data.js';
 import { parseVoiceCommand, normalizeArabic } from './voice-engine.js';
+import { parseWithGemini } from './gemini-service.js';
 import { sound } from './sound-effects.js';
 import { 
   initUserSession, 
   saveLastPosition, 
   logVoiceCommand, 
   recordAyahListened,
+  recordListeningTime,
   listenForAdminBroadcast 
 } from './firebase-config.js';
 
@@ -24,6 +26,10 @@ class QuranVoiceApp {
     this.isListening = false;
     this.repeatCount = 1; // كم مرة تكرر الآية
     this.currentRepeat = 1;
+    this.topicPlaylist = []; // قائمة الآيات في البحث الموضوعي
+    this.topicIndex = 0; // مؤشر الآية الحالية في الموضوع
+    this.accumulatedSeconds = 0; // ثواني الاستماع المتراكمة
+    this.listeningTimer = null;
 
     // عناصر الصوت والتعرف الصوتي
     this.audioPlayer = new Audio();
@@ -100,20 +106,43 @@ class QuranVoiceApp {
     // عند انتهاء الآية الحالية
     this.audioPlayer.addEventListener('ended', () => {
       recordAyahListened();
+      this.flushListeningTime();
 
       if (this.currentRepeat < this.repeatCount) {
         this.currentRepeat++;
         this.dom.voiceStatus.textContent = `تكرار الآية (${this.currentRepeat}/${this.repeatCount})`;
         this.audioPlayer.currentTime = 0;
         this.audioPlayer.play();
-      } else {
-        this.currentRepeat = 1;
-        this.repeatCount = 1; // إعادة الضبط بعد التكرار
-        this.nextAyah(true);
+        return;
       }
+
+      this.currentRepeat = 1;
+      this.repeatCount = 1; // إعادة الضبط بعد التكرار
+
+      // فحص إذا كان المستخدم يستمع لباقة آيات موضوعية من مواضع أو سور مختلفة
+      if (this.topicPlaylist && this.topicPlaylist.length > 0 && this.topicIndex < this.topicPlaylist.length - 1) {
+        this.topicIndex++;
+        const nextPassage = this.topicPlaylist[this.topicIndex];
+        this.currentSurah = nextPassage.surah;
+        this.currentAyah = nextPassage.ayahNumber;
+        this.updateUI();
+
+        // إطلاق صوت البيب / قطرة الندى الفاصلة بين المواضع القرآنية
+        sound.playTopicTransitionTone();
+        this.dom.voiceStatus.textContent = `انتقال لموضع جديد: سورة ${nextPassage.surah.name} آية ${nextPassage.ayahNumber} (${this.topicIndex + 1}/${this.topicPlaylist.length})`;
+
+        // مهلة 700ms ليسمع المستخدم الصوت الفاصل بوضوح قبل بدء الآية التالية
+        setTimeout(() => {
+          this.playCurrentAyah();
+        }, 700);
+        return;
+      }
+
+      // إذا انتهت باقة الموضوع أو كانت تلاوة عادية متتالية
+      this.nextAyah(true);
     });
 
-    // تحديث شريط التقدم
+    // متابعة وقت الاستماع وتحديث شريط التقدم
     this.audioPlayer.addEventListener('timeupdate', () => {
       if (this.audioPlayer.duration) {
         const percent = (this.audioPlayer.currentTime / this.audioPlayer.duration) * 100;
@@ -123,12 +152,52 @@ class QuranVoiceApp {
       }
     });
 
+    // تسجيل مؤقت وقت الاستماع الفعلي
+    this.audioPlayer.addEventListener('play', () => {
+      this.startListeningTimer();
+    });
+    this.audioPlayer.addEventListener('pause', () => {
+      this.stopListeningTimer(true);
+    });
+    window.addEventListener('beforeunload', () => {
+      this.flushListeningTime();
+    });
+
     // معالجة الأخطاء والتبديل التلقائي
     this.audioPlayer.addEventListener('error', (e) => {
       console.warn('Audio playback error, trying next source:', e);
       sound.playErrorChime();
       this.dom.voiceStatus.textContent = 'جاري إعادة المحاولة...';
     });
+  }
+
+  startListeningTimer() {
+    this.stopListeningTimer(false);
+    this.listeningTimer = setInterval(() => {
+      if (this.isPlaying && !this.audioPlayer.paused) {
+        this.accumulatedSeconds += 5;
+        if (this.accumulatedSeconds >= 25) {
+          this.flushListeningTime();
+        }
+      }
+    }, 5000);
+  }
+
+  stopListeningTimer(flush = true) {
+    if (this.listeningTimer) {
+      clearInterval(this.listeningTimer);
+      this.listeningTimer = null;
+    }
+    if (flush) {
+      this.flushListeningTime();
+    }
+  }
+
+  flushListeningTime() {
+    if (this.accumulatedSeconds > 0) {
+      recordListeningTime(this.accumulatedSeconds);
+      this.accumulatedSeconds = 0;
+    }
   }
 
   initSpeechRecognition() {
@@ -179,13 +248,45 @@ class QuranVoiceApp {
 
   // معالجة وتنفيذ الأمر الصوتي
   async executeVoiceCommand(transcript) {
-    const parsed = parseVoiceCommand(transcript);
+    this.dom.voiceStatus.textContent = 'جاري الفهم بالذكاء الاصطناعي...';
+    
+    // استدعاء Gemini مع التراجع التلقائي للمحرك المحلي عند الحاجة
+    const parsed = await parseWithGemini(transcript, {
+      currentSurah: this.currentSurah,
+      currentAyah: this.currentAyah,
+      currentReciter: this.currentReciter
+    });
     console.log('Voice Command Parsed:', parsed);
+
+    if (parsed.source === 'gemini') {
+      this.dom.voiceTranscript.textContent = `✨ "${transcript}"`;
+    }
 
     let success = true;
 
     switch (parsed.intent) {
+      case 'PLAY_TOPIC':
+        this.topicPlaylist = parsed.payload.passages || [];
+        this.topicIndex = 0;
+        if (parsed.payload.reciter) {
+          this.currentReciter = parsed.payload.reciter;
+        }
+        if (this.topicPlaylist.length > 0) {
+          const first = this.topicPlaylist[0];
+          this.currentSurah = first.surah;
+          this.currentAyah = first.ayahNumber;
+          this.dom.voiceStatus.textContent = `${parsed.message} (الموضع 1 من ${this.topicPlaylist.length})`;
+        } else {
+          this.currentSurah = parsed.payload.surah;
+          this.currentAyah = parsed.payload.ayahNumber;
+          this.dom.voiceStatus.textContent = parsed.message;
+        }
+        sound.playSuccessChime();
+        this.playCurrentAyah();
+        break;
+
       case 'PLAY_SURAH':
+        this.topicPlaylist = []; // إلغاء قائمة الموضوع إذا طلب سورة محددة
         this.currentSurah = parsed.payload.surah;
         this.currentAyah = parsed.payload.ayahNumber || 1;
         if (parsed.payload.reciter) {
@@ -334,6 +435,24 @@ class QuranVoiceApp {
   }
 
   nextAyah(autoPlay = false) {
+    // التنقل في مواضع البحث الموضوعي إن وجد
+    if (this.topicPlaylist && this.topicPlaylist.length > 0) {
+      if (this.topicIndex < this.topicPlaylist.length - 1) {
+        this.topicIndex++;
+        const nextPassage = this.topicPlaylist[this.topicIndex];
+        this.currentSurah = nextPassage.surah;
+        this.currentAyah = nextPassage.ayahNumber;
+        sound.playTopicTransitionTone();
+        this.dom.voiceStatus.textContent = `موضع تالٍ: سورة ${nextPassage.surah.name} آية ${nextPassage.ayahNumber} (${this.topicIndex + 1}/${this.topicPlaylist.length})`;
+        if (autoPlay || this.isPlaying) {
+          this.playCurrentAyah();
+        } else {
+          this.updateUI();
+        }
+        return;
+      }
+    }
+
     if (this.currentAyah < this.currentSurah.ayahs) {
       this.currentAyah++;
     } else {
@@ -359,6 +478,24 @@ class QuranVoiceApp {
   }
 
   prevAyah(autoPlay = false) {
+    // التنقل للخلف في مواضع البحث الموضوعي إن وجد
+    if (this.topicPlaylist && this.topicPlaylist.length > 0) {
+      if (this.topicIndex > 0) {
+        this.topicIndex--;
+        const prevPassage = this.topicPlaylist[this.topicIndex];
+        this.currentSurah = prevPassage.surah;
+        this.currentAyah = prevPassage.ayahNumber;
+        sound.playTopicTransitionTone();
+        this.dom.voiceStatus.textContent = `موضع سابق: سورة ${prevPassage.surah.name} آية ${prevPassage.ayahNumber} (${this.topicIndex + 1}/${this.topicPlaylist.length})`;
+        if (autoPlay || this.isPlaying) {
+          this.playCurrentAyah();
+        } else {
+          this.updateUI();
+        }
+        return;
+      }
+    }
+
     if (this.currentAyah > 1) {
       this.currentAyah--;
     } else {

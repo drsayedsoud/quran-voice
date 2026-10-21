@@ -142,6 +142,43 @@ class SoundFeedback {
     osc.stop(ctx.currentTime + 0.04);
   }
 
+  // صوت فاصل (بيب ناعم / قطرة ماء نقية) عند الانتقال بين مواضع مختلفة في البحث الموضوعي
+  playTopicTransitionTone() {
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+    this.vibrate([40, 30, 60]);
+
+    const now = ctx.currentTime;
+
+    // النغمة الأولى (نغمة جرس ناعمة متصاعدة)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(880, now); // A5
+    osc1.frequency.exponentialRampToValueAtTime(1174.66, now + 0.12); // D6
+    gain1.gain.setValueAtTime(0.001, now);
+    gain1.gain.exponentialRampToValueAtTime(0.2, now + 0.02);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.22);
+
+    // النغمة الثانية (بيب رقيق كقطرة الندى الفاصلة)
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1318.5, now + 0.14); // E6
+    osc2.frequency.exponentialRampToValueAtTime(1046.5, now + 0.35); // C6
+    gain2.gain.setValueAtTime(0.001, now + 0.14);
+    gain2.gain.exponentialRampToValueAtTime(0.16, now + 0.17);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(now + 0.14);
+    osc2.stop(now + 0.42);
+  }
+
   // القراءة الصوتية باللغة العربية للرد على المستخدم
   speak(text) {
     if (!this.speechSynth) return;

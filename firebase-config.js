@@ -41,37 +41,36 @@ export const db = getFirestore(app);
 let currentUser = null;
 
 export async function initUserSession(onUserReady) {
-  onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      currentUser = user;
-      await syncUserMetadata(user);
-      if (onUserReady) onUserReady(user);
-    } else {
-      try {
-        const cred = await signInAnonymously(auth);
-        currentUser = cred.user;
-        await syncUserMetadata(cred.user);
-        if (onUserReady) onUserReady(cred.user);
-      } catch (err) {
-        console.warn('Anonymous sign-in error (working in local offline mode):', err);
-        // توليد معرف محلي بديل في حال انقطاع الشبكة
-        let localUid = localStorage.getItem('local_quran_uid');
-        if (!localUid) {
-          localUid = 'local_' + Math.random().toString(36).substring(2, 10);
-          localStorage.setItem('local_quran_uid', localUid);
-        }
-        currentUser = { uid: localUid, isAnonymous: true };
-        if (onUserReady) onUserReady(currentUser);
+  // توليد أو استرجاع معرف المستخدم الدائم لضمان ظهوره في لوحة الأدمن
+  let localUid = localStorage.getItem('local_quran_uid');
+  if (!localUid) {
+    localUid = 'user_' + Math.random().toString(36).substring(2, 10);
+    localStorage.setItem('local_quran_uid', localUid);
+  }
+  currentUser = { uid: localUid };
+
+  // تسجيل ومزامنة بيانات المستخدم مباشرة في Firestore
+  await syncUserMetadata(currentUser);
+  if (onUserReady) onUserReady(currentUser);
+
+  // إذا تم تفعيل Firebase Auth فسيتم ربط الجلسة تلقائياً
+  try {
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        currentUser = user;
+        await syncUserMetadata(user);
+        if (onUserReady) onUserReady(user);
       }
-    }
-  });
+    });
+  } catch (err) {
+    console.warn('Auth observer running in direct mode:', err);
+  }
 }
 
 // حفظ وتحديث بيانات جهاز المستخدم ونشاطه في Firestore
 async function syncUserMetadata(user) {
   if (!user || !user.uid) return;
   const userRef = doc(db, "users", user.uid);
-  const now = new Date().toISOString();
   
   const deviceInfo = {
     userAgent: navigator.userAgent.slice(0, 150),
@@ -100,6 +99,7 @@ async function syncUserMetadata(user) {
         },
         stats: {
           totalAyahsListened: 0,
+          totalSeconds: 0,
           totalMinutes: 0
         }
       });
@@ -171,6 +171,34 @@ export async function recordAyahListened() {
     }
   } catch (e) {
     // Ignore
+  }
+}
+
+// تسجيل وقت الاستماع الفعلي للمستخدم بالثواني والدقائق
+export async function recordListeningTime(seconds) {
+  if (!currentUser || !seconds || seconds <= 0) return;
+
+  // حفظ تراكمي محلي
+  const localTotal = (parseInt(localStorage.getItem('quran_user_total_seconds') || '0', 10)) + seconds;
+  localStorage.setItem('quran_user_total_seconds', localTotal);
+
+  try {
+    const userRef = doc(db, "users", currentUser.uid);
+    const snap = await getDoc(userRef);
+    if (snap.exists()) {
+      const stats = snap.data().stats || {};
+      const currentSeconds = stats.totalSeconds || ((stats.totalMinutes || 0) * 60);
+      const newSeconds = currentSeconds + seconds;
+      const newMinutes = Math.round(newSeconds / 60);
+
+      await updateDoc(userRef, {
+        "stats.totalSeconds": newSeconds,
+        "stats.totalMinutes": newMinutes,
+        lastActiveAt: serverTimestamp()
+      });
+    }
+  } catch (e) {
+    console.warn('Listening time sync skipped:', e.message);
   }
 }
 
