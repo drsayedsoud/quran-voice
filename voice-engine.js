@@ -286,6 +286,28 @@ export function parseVoiceCommand(rawTranscript) {
     return result;
   }
 
+  // أوامر ضبط مستوى الصوت للمكفوفين
+  if (norm.includes('اعلي صوت') || norm.includes('اقصي صوت') || norm.includes('الصوت كامل') || norm.includes('صوت ميه') || norm.includes('صوت 100')) {
+    result.intent = 'VOLUME_MAX';
+    result.message = 'رفع الصوت لأقصى درجة';
+    return result;
+  }
+  if (norm.includes('ارفع الصوت') || norm.includes('علي الصوت') || norm.includes('رفع الصوت') || norm.includes('صوت عالي') || norm.includes('اعلي الصوت') || norm.includes('زود الصوت') || norm.includes('زياده الصوت') || norm === 'اعلي' || norm === 'ارفع') {
+    result.intent = 'VOLUME_UP';
+    result.message = 'رفع مستوى الصوت';
+    return result;
+  }
+  if (norm.includes('وطي الصوت') || norm.includes('خفض الصوت') || norm.includes('اخفض الصوت') || norm.includes('صوت واطي') || norm.includes('صوت هادي') || norm.includes('نقص الصوت') || norm.includes('قلل الصوت') || norm === 'اوطي' || norm === 'اخفض') {
+    result.intent = 'VOLUME_DOWN';
+    result.message = 'خفض مستوى الصوت';
+    return result;
+  }
+  if (norm.includes('اكتم الصوت') || norm.includes('كتم الصوت') || norm.includes('صامت') || norm === 'كتم') {
+    result.intent = 'VOLUME_MUTE';
+    result.message = 'كتم الصوت';
+    return result;
+  }
+
   // فتح صفحة الإدارة ولوحة التحكم
   if (norm.includes('ادمن') || norm.includes('admin') || norm.includes('لوحه الاداره') || norm.includes('صفحه الاداره') || norm.includes('لوحه التحكم') || norm.includes('صفحه التحكم') || norm.includes('لوحه المشرف') || norm.includes('صفحه المشرف') || norm.includes('افتح الاداره') || norm.includes('افتح التحكم') || norm.includes('الاداره') || norm === 'اداره') {
     result.intent = 'OPEN_ADMIN';

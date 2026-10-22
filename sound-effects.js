@@ -179,6 +179,72 @@ class SoundFeedback {
     osc2.stop(now + 0.42);
   }
 
+  // نغمة إيقاف مؤقت للتلاوة (نغمة هابطة ناعمة)
+  playPauseChime() {
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+    this.vibrate([60, 40]);
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(580, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(360, ctx.currentTime + 0.16);
+
+    gain.gain.setValueAtTime(0.001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.18);
+  }
+
+  // نغمة استئناف التلاوة (نغمة صاعدة مبهجة)
+  playResumeChime() {
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+    this.vibrate([70]);
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(380, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(620, ctx.currentTime + 0.16);
+
+    gain.gain.setValueAtTime(0.001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.18);
+  }
+
+  // نغمة لتأكيد درجة الصوت للمكفوفين (درجة النغمة تعبر عن علو الصوت)
+  playVolumeTone(volume = 1.0) {
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+    this.vibrate([35]);
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    const freq = 300 + (Math.max(0, Math.min(1, volume)) * 600);
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+
+    gain.gain.setValueAtTime(0.001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.12);
+  }
+
   // القراءة الصوتية باللغة العربية للرد على المستخدم
   speak(text) {
     if (!this.speechSynth) return;

@@ -425,6 +425,40 @@ class QuranVoiceApp {
         this.fetchAndShowTafsir();
         break;
 
+      case 'VOLUME_MAX':
+        if (this.audioPlayer) this.audioPlayer.volume = 1.0;
+        if (sound.playVolumeTone) sound.playVolumeTone(1.0);
+        sound.speak('تم رفع الصوت لأقصى درجة');
+        this.dom.voiceStatus.textContent = 'مستوى الصوت: 100%';
+        break;
+
+      case 'VOLUME_UP':
+        if (this.audioPlayer) {
+          this.audioPlayer.volume = Math.min(1.0, +(this.audioPlayer.volume + 0.2).toFixed(2));
+          if (sound.playVolumeTone) sound.playVolumeTone(this.audioPlayer.volume);
+          const pct = Math.round(this.audioPlayer.volume * 100);
+          sound.speak(`مستوى الصوت ${pct} بالمئة`);
+          this.dom.voiceStatus.textContent = `مستوى الصوت: ${pct}%`;
+        }
+        break;
+
+      case 'VOLUME_DOWN':
+        if (this.audioPlayer) {
+          this.audioPlayer.volume = Math.max(0.1, +(this.audioPlayer.volume - 0.2).toFixed(2));
+          if (sound.playVolumeTone) sound.playVolumeTone(this.audioPlayer.volume);
+          const pct = Math.round(this.audioPlayer.volume * 100);
+          sound.speak(`مستوى الصوت ${pct} بالمئة`);
+          this.dom.voiceStatus.textContent = `مستوى الصوت: ${pct}%`;
+        }
+        break;
+
+      case 'VOLUME_MUTE':
+        if (this.audioPlayer) this.audioPlayer.volume = 0;
+        if (sound.playVolumeTone) sound.playVolumeTone(0);
+        sound.speak('تم كتم الصوت');
+        this.dom.voiceStatus.textContent = 'الصوت صامت';
+        break;
+
       case 'OPEN_ADMIN':
         sound.playSuccessChime();
         sound.speak('جاري فتح لوحة تحكم المشرف');
