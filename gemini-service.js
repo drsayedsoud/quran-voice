@@ -116,10 +116,11 @@ ${recitersInfo}
    - "كرر", "عيد" -> intent: "REPEAT_AYAH", repeatTimes: (عدد المرات إن ذكر وإلا 3)
    - "فسر لي", "معنى الآية" -> intent: "TAFSIR"
    - "أنا فين", "ما هي السورة" -> intent: "STATUS_CHECK"
+   - "لوحة التحكم", "لوحة الإدارة", "صفحة الإدارة", "صفحة الأدمن", "الأدمن", "افتح الإدارة" -> intent: "OPEN_ADMIN"
 5. صيغة الإرجاع:
 أرجع كائن JSON فقط بدون أي علامات markdown إضافية:
 {
-  "intent": "PLAY_TOPIC" | "PLAY_AYAH" | "PLAY_SURAH" | "PAUSE" | "RESUME" | "NEXT_AYAH" | "PREV_AYAH" | "REPEAT_AYAH" | "TAFSIR" | "SET_RECITER" | "STATUS_CHECK" | "UNKNOWN",
+  "intent": "PLAY_TOPIC" | "PLAY_AYAH" | "PLAY_SURAH" | "PAUSE" | "RESUME" | "NEXT_AYAH" | "PREV_AYAH" | "REPEAT_AYAH" | "TAFSIR" | "SET_RECITER" | "STATUS_CHECK" | "OPEN_ADMIN" | "UNKNOWN",
   "topic": "اسم الموضوع إن وجد",
   "surahId": رقم السورة (1-114) إن وجد وإلا null,
   "ayahNumber": رقم الآية إن وجد وإلا 1,

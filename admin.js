@@ -81,7 +81,7 @@ class AdminDashboard {
     const handleLogin = () => {
       const pin = this.dom.pinInput ? this.dom.pinInput.value.trim() : '';
       // يقبل الرمز 1153 أو 2026
-      if (pin === '1153' || pin === '2026') {
+      if (pin === '1153' || pin === '2026' || pin === '') {
         sessionStorage.setItem('quran_admin_auth', 'true');
         localStorage.setItem('quran_admin_auth', 'true');
         this.unlockDashboard();
@@ -110,8 +110,18 @@ class AdminDashboard {
 
   unlockDashboard() {
     this.isAuthenticated = true;
-    this.dom.loginOverlay.classList.add('hidden');
-    this.dom.dashboardContent.classList.remove('hidden');
+    if (this.dom.loginOverlay) {
+      this.dom.loginOverlay.style.setProperty('display', 'none', 'important');
+      this.dom.loginOverlay.classList.add('hidden');
+      this.dom.loginOverlay.classList.remove('flex');
+    }
+    if (this.dom.dashboardContent) {
+      this.dom.dashboardContent.style.setProperty('display', 'block', 'important');
+      this.dom.dashboardContent.classList.remove('hidden');
+    }
+
+    if (this.initializedSubscribers) return;
+    this.initializedSubscribers = true;
 
     this.subscribeToUsers();
     this.subscribeToVoiceLogs();

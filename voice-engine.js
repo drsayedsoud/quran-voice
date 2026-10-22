@@ -287,7 +287,7 @@ export function parseVoiceCommand(rawTranscript) {
   }
 
   // فتح صفحة الإدارة ولوحة التحكم
-  if (norm.includes('لوحه الاداره') || norm.includes('لوحة الادارة') || norm.includes('صفحه الاداره') || norm.includes('صفحة الادارة') || norm.includes('لوحه التحكم') || norm.includes('لوحة التحكم') || norm.includes('لوحه المشرف') || norm.includes('لوحة المشرف')) {
+  if (norm.includes('ادمن') || norm.includes('admin') || norm.includes('لوحه الاداره') || norm.includes('صفحه الاداره') || norm.includes('لوحه التحكم') || norm.includes('صفحه التحكم') || norm.includes('لوحه المشرف') || norm.includes('صفحه المشرف') || norm.includes('افتح الاداره') || norm.includes('افتح التحكم') || norm.includes('الاداره') || norm === 'اداره') {
     result.intent = 'OPEN_ADMIN';
     result.message = 'جاري فتح لوحة تحكم المشرف';
     return result;

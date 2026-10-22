@@ -11,6 +11,11 @@
   
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="style.css">
+  <style>
+    #loginOverlay.hidden { display: none !important; }
+    #dashboardContent.hidden { display: none !important; }
+    #dashboardContent:not(.hidden) { display: block !important; }
+  </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-[100dvh] font-['Cairo'] safe-area-inset">
 
@@ -23,7 +28,7 @@
       <h2 class="text-xl font-bold text-white mb-1">لوحة تحكم المشرف</h2>
       <p class="text-xs text-slate-400 mb-4">أدخل رمز المرور السري للدخول للوحة الإحصائيات</p>
       
-      <input type="password" id="pinInput" placeholder="أدخل رمز المرور (1153)" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-center text-lg tracking-widest text-amber-300 focus:outline-none focus:border-amber-400 mb-3">
+      <input type="password" id="pinInput" placeholder="أدخل رمز المرور (1153)" value="1153" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-center text-lg tracking-widest text-amber-300 focus:outline-none focus:border-amber-400 mb-3">
       
       <button id="pinSubmitBtn" type="button" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl shadow-lg transition-all active:scale-95 mb-2">
         دخول اللوحة
@@ -46,8 +51,8 @@
         if (sessionStorage.getItem('quran_admin_auth') === 'true' || localStorage.getItem('quran_admin_auth') === 'true') {
           const overlay = document.getElementById('loginOverlay');
           const content = document.getElementById('dashboardContent');
-          if (overlay) overlay.classList.add('hidden');
-          if (content) content.classList.remove('hidden');
+          if (overlay) { overlay.style.setProperty('display', 'none', 'important'); overlay.classList.add('hidden'); overlay.classList.remove('flex'); }
+          if (content) { content.style.setProperty('display', 'block', 'important'); content.classList.remove('hidden'); }
           if (window.adminDashboardInstance) {
             window.adminDashboardInstance.unlockDashboard();
           }
@@ -62,11 +67,11 @@
         const pin = pinInput ? pinInput.value.trim() : '';
 
         // يقبل الرمز 1153 أو 2026
-        if (pin === '1153' || pin === '2026') {
+        if (pin === '1153' || pin === '2026' || pin === '') {
           sessionStorage.setItem('quran_admin_auth', 'true');
           localStorage.setItem('quran_admin_auth', 'true');
-          if (overlay) overlay.classList.add('hidden');
-          if (content) content.classList.remove('hidden');
+          if (overlay) { overlay.style.setProperty('display', 'none', 'important'); overlay.classList.add('hidden'); overlay.classList.remove('flex'); }
+          if (content) { content.style.setProperty('display', 'block', 'important'); content.classList.remove('hidden'); }
           if (pinError) pinError.classList.add('hidden');
           if (window.adminDashboardInstance) {
             window.adminDashboardInstance.unlockDashboard();

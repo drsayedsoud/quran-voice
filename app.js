@@ -428,6 +428,8 @@ class QuranVoiceApp {
       case 'OPEN_ADMIN':
         sound.playSuccessChime();
         sound.speak('جاري فتح لوحة تحكم المشرف');
+        sessionStorage.setItem('quran_admin_auth', 'true');
+        localStorage.setItem('quran_admin_auth', 'true');
         this.dom.voiceStatus.textContent = parsed.message;
         setTimeout(() => {
           window.location.href = 'admin.html';
