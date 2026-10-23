@@ -74,6 +74,28 @@ export async function testGeminiConnection(keyToTest = null) {
  * تحليل الأمر الصوتي دلالياً بواسطة Gemini
  */
 export async function parseWithGemini(rawTranscript, context = {}) {
+  // 1. المسار الفوري للقصص القرآنية المجمعة في مصفوفات مرتبة زمنياً
+  // يمنع أي خلط زمني أو استدعاء خاطئ لآيات من خارج التسلسل الدرامي المعتمد
+  const immediateStory = findStoryByQuery(rawTranscript);
+  if (immediateStory) {
+    const playlist = compileStoryPlaylist(immediateStory);
+    if (playlist.length > 0) {
+      return {
+        raw: rawTranscript,
+        intent: 'PLAY_STORY',
+        payload: {
+          story: immediateStory,
+          passages: playlist,
+          surah: playlist[0].surah,
+          ayahNumber: playlist[0].ayahNumber,
+          reciter: null
+        },
+        message: `بدء تلاوة ${immediateStory.name} مرتبة حسب التسلسل الزمني للأحداث`,
+        source: 'local_chronological_catalog'
+      };
+    }
+  }
+
   const key = getGeminiApiKey();
   if (!key) {
     return localParseVoiceCommand(rawTranscript);
@@ -194,13 +216,10 @@ ${recitersInfo}
       matchedReciter = RECITERS.find(r => r.id === parsed.reciterId) || null;
     }
 
-    // فحص إذا كان الطلب يتعلق بقصة قرآنية مرتبة حسب التسلسل الزمني للأحداث
-    let storyMatch = null;
-    if (parsed.intent === 'PLAY_STORY' || parsed.storyId) {
-      storyMatch = findStoryByQuery(parsed.storyId || parsed.topic || rawTranscript);
-    } else {
-      storyMatch = findStoryByQuery(rawTranscript);
-    }
+    // فحص شامل وإلزامي: هل يطابق الطلب أو الموضوع أو المعرف أي قصة قرآنية معتمدة؟
+    let storyMatch = findStoryByQuery(parsed.storyId) ||
+                     findStoryByQuery(parsed.topic) ||
+                     findStoryByQuery(rawTranscript);
 
     if (storyMatch) {
       const storyPlaylist = compileStoryPlaylist(storyMatch);

@@ -454,7 +454,13 @@ export const QURAN_STORIES = [
     id: "musa",
     name: "قصة موسى وهارون عليهما السلام",
     category: "prophets",
-    aliases: ["موسى", "سيدنا موسى", "موسي", "سيدنا موسي", "قصة موسى", "قصة موسي", "قصة سيدنا موسى", "كليم الله", "موسى وفرعون", "موسى وهارون"],
+    aliases: [
+      "موسى", "سيدنا موسى", "موسي", "سيدنا موسي", "قصة موسى", "قصة موسي",
+      "قصة سيدنا موسى", "قصة سيدنا موسي", "كليم الله", "موسى وفرعون", "موسي وفرعون",
+      "موسى وهارون", "موسي وهارون", "نبي الله موسى", "نبي الله موسي",
+      "ايات موسى", "ايات موسي", "ايات قصة موسى", "ايات قصة موسي",
+      "جلب ايات قصة موسى", "جلب ايات قصة موسي", "ايات عن موسى", "ايات عن موسي"
+    ],
     description: "أشمل قصص القرآن: المولد والتابوت، ومدين، والوحي بالطور، ومواجهة فرعون والسحرة، وانفلاق البحر، وأحداث التيه",
     scenes: [
       {
@@ -887,7 +893,11 @@ export const QURAN_STORIES = [
     id: "sahib_jannatayn",
     name: "قصة صاحب الجنتين (سورة الكهف)",
     category: "nations",
-    aliases: ["صاحب الجنتين", "الجنتين", "قصة صاحب الجنتين"],
+    aliases: [
+      "صاحب الجنتين", "الجنتين", "قصة صاحب الجنتين", "قصه صاحب الجنتين",
+      "صاحبي الجنة", "صاحبي الجنتين", "صاحب الجنتين في الكهف", "رجل الجنتين",
+      "ايات صاحب الجنتين", "ايات الجنتين", "جلب ايات صاحب الجنتين"
+    ],
     description: "جنتان من أعناب ونخل وزرع، وافتخاره على صاحبه وتكذيبه بالساعة، وإحاطة العذاب بجنتيه",
     scenes: [
       {
@@ -1051,12 +1061,19 @@ export function findStoryByQuery(queryText) {
     .replace(/\s+/g, ' ')
     .trim();
 
+  // تفريغ البوادئ والأوامر الصوتية الشائعة لاستخلاص جوهر اسم القصة/النبي
+  let core = clean
+    .replace(/^(جلب|هات|عايز|شغل|اقرا|تلاوه|تلاوة|سرد|احكي|احكي لي|سمعني|سماع)\s+/, '')
+    .replace(/^(ايات|ايات عن|اية|ايه|موضوع|قصص|قصه|قصة|حكايه|حكاية|سيره|سيرة)\s+/, '')
+    .replace(/^(سيدنا|نبي الله|النبي|رسول الله|الرسول)\s+/, '')
+    .trim();
+
   const words = clean.split(/\s+/);
-  const storyKeywords = ['قصه', 'قصة', 'حكايه', 'حكاية', 'سيره', 'سيرة', 'احكي', 'روايه', 'رواية', 'اخبار', 'خبر'];
+  const storyKeywords = ['قصه', 'قصة', 'حكايه', 'حكاية', 'سيره', 'سيرة', 'احكي', 'روايه', 'رواية', 'اخبار', 'خبر', 'ايات', 'اية', 'ايه', 'جلب', 'هات', 'عايز', 'سرد', 'تلاوه', 'تلاوة', 'عن'];
   const hasStoryKeyword = words.some(w => storyKeywords.includes(w)) || clean.startsWith('احكي');
   const hasSurahKeyword = words.includes('سوره') || words.includes('سورة');
 
-  // إذا كان الطلب صريحاً بسورة ("سورة كذا") ولا يحتوي على لفظ قصة أو حكاية، فهو طلب سورة وليس قصة
+  // إذا كان الطلب صريحاً بسورة فقط ("سورة كذا") بدون أي دلالة موضوعية أو قصة، فهو طلب سورة وليس قصة
   if (hasSurahKeyword && !hasStoryKeyword) {
     return null;
   }
@@ -1064,9 +1081,9 @@ export function findStoryByQuery(queryText) {
   // أسماء السور التي تتطابق أسماؤها مع الأنبياء أو مواضيع مشتركة
   const surahProphetNames = ['يوسف', 'نوح', 'ابراهيم', 'هود', 'يونس', 'محمد', 'لقمان', 'سبا', 'مريم', 'الكهف', 'الانبياء'];
 
-  // 1. مطابقة مباشرة بالمعرفات والأسماء المستعارة
+  // 1. مطابقة مباشرة بالمعرفات والأسماء المستعارة (بالنص الكامل أو النص المستخلص)
   for (const story of QURAN_STORIES) {
-    if (clean === story.id) return story;
+    if (clean === story.id || core === story.id) return story;
     
     for (const alias of story.aliases) {
       const cleanAlias = alias
@@ -1075,25 +1092,33 @@ export function findStoryByQuery(queryText) {
         .replace(/[ىي]/g, 'ي')
         .trim();
 
-      // إذا كان الاسم المستعار هو اسم سورة مفرد (مثل "يوسف" أو "نوح") فلا نطابق القصة إلا بطلب قصة صريح
+      // إذا كان الاسم المستعار هو اسم سورة مفرد (مثل "يوسف" أو "نوح") فلا نطابق القصة إلا بطلب قصة صريح أو كلمات استعلام
       if (surahProphetNames.includes(cleanAlias) && !hasStoryKeyword) {
         continue;
       }
 
-      if (clean === cleanAlias || clean === `قصه ${cleanAlias}` || words.includes(cleanAlias) || clean.includes(` ${cleanAlias}`) || clean.startsWith(`${cleanAlias} `)) {
+      if (clean === cleanAlias || 
+          core === cleanAlias || 
+          clean === `قصه ${cleanAlias}` || 
+          clean === `قصة ${cleanAlias}` || 
+          words.includes(cleanAlias) || 
+          clean.includes(` ${cleanAlias}`) || 
+          clean.startsWith(`${cleanAlias} `) ||
+          core.startsWith(`${cleanAlias} `) ||
+          core.includes(` ${cleanAlias}`)) {
         return story;
       }
     }
   }
 
-  // 2. مطابقة بالاسم الرئيسي (إذا كان الطلب يتضمن لفظ قصة صريح)
+  // 2. مطابقة بالاسم الرئيسي (إذا كان الطلب يتضمن دلالة قصة أو بحث موضوعي)
   if (hasStoryKeyword) {
     for (const story of QURAN_STORIES) {
       const cleanName = story.name
         .replace(/[أإآء]/g, 'ا')
         .replace(/ة/g, 'ه')
         .replace(/[ىي]/g, 'ي');
-      if (clean.includes(cleanName) || cleanName.includes(clean)) {
+      if (clean.includes(cleanName) || cleanName.includes(clean) || cleanName.includes(core)) {
         return story;
       }
     }

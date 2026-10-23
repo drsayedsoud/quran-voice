@@ -39,6 +39,12 @@ class QuranVoiceApp {
     this.listeningTimer = null;
     this.speechLang = localStorage.getItem('speech_lang') || 'ar-EG'; // الافتراضي اللهجة المصرية
 
+    // خاصية إبقاء الشاشة نشطة (Screen Wake Lock) لمدة ربع ساعة (15 دقيقة = 900,000 مللي ثانية)
+    this.wakeLock = null;
+    this.wakeLockTimer = null;
+    this.wakeLockExpiresAt = 0;
+    this.wakeLockDurationMs = 15 * 60 * 1000;
+
     // مشغل الصوت المزدوج والتعرف الصوتي
     this.player = null;
     this.recognition = null;
@@ -78,6 +84,7 @@ class QuranVoiceApp {
   }
 
   async init() {
+    this.initWakeLock();
     this.initAudioPlayer();
     this.initSpeechRecognition();
     this.initTouchGestures();
@@ -174,6 +181,7 @@ class QuranVoiceApp {
     this.player.onTopicTransition = (nextPassage, index, total) => {
       this.currentSurah = nextPassage.surah;
       this.currentAyah = nextPassage.ayahNumber;
+      this.topicIndex = index;
       this.updateUI();
 
       // إطلاق نغمة الفاصل التنبيهي (صوت قطرة الندى الفاصلة)
@@ -309,6 +317,7 @@ class QuranVoiceApp {
 
   // معالجة وتنفيذ الأمر الصوتي
   async executeVoiceCommand(transcript) {
+    this.requestWakeLock(this.wakeLockDurationMs);
     const cleaned = cleanQuranicTranscript(transcript);
     console.log('Voice Command Input:', cleaned);
 
@@ -532,6 +541,7 @@ class QuranVoiceApp {
 
   // تشغيل الآية الحالية بالصوت عبر المشغل المزدوج بدون فواصل (Gapless Playback)
   playCurrentAyah() {
+    this.requestWakeLock(this.wakeLockDurationMs);
     this.isPlaying = true;
     if (this.player) {
       this.player.topicPlaylist = this.topicPlaylist || [];
@@ -545,6 +555,7 @@ class QuranVoiceApp {
   }
 
   play() {
+    this.requestWakeLock(this.wakeLockDurationMs);
     if (this.player) {
       this.player.play();
     }
@@ -615,6 +626,77 @@ class QuranVoiceApp {
         console.warn('Recognition start error:', e);
       }
     }, 220);
+  }
+
+  // تفعيل وإدارة بقاء الشاشة نشطة (Screen Wake Lock) لمدة ربع ساعة (15 دقيقة)
+  initWakeLock() {
+    // مراقبة عودة التطبيق للواجهة (عند التبديل بين التطبيقات أو تشغيل الشاشة)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        const remaining = this.wakeLockExpiresAt - Date.now();
+        if (remaining > 0) {
+          this.requestWakeLock(remaining);
+        }
+      }
+    });
+
+    // تفعيل قفل الـ 15 دقيقة فور أول تفاعل للمستخدم مع التطبيق
+    const onFirstUserAction = () => {
+      this.requestWakeLock(this.wakeLockDurationMs);
+      ['click', 'touchstart', 'keydown'].forEach(evt => {
+        window.removeEventListener(evt, onFirstUserAction);
+      });
+    };
+    ['click', 'touchstart', 'keydown'].forEach(evt => {
+      window.addEventListener(evt, onFirstUserAction, { passive: true, once: true });
+    });
+  }
+
+  // طلب إبقاء الشاشة مضاءة للمدة المحددة (افتراضياً 15 دقيقة = ربع ساعة)
+  async requestWakeLock(durationMs = 15 * 60 * 1000) {
+    this.wakeLockExpiresAt = Date.now() + durationMs;
+
+    if (this.wakeLockTimer) {
+      clearTimeout(this.wakeLockTimer);
+      this.wakeLockTimer = null;
+    }
+
+    // جدولة إغلاق القفل تلقائياً بعد ربع ساعة
+    this.wakeLockTimer = setTimeout(() => {
+      this.releaseWakeLock();
+      console.log('[WakeLock] انتهت مدة ربع الساعة (15 دقيقة)، تم إيقاف Always-On للشاشة.');
+    }, durationMs);
+
+    if (!('wakeLock' in navigator)) {
+      return;
+    }
+
+    try {
+      if (!this.wakeLock) {
+        this.wakeLock = await navigator.wakeLock.request('screen');
+        this.wakeLock.addEventListener('release', () => {
+          this.wakeLock = null;
+        });
+        console.log('[WakeLock] تم تفعيل إبقاء الشاشة نشطة (Always-On) لمدة 15 دقيقة بنجاح.');
+      }
+    } catch (err) {
+      console.warn('[WakeLock] تعذر تفعيل قفل الشاشة:', err);
+    }
+  }
+
+  // تحرير قفل الشاشة
+  releaseWakeLock() {
+    if (this.wakeLockTimer) {
+      clearTimeout(this.wakeLockTimer);
+      this.wakeLockTimer = null;
+    }
+    this.wakeLockExpiresAt = 0;
+    if (this.wakeLock) {
+      try {
+        this.wakeLock.release();
+      } catch (e) {}
+      this.wakeLock = null;
+    }
   }
 
   // نظام إيماءات اللمس للمكفوفين (Touch Gestures) المتجاوب على كامل شاشات الهواتف

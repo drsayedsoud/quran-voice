@@ -156,6 +156,7 @@ export class DualQuranPlayer {
     this.activeDeck = this.standbyDeck;
     this.standbyDeck = oldActive;
     this.activeDeckName = (this.activeDeckName === 'A') ? 'B' : 'A';
+    this.standbyTrack = null; // تفريغ المؤشر ليتم تجهيز الآية التالية فوراً دون تطابق زائف
 
     // تحديث الحالة
     this.currentSurah = nextTrack.surah;
@@ -166,6 +167,10 @@ export class DualQuranPlayer {
     if (!this.activeDeck.src || !this.activeDeck.src.includes(nextTrack.filename)) {
       this.activeDeck.src = nextTrack.url;
     }
+
+    try {
+      this.activeDeck.currentTime = 0;
+    } catch (e) {}
 
     this.activeDeck.volume = this.volume;
     const playPromise = this.activeDeck.play();
@@ -216,6 +221,7 @@ export class DualQuranPlayer {
       this.activeDeck = this.standbyDeck;
       this.standbyDeck = oldActive;
       this.activeDeckName = (this.activeDeckName === 'A') ? 'B' : 'A';
+      this.standbyTrack = null;
     } else {
       // تحميل عادي في المشغل النشط
       this.activeDeck.src = url;
@@ -399,9 +405,9 @@ export class DualQuranPlayer {
 
   // حساب المسار الذي يلي سورة وآية محددتين
   computeTrackAfter(surah, ayah) {
-    // في حال كانت باقة موضوعية
+    // في حال كانت باقة موضوعية أو قصة قرآنية: نأخذ الآية التالية لما يعزف الآن
     if (this.topicPlaylist && this.topicPlaylist.length > 0) {
-      const nextNextIdx = this.topicIndex + 2;
+      const nextNextIdx = this.topicIndex + 1;
       if (nextNextIdx < this.topicPlaylist.length) {
         const p = this.topicPlaylist[nextNextIdx];
         return {
@@ -409,7 +415,12 @@ export class DualQuranPlayer {
           ayah: p.ayahNumber,
           reciter: this.currentReciter,
           url: getAyahAudioUrl(this.currentReciter.folder, p.surah.id, p.ayahNumber),
-          filename: `${String(p.surah.id).padStart(3, '0')}${String(p.ayahNumber).padStart(3, '0')}.mp3`
+          filename: `${String(p.surah.id).padStart(3, '0')}${String(p.ayahNumber).padStart(3, '0')}.mp3`,
+          isJump: p.isJump,
+          sceneTitle: p.sceneTitle,
+          passageLabel: p.passageLabel,
+          storyName: p.storyName,
+          label: p.label
         };
       }
       return null;
