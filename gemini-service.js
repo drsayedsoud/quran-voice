@@ -4,6 +4,7 @@
  */
 
 import { SURAHS, RECITERS } from './quran-data.js';
+import { findStoryByQuery, compileStoryPlaylist } from './quran-stories.js';
 import { parseVoiceCommand as localParseVoiceCommand } from './voice-engine.js';
 
 // مفتاح Gemini الأساسي المشفر لتجنب حظر أدوات أمان المستودعات
@@ -92,7 +93,12 @@ ${recitersInfo}
 - القارئ الحالي: ${context.currentReciter?.name || 'محمود خليل الحصري'}
 
 القواعد والتعليمات:
-1. إذا طلب المستخدم موضوعاً معيناً (مثل: "آيات الصلاة", "آيات الصبر", "آيات الصيام", "آيات الرزق", "آيات بر الوالدين", "آيات الجنة", "آيات المنافقين" وغيرها):
+1. إذا طلب المستخدم قصة من قصص القرآن أو الأنبياء (مثل: قصة موسى، قصة يوسف، قصة إبراهيم، قصة نوح، أصحاب الكهف، ذو القرنين، قارون، طالوت وجالوت، قصة آدم، قصة عيسى، قصة سليمان، قصة داود، أصحاب الأخدود، أصحاب الفيل، السيرة النبوية وغيرها):
+   - حدد النية: "PLAY_STORY".
+   - حدد storyId المناسب من المعرفات:
+     [adam, idris, nuh, hud, salih, ibrahim, lut, ismail_ishaq_yaqub, yusuf, shuayb, musa, yunus, dawud, sulayman, ayyub, ilyas_yasa, zakariya_yahya, isa, muhammad, talut_jalut, ashab_kahf, dhul_qarnayn, qarun, sahib_jannatayn, luqman, ashab_jannah, ashab_qaryah, saba, ashab_ukhdood, ashab_fil, ashab_sabt].
+   - ضع في "topic" اسم القصة، ورسالة تأكيدية عن بدء تلاوة القصة حسب ترتيبها الزمني.
+2. إذا طلب المستخدم موضوعاً معيناً (مثل: "آيات الصلاة", "آيات الصبر", "آيات الصيام", "آيات الرزق", "آيات بر الوالدين", "آيات الجنة", "آيات المنافقين" وغيرها):
    - حدد النية: "PLAY_TOPIC".
    - قدم قائمة "passages" تحتوي على 3 إلى 6 مواضع متنوعة من سور ومواضع مختلفة في القرآن الكريم تتناول هذا الموضوع.
    - مثال: "آيات الصلاة" ->
@@ -104,11 +110,11 @@ ${recitersInfo}
        { "surahId": 29, "ayahNumber": 45, "label": "سورة العنكبوت (45)" }
      ]
    - عين surahId و ayahNumber للموضع الأول في القائمة.
-2. إذا طلب المستخدم سورة معينة أو آية معينة (مثل: "شغل البقرة", "سورة يوسف الآية خمسة", "الكهف"):
+3. إذا طلب المستخدم سورة معينة أو آية معينة (مثل: "شغل البقرة", "سورة يوسف الآية خمسة", "الكهف"):
    - حدد surahId بدقة (1 إلى 114) و ayahNumber إن ذكر رقماً.
-3. إذا ذكر اسم قارئ (مثل: "بصوت العفاسي", "بصوت عبد الباسط", "المنشاوي"):
+4. إذا ذكر اسم قارئ (مثل: "بصوت العفاسي", "بصوت عبد الباسط", "المنشاوي"):
    - استخرج reciterId من القائمة (husary, minshawi, abdulbasit, afasy, muaiqly, hudhaify, ghamadi, ajamy).
-4. أوامر التحكم السريع:
+5. أوامر التحكم السريع:
    - "وقف", "اسكت", "لحظة" -> intent: "PAUSE"
    - "كمل", "استمر", "شغل تاني" -> intent: "RESUME"
    - "اللي بعدها", "التالية" -> intent: "NEXT_AYAH"
@@ -117,11 +123,12 @@ ${recitersInfo}
    - "فسر لي", "معنى الآية" -> intent: "TAFSIR"
    - "أنا فين", "ما هي السورة" -> intent: "STATUS_CHECK"
    - "لوحة التحكم", "لوحة الإدارة", "صفحة الإدارة", "صفحة الأدمن", "الأدمن", "افتح الإدارة" -> intent: "OPEN_ADMIN"
-5. صيغة الإرجاع:
+6. صيغة الإرجاع:
 أرجع كائن JSON فقط بدون أي علامات markdown إضافية:
 {
-  "intent": "PLAY_TOPIC" | "PLAY_AYAH" | "PLAY_SURAH" | "PAUSE" | "RESUME" | "NEXT_AYAH" | "PREV_AYAH" | "REPEAT_AYAH" | "TAFSIR" | "SET_RECITER" | "STATUS_CHECK" | "OPEN_ADMIN" | "UNKNOWN",
-  "topic": "اسم الموضوع إن وجد",
+  "intent": "PLAY_STORY" | "PLAY_TOPIC" | "PLAY_AYAH" | "PLAY_SURAH" | "PAUSE" | "RESUME" | "NEXT_AYAH" | "PREV_AYAH" | "REPEAT_AYAH" | "TAFSIR" | "SET_RECITER" | "STATUS_CHECK" | "OPEN_ADMIN" | "UNKNOWN",
+  "storyId": "معرف القصة إن كانت قصة قرآنية وإلا null",
+  "topic": "اسم القصة أو الموضوع إن وجد",
   "surahId": رقم السورة (1-114) إن وجد وإلا null,
   "ayahNumber": رقم الآية إن وجد وإلا 1,
   "passages": [
@@ -182,6 +189,38 @@ ${recitersInfo}
       parsed = parsed[0];
     }
 
+    let matchedReciter = null;
+    if (parsed.reciterId) {
+      matchedReciter = RECITERS.find(r => r.id === parsed.reciterId) || null;
+    }
+
+    // فحص إذا كان الطلب يتعلق بقصة قرآنية مرتبة حسب التسلسل الزمني للأحداث
+    let storyMatch = null;
+    if (parsed.intent === 'PLAY_STORY' || parsed.storyId) {
+      storyMatch = findStoryByQuery(parsed.storyId || parsed.topic || rawTranscript);
+    } else {
+      storyMatch = findStoryByQuery(rawTranscript);
+    }
+
+    if (storyMatch) {
+      const storyPlaylist = compileStoryPlaylist(storyMatch);
+      if (storyPlaylist.length > 0) {
+        return {
+          raw: rawTranscript,
+          intent: 'PLAY_STORY',
+          payload: {
+            story: storyMatch,
+            passages: storyPlaylist,
+            surah: storyPlaylist[0].surah,
+            ayahNumber: storyPlaylist[0].ayahNumber,
+            reciter: matchedReciter
+          },
+          message: parsed.message || `بدء تلاوة ${storyMatch.name} مرتبة حسب التسلسل الزمني للأحداث`,
+          source: 'gemini'
+        };
+      }
+    }
+
     // تجهيز قائمة المقاطع الموضوعية المتتابعة
     let passages = [];
     if (Array.isArray(parsed.passages) && parsed.passages.length > 0) {
@@ -190,7 +229,8 @@ ${recitersInfo}
         return s ? {
           surah: s,
           ayahNumber: Number(p.ayahNumber) || 1,
-          label: p.label || `سورة ${s.name} (آية ${p.ayahNumber})`
+          label: p.label || `سورة ${s.name} (آية ${p.ayahNumber})`,
+          isJump: true
         } : null;
       }).filter(Boolean);
     }
@@ -201,11 +241,6 @@ ${recitersInfo}
       matchedSurah = SURAHS.find(s => s.id === Number(parsed.surahId)) || null;
     } else if (passages.length > 0) {
       matchedSurah = passages[0].surah;
-    }
-
-    let matchedReciter = null;
-    if (parsed.reciterId) {
-      matchedReciter = RECITERS.find(r => r.id === parsed.reciterId) || null;
     }
 
     const intent = parsed.intent || (passages.length > 0 ? 'PLAY_TOPIC' : 'UNKNOWN');

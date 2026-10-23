@@ -26,92 +26,92 @@
   <!-- منطقة الإيماءات اللمسية الشاملة -->
   <div id="gestureArea" class="fixed inset-0 z-0 opacity-0 pointer-events-auto"></div>
 
-  <!-- رأس الصفحة والتنبيهات -->
-  <header class="relative z-10 w-full px-3 sm:px-4 pt-2 sm:pt-4 pb-1 sm:pb-2 safe-top">
+  <!-- رأس الصفحة والتنبيهات المتجاوبة -->
+  <header class="relative z-10 w-full px-2.5 sm:px-4 pt-1 sm:pt-2.5 pb-1 safe-top">
     <!-- شريط تنبيه الأدمن المباشر -->
-    <div id="adminBanner" class="hidden mb-2 sm:mb-3 p-2.5 sm:p-3 bg-amber-500/20 border border-amber-500/40 rounded-2xl text-amber-200 text-xs sm:text-sm font-semibold text-center backdrop-blur-md animate-pulse"></div>
+    <div id="adminBanner" class="hidden mb-2 p-2 sm:p-2.5 bg-amber-500/20 border border-amber-500/40 rounded-2xl text-amber-200 text-xs sm:text-sm font-semibold text-center backdrop-blur-md animate-pulse"></div>
 
-    <div class="flex items-center justify-between max-w-md mx-auto">
-      <div class="flex items-center space-x-2 space-x-reverse">
-        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-emerald-800/80 border border-emerald-600/40 flex items-center justify-center text-amber-400 font-bold text-lg sm:text-xl shadow-lg">
+    <div class="flex items-center justify-between max-w-md mx-auto w-full gap-2">
+      <div class="flex items-center gap-2 min-w-0">
+        <div class="w-8 h-8 xs:w-9 xs:h-9 sm:w-10 sm:h-10 rounded-2xl bg-emerald-800/80 border border-emerald-600/40 flex items-center justify-center text-amber-400 font-bold text-base sm:text-lg shadow-lg shrink-0">
           📖
         </div>
-        <div>
-          <h1 class="text-base sm:text-lg font-black tracking-wide text-amber-300">المصحف الصوتي الميسر</h1>
-          <p class="text-[11px] sm:text-xs text-emerald-300/80">مخصص لفاقدي البصر وكبار السن</p>
+        <div class="min-w-0">
+          <h1 class="text-xs xs:text-sm sm:text-base font-black tracking-wide text-amber-300 truncate">المصحف الصوتي الميسر</h1>
+          <p class="text-[9.5px] xs:text-[10.5px] sm:text-xs text-emerald-300/80 truncate">مخصص لفاقدي البصر وكبار السن</p>
         </div>
       </div>
 
-      <div class="flex items-center space-x-2 space-x-reverse">
+      <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
         <!-- زر تبديل لهجة التعرف الصوتي (مصرية / فصحى) -->
-        <button id="dialectToggleBtn" type="button" class="px-2.5 py-1.5 sm:py-2 rounded-xl bg-emerald-900/60 border border-emerald-700/40 text-amber-300 hover:border-amber-400/50 hover:bg-emerald-800/80 transition-all flex items-center space-x-1 space-x-reverse text-xs font-bold shadow cursor-pointer" title="تبديل لهجة التعرف الصوتي">
+        <button id="dialectToggleBtn" type="button" class="px-2 py-1 xs:px-2.5 xs:py-1.5 rounded-xl bg-emerald-900/60 border border-emerald-700/40 text-amber-300 hover:border-amber-400/50 hover:bg-emerald-800/80 transition-all flex items-center gap-1 text-[11px] sm:text-xs font-bold shadow cursor-pointer active:scale-95" title="تبديل لهجة التعرف الصوتي">
           <span id="dialectFlag">🇪🇬</span>
-          <span id="dialectLabel">مصرية</span>
+          <span id="dialectLabel" class="hidden xs:inline">مصرية</span>
         </button>
 
-        <!-- رابط لوحة الأدمن والإعدادات -->
-        <a href="admin.html" id="adminLinkBtn" onclick="try { sessionStorage.setItem('quran_admin_auth', 'true'); localStorage.setItem('quran_admin_auth', 'true'); } catch(e){}" class="px-2.5 py-2 sm:p-2.5 rounded-xl bg-emerald-900/60 border border-emerald-700/40 text-emerald-300 hover:text-amber-300 hover:border-amber-400/50 transition-all flex items-center space-x-1 space-x-reverse text-xs" title="لوحة تحكم المشرف">
-          <span>⚙️</span>
-          <span class="font-bold">الإدارة</span>
-        </a>
+        <!-- زر الترس المحمي بضغط مطول لدخول الإدارة -->
+        <button type="button" id="adminGearBtn" class="w-8 h-8 xs:w-9 xs:h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-900/60 border border-emerald-700/40 text-emerald-300 hover:text-amber-300 hover:border-amber-400/50 transition-all flex items-center justify-center text-sm xs:text-base sm:text-lg cursor-pointer select-none active:scale-90 shrink-0" title="الإعدادات (اضغط مطولاً للإدارة)">
+          <span class="pointer-events-none select-none">⚙️</span>
+        </button>
       </div>
     </div>
   </header>
 
   <!-- المحتوى الرئيسي: بطاقة السورة والآية الحالية -->
-  <main class="relative z-10 flex-1 flex flex-col justify-center items-center px-3 sm:px-4 py-1 sm:py-2 max-w-md mx-auto w-full">
+  <main class="relative z-10 flex-1 flex flex-col justify-center items-center px-2.5 sm:px-4 py-1 max-w-md mx-auto w-full">
     
     <!-- بطاقة السورة الكبرى -->
-    <div class="main-card w-full bg-gradient-to-b from-emerald-900/90 to-emerald-950/90 border border-emerald-700/40 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-lg text-center relative overflow-hidden">
-      <div class="absolute -top-12 -right-12 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl"></div>
-      <div class="absolute -bottom-12 -left-12 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl"></div>
+    <div class="main-card w-full bg-gradient-to-b from-emerald-900/90 to-emerald-950/90 border border-emerald-700/40 rounded-2xl sm:rounded-3xl p-3 xs:p-4 sm:p-5 shadow-2xl backdrop-blur-lg text-center relative overflow-hidden">
+      <div class="absolute -top-12 -right-12 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
+      <div class="absolute -bottom-12 -left-12 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
 
       <!-- رقم الآية وشارة الذكاء الاصطناعي -->
-      <div class="flex items-center justify-center gap-2 mb-2 sm:mb-3">
-        <div class="inline-flex items-center px-3.5 py-1 sm:px-4 sm:py-1.5 rounded-full bg-amber-500/20 border border-amber-400/30 text-amber-300 text-xs sm:text-sm font-bold shadow-inner" id="ayahBadge">
+      <div class="flex items-center justify-center gap-2 mb-1.5 sm:mb-2.5">
+        <div class="inline-flex items-center px-3 py-0.5 sm:px-4 sm:py-1 rounded-full bg-amber-500/20 border border-amber-400/30 text-amber-300 text-[11px] sm:text-xs font-bold shadow-inner" id="ayahBadge">
           الآية 1
         </div>
-        <div class="inline-flex items-center px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-emerald-800/80 border border-amber-400/30 text-amber-300 text-[11px] sm:text-xs font-semibold shadow-inner" title="محرك الذكاء الاصطناعي نشط لفهم الأوامر والبحث الموضوعي في القرآن">
+        <div class="inline-flex items-center px-2 py-0.5 sm:px-3 sm:py-1 rounded-full bg-emerald-800/80 border border-amber-400/30 text-amber-300 text-[10px] sm:text-xs font-semibold shadow-inner" title="محرك الذكاء الاصطناعي نشط لفهم الأوامر والبحث الموضوعي في القرآن">
           <span class="ml-1 text-xs">✨</span>
           <span>Gemini AI</span>
         </div>
       </div>
 
       <!-- اسم السورة بخط أميري جليل متجاوب -->
-      <h2 id="surahName" class="surah-title text-3xl sm:text-4xl md:text-5xl font-['Amiri'] font-bold text-white mb-1 sm:mb-2 tracking-wide drop-shadow-md">
+      <h2 id="surahName" class="surah-title font-['Amiri'] font-bold text-white mb-1 tracking-wide drop-shadow-md">
         سورة الفاتحة
       </h2>
       
-      <p id="surahMeta" class="text-xs sm:text-sm text-emerald-300/80 mb-2 sm:mb-4 font-semibold">
+      <!-- تفاصيل السورة أو المشهد الزمني للقصة -->
+      <p id="surahMeta" class="surah-meta text-xs sm:text-sm text-emerald-300/80 mb-2 sm:mb-3 font-semibold break-words">
         مكية • 7 آيات
       </p>
 
       <!-- اسم القارئ الحالي -->
-      <div class="inline-flex items-center space-x-2 space-x-reverse px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl bg-emerald-950/60 border border-emerald-800/60 text-emerald-200 text-xs sm:text-sm font-medium mb-3 sm:mb-6">
-        <span>🎙️</span>
-        <span id="reciterName">بصوت الشيخ محمود خليل الحصري</span>
+      <div class="inline-flex items-center gap-1.5 px-2.5 xs:px-3 sm:px-4 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl bg-emerald-950/60 border border-emerald-800/60 text-emerald-200 text-[11px] sm:text-xs md:text-sm font-medium mb-2.5 sm:mb-4 max-w-full">
+        <span class="shrink-0 text-xs">🎙️</span>
+        <span id="reciterName" class="truncate">بصوت الشيخ محمود خليل الحصري</span>
       </div>
 
       <!-- شريط تقدم الآية -->
-      <div class="w-full bg-emerald-950 rounded-full h-2 mb-2 overflow-hidden border border-emerald-800/40">
-        <div id="progressBar" class="bg-gradient-to-r from-amber-400 to-amber-500 h-2 rounded-full w-0 transition-all duration-200"></div>
+      <div class="w-full bg-emerald-950 rounded-full h-1.5 sm:h-2 mb-1.5 overflow-hidden border border-emerald-800/40">
+        <div id="progressBar" class="bg-gradient-to-r from-amber-400 to-amber-500 h-1.5 sm:h-2 rounded-full w-0 transition-all duration-200"></div>
       </div>
 
       <!-- حالة الأمر الصوتي والنص المنطوق -->
-      <div class="min-h-[44px] sm:min-h-[50px] flex flex-col items-center justify-center pt-1">
-        <p id="voiceStatus" class="text-xs sm:text-sm font-medium text-amber-200/90 transition-all text-center">
+      <div class="min-h-[38px] sm:min-h-[46px] flex flex-col items-center justify-center pt-0.5 px-1">
+        <p id="voiceStatus" class="text-xs sm:text-sm font-medium text-amber-200/90 transition-all text-center leading-snug">
           اضغط مطولاً في أي مكان أو انقر الميكروفون
         </p>
-        <p id="voiceTranscript" class="text-xs text-emerald-400 font-bold mt-1 tracking-wide"></p>
+        <p id="voiceTranscript" class="text-[11px] sm:text-xs text-emerald-400 font-bold mt-0.5 tracking-wide leading-snug"></p>
       </div>
     </div>
 
     <!-- حاوية عناصر التحكم للموبايل والوضع الأفقي -->
     <div class="landscape-controls flex flex-col items-center justify-center w-full">
       <!-- زر الميكروفون التفاعلي الدائري المتجاوب -->
-      <div class="mic-container my-3 sm:my-5 relative flex items-center justify-center">
-        <button id="micBtn" class="mic-button relative z-10 w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-tr from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-emerald-950 flex items-center justify-center shadow-xl shadow-amber-500/20 active:scale-95 transition-all focus:outline-none focus:ring-4 focus:ring-amber-400/40" aria-label="تحدث بالأمر الصوتي">
-          <svg class="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+      <div class="mic-container my-2 xs:my-3 sm:my-4 relative flex items-center justify-center">
+        <button id="micBtn" class="mic-button relative z-10 rounded-full bg-gradient-to-tr from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-emerald-950 flex items-center justify-center shadow-xl shadow-amber-500/20 active:scale-95 transition-all focus:outline-none focus:ring-4 focus:ring-amber-400/40 cursor-pointer" aria-label="تحدث بالأمر الصوتي">
+          <svg class="w-7 h-7 xs:w-8 xs:h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 003-3V5a3 3 0 10-6 0v6a3 3 0 003 3z"></path>
           </svg>
         </button>
@@ -120,32 +120,32 @@
       </div>
 
       <!-- أزرار التحكم اللمسية السريعة المتجاوبة -->
-      <div class="controls-row flex items-center justify-center space-x-4 sm:space-x-6 space-x-reverse w-full max-w-xs mb-3 sm:mb-4">
+      <div class="controls-row flex items-center justify-center gap-3 xs:gap-4 sm:gap-6 w-full max-w-xs mb-2 xs:mb-2.5 sm:mb-3">
         <!-- الآية السابقة -->
-        <button id="prevBtn" class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-emerald-900/80 border border-emerald-700/50 hover:bg-emerald-800 text-white flex items-center justify-center active:scale-95 transition-all shadow-lg" aria-label="الآية السابقة">
-          <svg class="w-6 h-6 sm:w-7 sm:h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+        <button id="prevBtn" class="w-11 h-11 xs:w-12 xs:h-12 sm:w-14 sm:h-14 rounded-2xl bg-emerald-900/80 border border-emerald-700/50 hover:bg-emerald-800 text-white flex items-center justify-center active:scale-95 transition-all shadow-lg cursor-pointer" aria-label="الآية السابقة">
+          <svg class="w-5 h-5 sm:w-7 sm:h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
         </button>
 
         <!-- زر التشغيل / الإيقاف الرئيسي -->
-        <button id="playBtn" class="w-16 h-16 sm:w-18 sm:h-18 p-3.5 sm:p-4 rounded-3xl bg-emerald-700/90 border border-emerald-500/50 hover:bg-emerald-600 text-white flex items-center justify-center active:scale-95 transition-all shadow-xl shadow-emerald-950" aria-label="تشغيل أو إيقاف">
-          <svg class="w-8 h-8 sm:w-10 sm:h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        <button id="playBtn" class="w-14 h-14 xs:w-15 xs:h-15 sm:w-17 sm:h-17 p-3 sm:p-4 rounded-3xl bg-emerald-700/90 border border-emerald-500/50 hover:bg-emerald-600 text-white flex items-center justify-center active:scale-95 transition-all shadow-xl shadow-emerald-950 cursor-pointer" aria-label="تشغيل أو إيقاف">
+          <svg class="w-7 h-7 xs:w-8 xs:h-8 sm:w-9 sm:h-9" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
         </button>
 
         <!-- الآية التالية -->
-        <button id="nextBtn" class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-emerald-900/80 border border-emerald-700/50 hover:bg-emerald-800 text-white flex items-center justify-center active:scale-95 transition-all shadow-lg" aria-label="الآية التالية">
-          <svg class="w-6 h-6 sm:w-7 sm:h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+        <button id="nextBtn" class="w-11 h-11 xs:w-12 xs:h-12 sm:w-14 sm:h-14 rounded-2xl bg-emerald-900/80 border border-emerald-700/50 hover:bg-emerald-800 text-white flex items-center justify-center active:scale-95 transition-all shadow-lg cursor-pointer" aria-label="الآية التالية">
+          <svg class="w-5 h-5 sm:w-7 sm:h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
         </button>
       </div>
 
       <!-- دليل إيماءات المكفوفين السريعة -->
-      <div class="guide-grid grid grid-cols-3 gap-1.5 sm:gap-2 w-full text-center text-[10px] sm:text-[11px] text-emerald-300/80 py-1">
-        <div class="bg-emerald-900/40 p-1.5 sm:p-2 rounded-xl border border-emerald-800/40">
+      <div class="guide-grid grid grid-cols-3 gap-1 xs:gap-1.5 sm:gap-2 w-full text-center text-[9px] xs:text-[10px] sm:text-[11px] text-emerald-300/80 py-0.5">
+        <div class="bg-emerald-900/40 p-1.5 rounded-xl border border-emerald-800/40">
           👆 نقرة مطولة<br><strong class="text-amber-300">للتحدث</strong>
         </div>
-        <div class="bg-emerald-900/40 p-1.5 sm:p-2 rounded-xl border border-emerald-800/40">
+        <div class="bg-emerald-900/40 p-1.5 rounded-xl border border-emerald-800/40">
           ✌️ نقرتان<br><strong class="text-amber-300">تشغيل/إيقاف</strong>
         </div>
-        <div class="bg-emerald-900/40 p-1.5 sm:p-2 rounded-xl border border-emerald-800/40">
+        <div class="bg-emerald-900/40 p-1.5 rounded-xl border border-emerald-800/40">
           👉 سحب أفقي<br><strong class="text-amber-300">تغيير الآية</strong>
         </div>
       </div>
@@ -153,20 +153,20 @@
 
   </main>
 
-  <!-- تذييل الصفحة: خيارات المساعدين والقوائم اليدوية -->
-  <footer class="relative z-10 w-full bg-emerald-950/95 border-t border-emerald-800/40 px-3 sm:px-4 py-2.5 sm:py-3 safe-bottom backdrop-blur-md">
+  <!-- تذييل الصفحة: خيارات المساعدين والقوائم اليدوية المتجاوبة -->
+  <footer class="relative z-10 w-full bg-emerald-950/95 border-t border-emerald-800/40 px-2.5 sm:px-4 py-2 safe-bottom backdrop-blur-md">
     <div class="max-w-md mx-auto grid grid-cols-2 gap-2 sm:gap-3">
       <!-- اختيار السورة يدوياً -->
       <div>
-        <label for="surahSelect" class="block text-[10px] sm:text-[11px] text-emerald-300 font-semibold mb-1 truncate">اختر السورة:</label>
-        <select id="surahSelect" class="w-full bg-emerald-900/80 border border-emerald-700/50 rounded-xl px-2 sm:px-2.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400">
+        <label for="surahSelect" class="block text-[10px] sm:text-[11px] text-emerald-300 font-semibold mb-0.5 truncate">اختر السورة:</label>
+        <select id="surahSelect" class="w-full bg-emerald-900/80 border border-emerald-700/50 rounded-xl px-2 py-1.5 sm:py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400 truncate cursor-pointer">
         </select>
       </div>
 
       <!-- اختيار القارئ يدوياً -->
       <div>
-        <label for="reciterSelect" class="block text-[10px] sm:text-[11px] text-emerald-300 font-semibold mb-1 truncate">اختر القارئ:</label>
-        <select id="reciterSelect" class="w-full bg-emerald-900/80 border border-emerald-700/50 rounded-xl px-2 sm:px-2.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400">
+        <label for="reciterSelect" class="block text-[10px] sm:text-[11px] text-emerald-300 font-semibold mb-0.5 truncate">اختر القارئ:</label>
+        <select id="reciterSelect" class="w-full bg-emerald-900/80 border border-emerald-700/50 rounded-xl px-2 py-1.5 sm:py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400 truncate cursor-pointer">
         </select>
       </div>
     </div>
@@ -177,9 +177,33 @@
     <div class="bg-emerald-900 border border-amber-500/40 rounded-3xl p-6 max-w-md w-full shadow-2xl relative text-center">
       <h3 class="text-xl font-bold text-amber-300 mb-3">التفسير الميسر</h3>
       <p id="tafsirText" class="text-emerald-100 text-sm leading-relaxed mb-6 max-h-60 overflow-y-auto text-right p-3 bg-emerald-950/60 rounded-2xl border border-emerald-800/60"></p>
-      <button id="closeTafsirBtn" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-emerald-950 font-bold rounded-xl shadow-lg transition-all">
+      <button id="closeTafsirBtn" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-emerald-950 font-bold rounded-xl shadow-lg transition-all cursor-pointer">
         إغلاق التفسير
       </button>
+    </div>
+  </div>
+
+  <!-- نافذة تسجيل دخول المشرف برمز السري 1153 عند الضغط المطول على الترس -->
+  <div id="adminPinModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+    <div class="bg-gradient-to-b from-slate-900 to-emerald-950 border border-amber-500/40 rounded-3xl p-6 sm:p-7 max-w-xs w-full shadow-2xl relative text-center">
+      <div class="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-400/40 text-amber-300 text-2xl flex items-center justify-center mx-auto mb-3 shadow-inner">
+        🔐
+      </div>
+      <h3 class="text-lg font-bold text-amber-300 mb-1">لوحة الإدارة</h3>
+      <p class="text-xs text-emerald-200/80 mb-4">أدخل رمز المرور السري للدخول</p>
+      
+      <input type="password" id="adminModalPinInput" inputmode="numeric" pattern="[0-9]*" maxlength="10" placeholder="••••" autocomplete="off" class="w-full bg-slate-950 border border-emerald-700/60 rounded-xl px-4 py-3 text-center text-2xl tracking-widest text-amber-300 focus:outline-none focus:border-amber-400 shadow-inner mb-2">
+      
+      <p id="adminModalPinError" class="text-red-400 text-xs font-semibold mb-3 hidden">رمز المرور غير صحيح</p>
+      
+      <div class="grid grid-cols-2 gap-2 mt-2">
+        <button id="adminModalCancelBtn" type="button" class="py-2.5 px-3 bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 text-sm font-bold rounded-xl border border-emerald-700/40 transition-all cursor-pointer">
+          إلغاء
+        </button>
+        <button id="adminModalSubmitBtn" type="button" class="py-2.5 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-black rounded-xl shadow-lg transition-all active:scale-95 cursor-pointer">
+          تأكيد
+        </button>
+      </div>
     </div>
   </div>
 

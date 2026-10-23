@@ -80,13 +80,16 @@ class AdminDashboard {
   bindAuthEvents() {
     const handleLogin = () => {
       const pin = this.dom.pinInput ? this.dom.pinInput.value.trim() : '';
-      // يقبل الرمز 1153 أو 2026
-      if (pin === '1153' || pin === '2026' || pin === '') {
+      // يقبل فقط الرمز 1153 لا غير ذلك
+      if (pin === '1153') {
         sessionStorage.setItem('quran_admin_auth', 'true');
         localStorage.setItem('quran_admin_auth', 'true');
         this.unlockDashboard();
       } else {
-        if (this.dom.pinError) this.dom.pinError.classList.remove('hidden');
+        if (this.dom.pinError) {
+          this.dom.pinError.textContent = 'رمز المرور غير صحيح';
+          this.dom.pinError.classList.remove('hidden');
+        }
       }
     };
 
@@ -103,7 +106,7 @@ class AdminDashboard {
       this.dom.logoutBtn.addEventListener('click', () => {
         sessionStorage.removeItem('quran_admin_auth');
         localStorage.removeItem('quran_admin_auth');
-        window.location.reload();
+        window.location.href = 'index.html';
       });
     }
   }

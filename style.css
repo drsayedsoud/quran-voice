@@ -1,6 +1,6 @@
 /* ==============================================================
-   تنسيقات التصميم المتجاوب وتجربة المستخدم على الهواتف الذكية (Mobile Responsive)
-   المصحف الصوتي الميسر - يدعم مختلف أحجام الشاشات ونتوءات الكاميرا (Notches)
+   تنسيقات التصميم المتجاوب وتجربة المستخدم على كافة الهواتف الذكية (Universal Mobile Responsive)
+   المصحف الصوتي الميسر - يدعم مختلف أحجام الشاشات ونتوءات الكاميرا (iPhone Notches, Island & Android Punch-holes)
    ============================================================== */
 
 :root {
@@ -13,10 +13,15 @@
   --sar: env(safe-area-inset-right, 0px);
 }
 
-/* ضبط ارتفاع الصفحة الحقيقي على المتصفحات الذكية (iOS Safari & Chrome Android) */
+/* ضبط ارتفاع الصفحة الحقيقي على كافة المتصفحات الذكية (iOS Safari, Android Chrome, Samsung Internet) */
 html {
   height: 100%;
   height: -webkit-fill-available;
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
 }
 
 body {
@@ -28,24 +33,46 @@ body {
   -webkit-touch-callout: none;
   user-select: none;
   -webkit-user-select: none;
-  overscroll-behavior-y: none;
-  padding-top: var(--sat);
-  padding-bottom: var(--sab);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  /* منع مضاعفة مساحات الأمان: نتركها للهيدر والفوتر */
+  padding: 0;
   padding-left: var(--sal);
   padding-right: var(--sar);
 }
 
-/* فئات مساحات الأمان للهواتف الحديثة (Safe Area Insets) */
+/* فئات مساحات الأمان للهواتف الحديثة (Safe Area Insets) دون تكرار */
 .safe-top {
-  padding-top: max(0.75rem, var(--sat));
+  padding-top: max(0.5rem, var(--sat));
 }
 
 .safe-bottom {
-  padding-bottom: max(0.75rem, var(--sab));
+  padding-bottom: max(0.5rem, var(--sab));
+}
+
+/* بطاقة السورة الكبرى مع قياس مرن */
+.main-card {
+  transition: all 0.25s ease;
+}
+
+/* عنوان السورة المتجاوب بدقة clamp حسب عرض وارتفاع الشاشة */
+.surah-title {
+  font-size: clamp(1.65rem, 6.5vw, 2.75rem);
+  line-height: 1.2;
+}
+
+/* تفاصيل القصة أو السورة مع قابلية الالتفاف */
+.surah-meta {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.5;
 }
 
 /* أمواج النبض التفاعلي للزر الصوتي عند الاستماع */
 .mic-button {
+  width: clamp(4.5rem, 16vw, 5.75rem);
+  height: clamp(4.5rem, 16vw, 5.75rem);
   transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease, background 0.3s ease;
   touch-action: manipulation;
 }
@@ -53,7 +80,7 @@ body {
 .mic-button.mic-active {
   background: linear-gradient(135deg, #ef4444, #dc2626) !important;
   color: #ffffff !important;
-  box-shadow: 0 0 35px rgba(239, 68, 68, 0.8) !important;
+  box-shadow: 0 0 35px rgba(239, 68, 68, 0.85) !important;
   transform: scale(1.08);
 }
 
@@ -88,9 +115,21 @@ body {
   }
 }
 
-/* مساحات اللمس لسهولة الاستخدام لكبار السن (Touch Target Standard 48px) */
+/* مساحات اللمس القياسية لسهولة الاستخدام لكبار السن (Touch Target Standard 44px+) */
 button, select, a {
-  min-height: 44px;
+  min-height: 40px;
+}
+
+/* تحسين مظهر القوائم المنسدلة في الهواتف */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f59e0b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: left 0.5rem center;
+  background-size: 1em;
+  padding-left: 1.75rem !important;
 }
 
 /* شريط تمرير أنيق متجاوب */
@@ -113,49 +152,132 @@ button, select, a {
 }
 
 /* ==============================================================
-   تجاوب خاص للشاشات الصغيرة والمتوسطة (Compact / Small Screen Mobile)
-   (مثل: iPhone SE, iPhone 6/7/8, Galaxy A-Series, شاشات الهواتف القابلة للطي)
+   1. الهواتف ذات الشاشات الضيقة للغاية (Ultra-Compact: width <= 360px)
+   (مثل: iPhone SE 1st, Galaxy Fold Outer screen 340px, Redmi Go)
    ============================================================== */
-@media (max-height: 720px) {
-  header {
-    padding-top: 0.5rem !important;
-    padding-bottom: 0.25rem !important;
+@media (max-width: 360px) {
+  header h1 {
+    font-size: 0.85rem !important;
+  }
+  
+  header p {
+    display: none;
   }
 
   .main-card {
-    padding: 1rem !important;
-    border-radius: 1.25rem !important;
+    padding: 0.75rem !important;
+    border-radius: 1rem !important;
   }
 
   .surah-title {
-    font-size: 2rem !important;
-    margin-bottom: 0.25rem !important;
+    font-size: 1.55rem !important;
   }
 
-  .mic-container {
-    margin-top: 0.75rem !important;
-    margin-bottom: 0.75rem !important;
+  #ayahBadge {
+    padding: 0.2rem 0.65rem !important;
+    font-size: 0.7rem !important;
+  }
+
+  #reciterName {
+    font-size: 0.7rem !important;
   }
 
   .mic-button {
-    width: 4.75rem !important;
-    height: 4.75rem !important;
+    width: 4.25rem !important;
+    height: 4.25rem !important;
   }
 
-  .controls-row {
-    margin-bottom: 0.5rem !important;
+  .controls-row button {
+    width: 2.75rem !important;
+    height: 2.75rem !important;
+  }
+
+  #playBtn {
+    width: 3.5rem !important;
+    height: 3.5rem !important;
   }
 
   .guide-grid {
-    padding-top: 0.25rem !important;
-    padding-bottom: 0.25rem !important;
+    font-size: 8.5px !important;
+    gap: 0.25rem !important;
+  }
+
+  .guide-grid div {
+    padding: 0.25rem 0.15rem !important;
   }
 }
 
 /* ==============================================================
-   الوضع الأفقي في الهواتف الذكية (Landscape Mobile Orientation)
+   2. الهواتف ذات الارتفاع القصير (Compact Height: height <= 720px)
+   (مثل: iPhone SE 2/3, iPhone 6/7/8, Android with open onscreen keyboard or 3-button nav)
    ============================================================== */
-@media (max-height: 520px) and (orientation: landscape) {
+@media (max-height: 720px) {
+  header {
+    padding-top: 0.4rem !important;
+    padding-bottom: 0.2rem !important;
+  }
+
+  .main-card {
+    padding: 0.85rem !important;
+    border-radius: 1.15rem !important;
+  }
+
+  .surah-title {
+    font-size: 1.75rem !important;
+    margin-bottom: 0.15rem !important;
+  }
+
+  .mic-container {
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  .mic-button {
+    width: 4.5rem !important;
+    height: 4.5rem !important;
+  }
+
+  .controls-row {
+    margin-bottom: 0.35rem !important;
+  }
+
+  .guide-grid {
+    padding-top: 0.15rem !important;
+    padding-bottom: 0.15rem !important;
+  }
+
+  footer {
+    padding-top: 0.35rem !important;
+    padding-bottom: max(0.35rem, var(--sab)) !important;
+  }
+}
+
+/* ==============================================================
+   3. الهواتف فائقة القصر (Ultra Short Height: height <= 600px)
+   ============================================================== */
+@media (max-height: 600px) and (orientation: portrait) {
+  .guide-grid {
+    display: none !important;
+  }
+  
+  .main-card {
+    padding: 0.65rem !important;
+  }
+
+  .mic-container {
+    margin: 0.25rem 0 !important;
+  }
+
+  .mic-button {
+    width: 3.85rem !important;
+    height: 3.85rem !important;
+  }
+}
+
+/* ==============================================================
+   4. الوضع الأفقي في كافة الهواتف (Landscape Mobile Orientation)
+   ============================================================== */
+@media (max-height: 540px) and (orientation: landscape) {
   body {
     justify-content: flex-start;
     overflow-y: auto !important;
@@ -165,26 +287,32 @@ button, select, a {
     padding: 0.25rem 1rem !important;
   }
 
+  header .flex {
+    max-width: 100% !important;
+  }
+
   main {
     flex-direction: row !important;
-    flex-wrap: wrap !important;
-    justify-content: space-around !important;
+    flex-wrap: nowrap !important;
+    justify-content: space-between !important;
     align-items: center !important;
-    max-width: 900px !important;
-    padding: 0.5rem 1rem !important;
+    max-width: 960px !important;
+    padding: 0.25rem 1rem !important;
+    gap: 1rem !important;
   }
 
   .main-card {
     width: 58% !important;
-    padding: 0.85rem !important;
+    padding: 0.75rem 1rem !important;
+    margin: 0 !important;
   }
 
   .surah-title {
-    font-size: 1.75rem !important;
+    font-size: 1.6rem !important;
   }
 
   .landscape-controls {
-    width: 38% !important;
+    width: 40% !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
@@ -192,7 +320,7 @@ button, select, a {
   }
 
   .mic-container {
-    margin: 0.5rem 0 !important;
+    margin: 0.25rem 0 0.5rem 0 !important;
   }
 
   .mic-button {
@@ -200,11 +328,55 @@ button, select, a {
     height: 4.25rem !important;
   }
 
+  .controls-row {
+    margin-bottom: 0.25rem !important;
+  }
+
   .guide-grid {
     display: none !important;
   }
 
   footer {
-    padding: 0.5rem 1rem !important;
+    padding: 0.4rem 1rem !important;
+  }
+}
+
+/* ==============================================================
+   5. الأجهزة اللوحية والشاشات العريضة (Tablets, Foldable Inner & iPad)
+   ============================================================== */
+@media (min-width: 768px) {
+  body {
+    background: radial-gradient(circle at 50% 20%, #064e3b 0%, #022c22 100%);
+  }
+
+  main {
+    max-width: 32rem !important;
+  }
+
+  .main-card {
+    padding: 2rem !important;
+    border-radius: 2rem !important;
+  }
+
+  .surah-title {
+    font-size: 3.25rem !important;
+  }
+
+  .mic-button {
+    width: 6.5rem !important;
+    height: 6.5rem !important;
+  }
+
+  .controls-row {
+    max-width: 22rem !important;
+    margin-bottom: 1.5rem !important;
+  }
+
+  footer {
+    padding: 1rem 1.5rem !important;
+  }
+
+  footer .max-w-md {
+    max-width: 32rem !important;
   }
 }

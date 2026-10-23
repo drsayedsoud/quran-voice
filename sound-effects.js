@@ -120,11 +120,13 @@ class SoundFeedback {
     osc.stop(ctx.currentTime + 0.25);
   }
 
-  // نقرة خفيفة عند الانتقال لآية جديدة
-  playAyahTick() {
+  // نقرة خفيفة عند الانتقال لآية جديدة (اهتزاز لمسي صامت صوناً لخشوع التلاوة)
+  playAyahTick(withSound = false) {
+    this.vibrate([30]);
+    if (!withSound) return;
+
     const ctx = this.getAudioContext();
     if (!ctx) return;
-    this.vibrate([30]);
 
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();

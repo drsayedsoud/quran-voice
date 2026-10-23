@@ -4,6 +4,7 @@
  */
 
 import { SURAHS, RECITERS } from './quran-data.js';
+import { findStoryByQuery, compileStoryPlaylist } from './quran-stories.js';
 
 // تنظيف وتوحيد النص العربي لتسهيل المطابقة الدقيقة
 export function normalizeArabic(text) {
@@ -48,16 +49,20 @@ export function cleanQuranicTranscript(text) {
   return cleaned;
 }
 
-// مطابقة اسم السورة ككلمة كاملة لتفادي تشابه الحروف القصيرة (مثل "ص" في "الصلاة" أو "ق" في "وقف")
 export function matchesSurahWord(normText, normCandidate) {
   if (!normText || !normCandidate) return false;
-  if (normText.includes('سوره ' + normCandidate) || normText.includes('سورة ' + normCandidate)) {
-    return true;
-  }
+  
   const words = normText.split(/\s+/);
-  if (words.includes(normCandidate)) {
-    return true;
+  if (words.includes(normCandidate)) return true;
+
+  const surahIdx = words.findIndex(w => w === 'سوره' || w === 'سورة');
+  if (surahIdx !== -1 && surahIdx < words.length - 1) {
+    const afterSurah = words.slice(surahIdx + 1).join(' ');
+    if (afterSurah === normCandidate || afterSurah.startsWith(normCandidate + ' ')) {
+      return true;
+    }
   }
+
   if (normCandidate.length >= 3) {
     if (words.some(w => w === normCandidate || w === ('ال' + normCandidate) || ('ال' + w) === normCandidate)) {
       return true;
@@ -191,36 +196,6 @@ export function parseVoiceCommand(rawTranscript) {
     return result;
   }
 
-  // 0. فحص الاستفسارات والبحث الموضوعي (مثل "آيات الصلاة", "آيات الصبر")
-  if (isThematicQuery(norm)) {
-    for (const [key, topicData] of Object.entries(COMMON_TOPICS)) {
-      if (norm.includes(key)) {
-        const passages = topicData.passages.map(p => {
-          const s = SURAHS.find(sur => sur.id === p.surahId);
-          return s ? { surah: s, ayahNumber: p.ayahNumber, label: p.label } : null;
-        }).filter(Boolean);
-
-        if (passages.length > 0) {
-          result.intent = 'PLAY_TOPIC';
-          result.payload = {
-            topic: topicData.topic,
-            passages: passages,
-            surah: passages[0].surah,
-            ayahNumber: passages[0].ayahNumber,
-            reciter: null
-          };
-          result.message = `تشغيل ${topicData.topic} من مواضع متفرقة في القرآن الكريم`;
-          return result;
-        }
-      }
-    }
-
-    result.intent = 'THEMATIC_QUERY';
-    result.payload = { query: rawTranscript };
-    result.message = 'جاري البحث الموضوعي الذكي بالذكاء الاصطناعي...';
-    return result;
-  }
-
   // 1. فحص طلب تغيير القارئ المذكور في الجملة
   let matchedReciter = null;
   for (const reciter of RECITERS) {
@@ -232,6 +207,54 @@ export function parseVoiceCommand(rawTranscript) {
       }
     }
     if (matchedReciter) break;
+  }
+
+  // 2. فحص قصص الأنبياء وقصص القرآن الكريم مرتبة حسب التسلسل الزمني (المسار اللحظي 0ms)
+  const matchedStory = findStoryByQuery(norm);
+  if (matchedStory) {
+    const playlist = compileStoryPlaylist(matchedStory);
+    if (playlist.length > 0) {
+      result.intent = 'PLAY_STORY';
+      result.payload = {
+        story: matchedStory,
+        passages: playlist,
+        surah: playlist[0].surah,
+        ayahNumber: playlist[0].ayahNumber,
+        reciter: matchedReciter
+      };
+      result.message = `بدء تلاوة ${matchedStory.name} مرتبة حسب التسلسل الزمني للأحداث`;
+      return result;
+    }
+  }
+
+  // 3. فحص الاستفسارات والبحث الموضوعي (مثل "آيات الصلاة", "آيات الصبر")
+  if (isThematicQuery(norm)) {
+    for (const [key, topicData] of Object.entries(COMMON_TOPICS)) {
+      if (norm.includes(key)) {
+        const passages = topicData.passages.map(p => {
+          const s = SURAHS.find(sur => sur.id === p.surahId);
+          return s ? { surah: s, ayahNumber: p.ayahNumber, label: p.label, isJump: true } : null;
+        }).filter(Boolean);
+
+        if (passages.length > 0) {
+          result.intent = 'PLAY_TOPIC';
+          result.payload = {
+            topic: topicData.topic,
+            passages: passages,
+            surah: passages[0].surah,
+            ayahNumber: passages[0].ayahNumber,
+            reciter: matchedReciter
+          };
+          result.message = `تشغيل ${topicData.topic} من مواضع متفرقة في القرآن الكريم`;
+          return result;
+        }
+      }
+    }
+
+    result.intent = 'THEMATIC_QUERY';
+    result.payload = { query: rawTranscript };
+    result.message = 'جاري البحث الموضوعي الذكي بالذكاء الاصطناعي...';
+    return result;
   }
 
   // 2. فحص أوامر التحكم البسيطة

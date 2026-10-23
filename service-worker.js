@@ -3,13 +3,15 @@
  * يتيح العمل أوفلاين وتشغيل الـ PWA بسرعة فائقة
  */
 
-const CACHE_NAME = 'quran-voice-v4';
+const CACHE_NAME = 'quran-voice-v8';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './admin.html',
   './style.css',
   './app.js',
+  './dual-player.js',
+  './quran-stories.js',
   './admin.js',
   './gemini-service.js',
   './quran-data.js',
