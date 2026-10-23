@@ -43,6 +43,11 @@
       </div>
 
       <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <!-- زر دليل الاستخدام وإمكانيات التطبيق (علامة استفهام داخل دائرة) -->
+        <button id="helpGuideBtn" type="button" class="w-8 h-8 xs:w-9 xs:h-9 sm:w-10 sm:h-10 rounded-full bg-emerald-900/70 border border-amber-400/50 text-amber-300 hover:text-white hover:bg-amber-500 hover:border-amber-400 transition-all flex items-center justify-center font-black text-sm xs:text-base sm:text-lg shadow cursor-pointer active:scale-95 shrink-0" title="دليل كيفية الاستخدام وإمكانيات التطبيق" aria-label="دليل الاستخدام">
+          ?
+        </button>
+
         <!-- زر تبديل لهجة التعرف الصوتي (مصرية / فصحى) -->
         <button id="dialectToggleBtn" type="button" class="px-2 py-1 xs:px-2.5 xs:py-1.5 rounded-xl bg-emerald-900/60 border border-emerald-700/40 text-amber-300 hover:border-amber-400/50 hover:bg-emerald-800/80 transition-all flex items-center gap-1 text-[11px] sm:text-xs font-bold shadow cursor-pointer active:scale-95" title="تبديل لهجة التعرف الصوتي">
           <span id="dialectFlag">🇪🇬</span>
@@ -204,6 +209,104 @@
           تأكيد
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- نافذة كيفية استخدام وإمكانيات التطبيق الشاملة -->
+  <div id="helpGuideModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md">
+    <div class="bg-gradient-to-b from-emerald-900 to-emerald-950 border border-amber-500/50 rounded-3xl p-4 sm:p-6 max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl relative text-right">
+      
+      <!-- رأس النافذة -->
+      <div class="flex items-center justify-between pb-3 border-b border-emerald-700/50 mb-3 shrink-0">
+        <div class="flex items-center gap-2">
+          <div class="w-9 h-9 rounded-2xl bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xl flex items-center justify-center shadow-inner">
+            💡
+          </div>
+          <div>
+            <h3 class="text-base sm:text-lg font-black text-amber-300">دليل استخدام وإمكانيات التطبيق</h3>
+            <p class="text-[11px] text-emerald-300/80">المصحف الصوتي الميسر لكبار السن وفاقدي البصر</p>
+          </div>
+        </div>
+        <button id="closeHelpGuideBtn" type="button" class="w-8 h-8 rounded-full bg-emerald-950/80 hover:bg-amber-500 hover:text-emerald-950 border border-emerald-700/50 text-emerald-200 text-lg font-bold flex items-center justify-center transition-all cursor-pointer">
+          ✕
+        </button>
+      </div>
+
+      <!-- محتوى الدليل القابل للتمرير -->
+      <div class="overflow-y-auto space-y-4 pr-1 text-xs sm:text-sm text-emerald-100 leading-relaxed font-sans">
+        
+        <!-- قسم إيماءات اللمس -->
+        <div class="bg-emerald-950/70 p-3.5 rounded-2xl border border-emerald-800/80">
+          <h4 class="font-bold text-amber-300 flex items-center gap-1.5 mb-2 text-sm sm:text-base">
+            <span>👆</span> إيماءات اللمس السهلة (على كامل الشاشة)
+          </h4>
+          <ul class="space-y-1.5 text-emerald-200/90 text-xs sm:text-sm">
+            <li>• <strong class="text-amber-200">ضغط مطول في أي مكان:</strong> إيقاف التلاوة وفتح الميكروفون فوراً للتحدث.</li>
+            <li>• <strong class="text-amber-200">ضغطة عادية سريعة:</strong> تشغيل أو استئناف التلاوة من الموضع الحالي.</li>
+            <li>• <strong class="text-amber-200">سحب لليسار:</strong> الانتقال إلى الآية التالية.</li>
+            <li>• <strong class="text-amber-200">سحب لليمين:</strong> العودة إلى الآية السابقة.</li>
+            <li>• <strong class="text-amber-200">سحب لأسفل:</strong> تكرار الآية الحالية 3 مرات للمراجعة والحفظ.</li>
+            <li>• <strong class="text-amber-200">سحب لأعلى:</strong> نطق موضع التلاوة الحالي صوتياً (اسم السورة ورقم الآية).</li>
+          </ul>
+        </div>
+
+        <!-- قسم الأوامر الصوتية -->
+        <div class="bg-emerald-950/70 p-3.5 rounded-2xl border border-emerald-800/80">
+          <h4 class="font-bold text-amber-300 flex items-center gap-1.5 mb-2 text-sm sm:text-base">
+            <span>🎤</span> الأوامر الصوتية الذكية (تحدث بطبيعتك)
+          </h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <div class="bg-emerald-900/50 p-2.5 rounded-xl border border-emerald-800/60">
+              <span class="text-amber-300 font-bold block mb-1">📖 تشغيل السور والآيات:</span>
+              <p class="text-emerald-200/80">"سورة الكهف"، "البقرة الآية 255"، "شغل سورة يوسف"</p>
+            </div>
+            <div class="bg-emerald-900/50 p-2.5 rounded-xl border border-emerald-800/60">
+              <span class="text-amber-300 font-bold block mb-1">📜 قصص القرآن بالتسلسل الزمني:</span>
+              <p class="text-emerald-200/80">"قصة موسى"، "قصة يوسف"، "قصة نوح"، "أصحاب الكهف"</p>
+            </div>
+            <div class="bg-emerald-900/50 p-2.5 rounded-xl border border-emerald-800/60">
+              <span class="text-amber-300 font-bold block mb-1">🔍 تفسير الآيات والكلمات:</span>
+              <p class="text-emerald-200/80">"ما معنى الصمد"، "ما تفسير هذه الآية"، "اشرح لي الآية"</p>
+            </div>
+            <div class="bg-emerald-900/50 p-2.5 rounded-xl border border-emerald-800/60">
+              <span class="text-amber-300 font-bold block mb-1">🎙️ تغيير القارئ فوراً:</span>
+              <p class="text-emerald-200/80">"بصوت عبد الباسط"، "بصوت الحصري"، "بصوت العفاسي"</p>
+            </div>
+            <div class="bg-emerald-900/50 p-2.5 rounded-xl border border-emerald-800/60">
+              <span class="text-amber-300 font-bold block mb-1">⏸️ التحكم والتحفيظ:</span>
+              <p class="text-emerald-200/80">"توقف" (يحفظ الموضع)، "كمل"، "التالية"، "كرر 3 مرات"</p>
+            </div>
+            <div class="bg-emerald-900/50 p-2.5 rounded-xl border border-emerald-800/60">
+              <span class="text-amber-300 font-bold block mb-1">🔊 مستوى الصوت والاستعلام:</span>
+              <p class="text-emerald-200/80">"علي الصوت"، "اخفض الصوت"، "أنا فين"، "أعلى صوت"</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- قسم إمكانيات ومميزات التطبيق -->
+        <div class="bg-emerald-950/70 p-3.5 rounded-2xl border border-emerald-800/80">
+          <h4 class="font-bold text-amber-300 flex items-center gap-1.5 mb-2 text-sm sm:text-base">
+            <span>✨</span> إمكانيات ومزايا فريدة في التطبيق
+          </h4>
+          <ul class="space-y-1.5 text-emerald-200/90 text-xs sm:text-sm">
+            <li>• <strong class="text-amber-200">مشغل مزدوج بدون أي انقطاع (0ms Gapless):</strong> الآيات المتتالية تقرأ بسلاسة تامة دون أي ثانية صمت.</li>
+            <li>• <strong class="text-amber-200">فواصل ذكية في القصص والمواضيع:</strong> تشغيل نغمة تنبيه لطيفة عندما ينتقل المشهد لسورة أخرى ليعلم المستمع بتغير الموضع.</li>
+            <li>• <strong class="text-amber-200">نطق التفسير واستئناف تلقائي:</strong> يشرح معنى الكلمة أو الآية ثم يعود تلقائياً لمواصلة التلاوة من نفس الموضع.</li>
+            <li>• <strong class="text-amber-200">حفظ تلقائي لآخر موضع:</strong> عند قول "توقف" أو إغلاق التطبيق، يعود دائماً لموضعك المحفوظ محلياً وعلى السحابة.</li>
+            <li>• <strong class="text-amber-200">إبقاء الشاشة نشطة (15 دقيقة):</strong> بقاء الشاشة مفتوحة تلقائياً أثناء الاستماع.</li>
+            <li>• <strong class="text-amber-200">تثبيت التطبيق على الهاتف (PWA):</strong> يمكن تثبيته من المتصفح كأي تطبيق رسمي واستخدامه أوفلاين.</li>
+          </ul>
+        </div>
+
+      </div>
+
+      <!-- زر الإغلاق السفلي -->
+      <div class="pt-3 border-t border-emerald-700/50 mt-3 shrink-0">
+        <button id="closeHelpGuideBottomBtn" type="button" class="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-emerald-950 font-black rounded-xl shadow-lg transition-all cursor-pointer active:scale-95 text-sm">
+          فهمت، إغلاق الدليل
+        </button>
+      </div>
+
     </div>
   </div>
 

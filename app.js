@@ -81,7 +81,11 @@ class QuranVoiceApp {
       adminModalPinInput: document.getElementById('adminModalPinInput'),
       adminModalPinError: document.getElementById('adminModalPinError'),
       adminModalSubmitBtn: document.getElementById('adminModalSubmitBtn'),
-      adminModalCancelBtn: document.getElementById('adminModalCancelBtn')
+      adminModalCancelBtn: document.getElementById('adminModalCancelBtn'),
+      helpGuideBtn: document.getElementById('helpGuideBtn'),
+      helpGuideModal: document.getElementById('helpGuideModal'),
+      closeHelpGuideBtn: document.getElementById('closeHelpGuideBtn'),
+      closeHelpGuideBottomBtn: document.getElementById('closeHelpGuideBottomBtn')
     };
 
     this.init();
@@ -729,8 +733,8 @@ class QuranVoiceApp {
     let isLongPressActive = false;
 
     area.addEventListener('touchstart', (e) => {
-      // إذا كان اللمس على عنصر تحكم تفاعلي مباشر نتركه يتفاعل طبيعياً
-      if (e.target.closest('button, select, input, a, #adminModalPinInput, #closeTafsirBtn')) {
+      // إذا كان اللمس على عنصر تحكم تفاعلي مباشر أو داخل النوافذ المنبثقة نتركه يتفاعل طبيعياً
+      if (e.target.closest('button, select, input, a, #adminModalPinInput, #closeTafsirBtn, #helpGuideModal, #adminPinModal, #tafsirModal')) {
         return;
       }
 
@@ -1138,6 +1142,34 @@ class QuranVoiceApp {
     if (this.dom.dialectToggleBtn) {
       this.dom.dialectToggleBtn.addEventListener('click', () => this.toggleSpeechLang());
       this.updateDialectUI();
+    }
+
+    // فتح وإغلاق دليل الاستخدام وإمكانيات التطبيق
+    if (this.dom.helpGuideBtn && this.dom.helpGuideModal) {
+      this.dom.helpGuideBtn.addEventListener('click', () => {
+        sound.vibrate([40]);
+        this.dom.helpGuideModal.classList.remove('hidden');
+      });
+    }
+
+    const closeGuide = () => {
+      if (this.dom.helpGuideModal) {
+        this.dom.helpGuideModal.classList.add('hidden');
+      }
+    };
+
+    if (this.dom.closeHelpGuideBtn) {
+      this.dom.closeHelpGuideBtn.addEventListener('click', closeGuide);
+    }
+    if (this.dom.closeHelpGuideBottomBtn) {
+      this.dom.closeHelpGuideBottomBtn.addEventListener('click', closeGuide);
+    }
+    if (this.dom.helpGuideModal) {
+      this.dom.helpGuideModal.addEventListener('click', (e) => {
+        if (e.target === this.dom.helpGuideModal) {
+          closeGuide();
+        }
+      });
     }
   }
 
