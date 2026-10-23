@@ -247,9 +247,12 @@ class SoundFeedback {
     osc.stop(ctx.currentTime + 0.12);
   }
 
-  // القراءة الصوتية باللغة العربية للرد على المستخدم
-  speak(text) {
-    if (!this.speechSynth) return;
+  // القراءة الصوتية باللغة العربية للرد على المستخدم مع دعم استدعاء دالة عند الانتهاء (onEnd)
+  speak(text, onEnd = null) {
+    if (!this.speechSynth) {
+      if (typeof onEnd === 'function') onEnd();
+      return;
+    }
     this.speechSynth.cancel(); // إيقاف أي قراءة سابقة
 
     const utterance = new SpeechSynthesisUtterance(text);
@@ -259,6 +262,19 @@ class SoundFeedback {
     }
     utterance.rate = 0.95;
     utterance.pitch = 1.0;
+
+    if (typeof onEnd === 'function') {
+      let called = false;
+      const callbackOnce = () => {
+        if (!called) {
+          called = true;
+          onEnd();
+        }
+      };
+      utterance.onend = callbackOnce;
+      utterance.onerror = callbackOnce;
+    }
+
     this.speechSynth.speak(utterance);
   }
 }

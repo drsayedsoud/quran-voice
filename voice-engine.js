@@ -227,7 +227,64 @@ export function parseVoiceCommand(rawTranscript) {
     }
   }
 
-  // 3. فحص الاستفسارات والبحث الموضوعي (مثل "آيات الصلاة", "آيات الصبر")
+  // 3. فحص أوامر التحكم العاجلة (إيقاف وتوقف)
+  // إيقاف مؤقت / توقف مع حفظ موضع التلاوة
+  if (norm.match(/^(توقف|وقف|ايقاف|اسكت|اصمت|لحظه|استني|استنى|pause|stop)/) || norm.includes('توقف') || norm.includes('وقف القراءه') || norm.includes('ايقاف مؤقت') || norm === 'كفايه') {
+    result.intent = 'PAUSE';
+    result.message = 'تم إيقاف التلاوة وحفظ الموضع';
+    return result;
+  }
+
+  // 4. طلب التفسير أو شرح المعنى أو معنى كلمة معينة (معالجة سريعة فورية)
+  if (norm.includes('تفسير') || norm.includes('فسر') || norm.includes('معنى') || norm.includes('معني') || norm.includes('اشرح') || norm.includes('شرح')) {
+    result.intent = 'TAFSIR';
+    // استخراج الكلمة أو العبارة المراد معرفة معناها أو تفسيرها إن وجدت
+    let term = rawTranscript
+      .replace(/^(ما\s+)?(معنى|معني|تفسير|شرح|اشرح|فسر|وضح)\s*(لي|لنا|هذه|هذي|الآية|الايه|الكلمة|الكلمه|قوله|عن)?\s*/i, '')
+      .trim();
+    result.payload = { term: term };
+    result.message = 'قراءة التفسير الميسر للآية';
+    return result;
+  }
+
+  // 5. استئناف أو متابعة
+  if (norm.match(/^(كمل|تابع|استمر|واصل|شغل تاني|استئناف|resume|play)/)) {
+    result.intent = 'RESUME';
+    result.message = 'متابعة التلاوة';
+    return result;
+  }
+
+  // 6. الآية التالية
+  if (norm.includes('التاليه') || norm.includes('اللي بعدها') || norm.includes('الايه الجايه') || norm.includes('قدم ايه') || norm.includes('تخطي')) {
+    result.intent = 'NEXT_AYAH';
+    result.message = 'الانتقال للآية التالية';
+    return result;
+  }
+
+  // 7. الآية السابقة
+  if (norm.includes('السابقه') || norm.includes('اللي قبلها') || norm.includes('رجع ايه') || norm.includes('ارجع ورا')) {
+    result.intent = 'PREV_AYAH';
+    result.message = 'العودة للآية السابقة';
+    return result;
+  }
+
+  // 8. تكرار الآية
+  if (norm.includes('كرر') || norm.includes('عيد') || norm.includes('تكرار') || norm.includes('مره تانيه')) {
+    const times = extractNumber(norm) || 3;
+    result.intent = 'REPEAT_AYAH';
+    result.payload = { times };
+    result.message = `سيتم تكرار الآية ${times} مرات`;
+    return result;
+  }
+
+  // 9. أين أنا / معرفة الموضع الحالي
+  if (norm.includes('فين انا') || norm.includes('اين انا') || norm.includes('ما هي السوره') || norm.includes('رقم الايه') || norm.includes('انا فين')) {
+    result.intent = 'STATUS_CHECK';
+    result.message = 'الاستعلام عن موضع التلاوة الحالي';
+    return result;
+  }
+
+  // 10. فحص الاستفسارات والبحث الموضوعي (مثل "آيات الصلاة", "آيات الصبر")
   if (isThematicQuery(norm)) {
     for (const [key, topicData] of Object.entries(COMMON_TOPICS)) {
       if (norm.includes(key)) {
@@ -254,58 +311,6 @@ export function parseVoiceCommand(rawTranscript) {
     result.intent = 'THEMATIC_QUERY';
     result.payload = { query: rawTranscript };
     result.message = 'جاري البحث الموضوعي الذكي بالذكاء الاصطناعي...';
-    return result;
-  }
-
-  // 2. فحص أوامر التحكم البسيطة
-  // إيقاف مؤقت
-  if (norm.match(/^(وقف|ايقاف|اسكت|اصمت|لحظه|استني|استنى|pause|stop)/) || norm.includes('وقف القراءه') || norm.includes('ايقاف مؤقت')) {
-    result.intent = 'PAUSE';
-    result.message = 'تم الإيقاف المؤقت';
-    return result;
-  }
-
-  // استئناف أو متابعة
-  if (norm.match(/^(كمل|تابع|استمر|واصل|شغل تاني|استئناف|resume|play)/)) {
-    result.intent = 'RESUME';
-    result.message = 'متابعة التلاوة';
-    return result;
-  }
-
-  // الآية التالية
-  if (norm.includes('التاليه') || norm.includes('اللي بعدها') || norm.includes('الايه الجايه') || norm.includes('قدم ايه') || norm.includes('تخطي')) {
-    result.intent = 'NEXT_AYAH';
-    result.message = 'الانتقال للآية التالية';
-    return result;
-  }
-
-  // الآية السابقة
-  if (norm.includes('السابقه') || norm.includes('اللي قبلها') || norm.includes('رجع ايه') || norm.includes('ارجع ورا')) {
-    result.intent = 'PREV_AYAH';
-    result.message = 'العودة للآية السابقة';
-    return result;
-  }
-
-  // تكرار الآية
-  if (norm.includes('كرر') || norm.includes('عيد') || norm.includes('تكرار') || norm.includes('مره تانيه')) {
-    const times = extractNumber(norm) || 3;
-    result.intent = 'REPEAT_AYAH';
-    result.payload = { times };
-    result.message = `سيتم تكرار الآية ${times} مرات`;
-    return result;
-  }
-
-  // أين أنا / معرفة الموضع الحالي
-  if (norm.includes('فين انا') || norm.includes('اين انا') || norm.includes('ما هي السوره') || norm.includes('رقم الايه') || norm.includes('انا فين')) {
-    result.intent = 'STATUS_CHECK';
-    result.message = 'الاستعلام عن موضع التلاوة الحالي';
-    return result;
-  }
-
-  // طلب التفسير
-  if (norm.includes('تفسير') || norm.includes('فسر') || norm.includes('معنى') || norm.includes('معني')) {
-    result.intent = 'TAFSIR';
-    result.message = 'قراءة التفسير الميسر للآية';
     return result;
   }
 

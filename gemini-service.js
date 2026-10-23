@@ -137,12 +137,12 @@ ${recitersInfo}
 4. إذا ذكر اسم قارئ (مثل: "بصوت العفاسي", "بصوت عبد الباسط", "المنشاوي"):
    - استخرج reciterId من القائمة (husary, minshawi, abdulbasit, afasy, muaiqly, hudhaify, ghamadi, ajamy).
 5. أوامر التحكم السريع:
-   - "وقف", "اسكت", "لحظة" -> intent: "PAUSE"
+   - "توقف", "وقف", "اسكت", "لحظة", "كفاية" -> intent: "PAUSE"
    - "كمل", "استمر", "شغل تاني" -> intent: "RESUME"
    - "اللي بعدها", "التالية" -> intent: "NEXT_AYAH"
    - "اللي قبلها", "السابقة" -> intent: "PREV_AYAH"
    - "كرر", "عيد" -> intent: "REPEAT_AYAH", repeatTimes: (عدد المرات إن ذكر وإلا 3)
-   - "فسر لي", "معنى الآية" -> intent: "TAFSIR"
+   - "ما معنى كذا", "ما تفسير كذا", "اشرح لي كذا", "فسر لي", "معنى الآية" -> intent: "TAFSIR", topic: "الكلمة أو العبارة المراد تفسيرها أو فارغ للآية الحالية"
    - "أنا فين", "ما هي السورة" -> intent: "STATUS_CHECK"
    - "لوحة التحكم", "لوحة الإدارة", "صفحة الإدارة", "صفحة الأدمن", "الأدمن", "افتح الإدارة" -> intent: "OPEN_ADMIN"
 6. صيغة الإرجاع:
@@ -150,7 +150,7 @@ ${recitersInfo}
 {
   "intent": "PLAY_STORY" | "PLAY_TOPIC" | "PLAY_AYAH" | "PLAY_SURAH" | "PAUSE" | "RESUME" | "NEXT_AYAH" | "PREV_AYAH" | "REPEAT_AYAH" | "TAFSIR" | "SET_RECITER" | "STATUS_CHECK" | "OPEN_ADMIN" | "UNKNOWN",
   "storyId": "معرف القصة إن كانت قصة قرآنية وإلا null",
-  "topic": "اسم القصة أو الموضوع إن وجد",
+  "topic": "اسم القصة أو الموضوع أو الكلمة/العبارة للتفسير إن وجد",
   "surahId": رقم السورة (1-114) إن وجد وإلا null,
   "ayahNumber": رقم الآية إن وجد وإلا 1,
   "passages": [

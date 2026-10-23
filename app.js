@@ -45,6 +45,10 @@ class QuranVoiceApp {
     this.wakeLockExpiresAt = 0;
     this.wakeLockDurationMs = 15 * 60 * 1000;
 
+    // تتبع حالة استئناف القراءة بعد التفسير وحفظ الموضع
+    this.resumePlaybackAfterTafsir = false;
+    this.savedResumeState = null;
+
     // مشغل الصوت المزدوج والتعرف الصوتي
     this.player = null;
     this.recognition = null;
@@ -453,8 +457,9 @@ class QuranVoiceApp {
 
       case 'PAUSE':
         this.pause();
-        this.dom.voiceStatus.textContent = parsed.message;
-        sound.playSuccessChime();
+        this.dom.voiceStatus.textContent = parsed.message || 'تم إيقاف التلاوة وحفظ الموضع';
+        if (sound.playPauseChime) sound.playPauseChime();
+        else sound.playSuccessChime();
         break;
 
       case 'RESUME':
@@ -482,7 +487,7 @@ class QuranVoiceApp {
 
       case 'TAFSIR':
         sound.playSuccessChime();
-        this.fetchAndShowTafsir();
+        this.fetchAndShowTafsir(parsed.payload?.term || parsed.payload?.topic || '');
         break;
 
       case 'VOLUME_MAX':
@@ -569,6 +574,8 @@ class QuranVoiceApp {
     }
     this.isPlaying = false;
     this.updateUI();
+    // حفظ مكان التقدم بدقة عند التوقف
+    saveLastPosition(this.currentSurah, this.currentAyah, this.currentReciter.id);
   }
 
   togglePlayPause() {
@@ -610,10 +617,23 @@ class QuranVoiceApp {
       return;
     }
 
-    // إيقاف مؤقت لأي تلاوة جارية فوراً لمنع تداخل صوت القارئ مع لاقط الصوت
-    if (this.isPlaying && this.player && this.player.isPlaying) {
+    // إذا كانت التلاوة جارية، نحفظ موضعها الحالي وإمكانية استئنافها بعد التفسير ونوقف التلاوة مؤقتاً
+    const wasPlaying = (this.isPlaying && this.player && this.player.isPlaying);
+    if (wasPlaying) {
+      this.resumePlaybackAfterTafsir = true;
+      this.savedResumeState = {
+        surah: this.currentSurah,
+        ayah: this.currentAyah,
+        topicPlaylist: this.topicPlaylist,
+        topicIndex: this.topicIndex
+      };
       this.player.pause();
+    } else {
+      this.resumePlaybackAfterTafsir = false;
     }
+
+    // حفظ الموضع الحالي أيضاً احتياطاً
+    saveLastPosition(this.currentSurah, this.currentAyah, this.currentReciter.id);
 
     // عزف نغمة التنبيه أولاً قبل فتح الميكروفون
     sound.playListeningChime();
@@ -706,7 +726,7 @@ class QuranVoiceApp {
     let touchStartY = 0;
     let touchStartTime = 0;
     let longPressTimer = null;
-    let lastTapTime = 0;
+    let isLongPressActive = false;
 
     area.addEventListener('touchstart', (e) => {
       // إذا كان اللمس على عنصر تحكم تفاعلي مباشر نتركه يتفاعل طبيعياً
@@ -718,9 +738,11 @@ class QuranVoiceApp {
       touchStartX = touch.clientX;
       touchStartY = touch.clientY;
       touchStartTime = Date.now();
+      isLongPressActive = false;
 
-      // نقرة مطولة (أكثر من 450ms) = تفعيل الميكروفون فوراً
+      // نقرة مطولة (أكثر من 450ms) = إيقاف التلاوة وفتح الميكروفون فوراً
       longPressTimer = setTimeout(() => {
+        isLongPressActive = true;
         sound.vibrate([100]);
         this.startListening();
       }, 450);
@@ -744,15 +766,16 @@ class QuranVoiceApp {
       const deltaX = touch.clientX - touchStartX;
       const deltaY = touch.clientY - touchStartY;
 
-      // فحص النقر المزدوج (Double Tap) = تشغيل / إيقاف
-      const timeSinceLastTap = touchEndTime - lastTapTime;
-      if (timeSinceLastTap < 300 && duration < 250) {
-        sound.vibrate([50, 50]);
+      // فحص النقر المزدوج (Double Tap) أو النقر الفردي العادي (Single Tap)
+      // إذا لم تكن حركة سحب (Swipe) وكانت مجرد ضغطة عادية قصيرة:
+      const isSwipe = (Math.abs(deltaX) > 60 && Math.abs(deltaY) < 60) || (Math.abs(deltaY) > 70 && Math.abs(deltaX) < 60);
+
+      if (!isSwipe && !isLongPressActive && duration < 380 && Math.abs(deltaX) < 20 && Math.abs(deltaY) < 20) {
+        sound.vibrate([40]);
+        // ضغطة عادية على الشاشة تشغل / تستأنف التلاوة (أو توقفها إذا كانت تعمل)
         this.togglePlayPause();
-        lastTapTime = 0;
         return;
       }
-      lastTapTime = touchEndTime;
 
       // إذا كانت سحبة سريعة (Swipe)
       if (Math.abs(deltaX) > 60 && Math.abs(deltaY) < 60) {
@@ -919,22 +942,73 @@ class QuranVoiceApp {
     }
   }
 
-  // جلب وقراءة التفسير الميسر
-  async fetchAndShowTafsir() {
+  // جلب وقراءة التفسير الميسر للآية أو لكلمة محددة ونطقه صوتياً ثم استئناف التلاوة تلقائياً
+  async fetchAndShowTafsir(requestedTerm = '') {
+    const surah = this.currentSurah;
+    const ayahNum = this.currentAyah;
     this.dom.voiceStatus.textContent = 'جاري جلب التفسير الميسر...';
+
     try {
-      const resp = await fetch(`https://api.alquran.cloud/v1/ayah/${this.currentSurah.id}:${this.currentAyah}/ar.muyassar`);
+      const resp = await fetch(`https://api.alquran.cloud/v1/ayah/${surah.id}:${ayahNum}/ar.muyassar`);
       const data = await resp.json();
+
       if (data && data.data && data.data.text) {
-        const tafsir = data.data.text;
-        this.dom.tafsirText.textContent = tafsir;
-        this.dom.tafsirModal.classList.remove('hidden');
-        this.dom.voiceStatus.textContent = 'تفسير الآية الميسر';
-        sound.speak(tafsir);
+        let fullTafsir = data.data.text.trim();
+        let displayText = fullTafsir;
+        let speakText = `تفسير الآية ${ayahNum} من سورة ${surah.name}: ${fullTafsir}`;
+
+        // إذا طلب المستخدم تفسير كلمة معينة أو معنى محدد، نبحث عنه داخل نص التفسير الميسر
+        const cleanTerm = (requestedTerm || '').trim();
+        if (cleanTerm && cleanTerm.length > 1 && cleanTerm !== 'الايه' && cleanTerm !== 'الآية') {
+          // محاولة استخراج الجملة أو الشرح المتعلق بالكلمة
+          const sentences = fullTafsir.split(/[\.\،\;\:\n]/).map(s => s.trim()).filter(Boolean);
+          const matchedSentence = sentences.find(s => s.includes(cleanTerm));
+          if (matchedSentence) {
+            speakText = `معنى كلمة ${cleanTerm} في الآية: ${matchedSentence}`;
+          }
+        }
+
+        // كتابة التفسير على الشاشة
+        if (this.dom.tafsirText) {
+          this.dom.tafsirText.textContent = displayText;
+        }
+        if (this.dom.tafsirModal) {
+          this.dom.tafsirModal.classList.remove('hidden');
+        }
+        this.dom.voiceStatus.textContent = `تفسير سورة ${surah.name} آية ${ayahNum}`;
+
+        // نطق التفسير صوتياً بالكامل عبر مركب الصوت، وعند الانتهاء: معاودة القراءة من الموضع الواقف عليه تلقائياً
+        sound.speak(speakText, () => {
+          console.log('[Tafsir] Finished speaking tafsir. Resuming playback from saved position...');
+          this.dom.voiceStatus.textContent = 'استئناف التلاوة...';
+          
+          // إخفاء نافذة التفسير بعد القراءة
+          setTimeout(() => {
+            if (this.dom.tafsirModal) {
+              this.dom.tafsirModal.classList.add('hidden');
+            }
+          }, 800);
+
+          // معاودة القراءة من الموضع الذي توقفت عنده
+          if (this.resumePlaybackAfterTafsir) {
+            this.resumePlaybackAfterTafsir = false;
+            setTimeout(() => {
+              this.playCurrentAyah();
+            }, 600);
+          }
+        });
+
+      } else {
+        throw new Error('No tafsir text found in response');
       }
     } catch (e) {
       console.warn('Tafsir fetch error:', e);
-      sound.speak("عذراً، لم أتمكن من جلب التفسير حالياً");
+      sound.speak("عذراً، تعذر جلب التفسير حالياً، جاري استئناف التلاوة", () => {
+        if (this.resumePlaybackAfterTafsir) {
+          this.resumePlaybackAfterTafsir = false;
+          setTimeout(() => this.playCurrentAyah(), 400);
+        }
+      });
     }
   }
 
@@ -1053,6 +1127,11 @@ class QuranVoiceApp {
     if (this.dom.closeTafsirBtn) {
       this.dom.closeTafsirBtn.addEventListener('click', () => {
         this.dom.tafsirModal.classList.add('hidden');
+        if (sound.speechSynth) sound.speechSynth.cancel();
+        if (this.resumePlaybackAfterTafsir) {
+          this.resumePlaybackAfterTafsir = false;
+          this.playCurrentAyah();
+        }
       });
     }
 
