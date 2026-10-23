@@ -1,8 +1,9 @@
 {
   "name": "المصحف الصوتي الميسر",
-  "short_name": "المصحف الصوتي",
-  "description": "مصحف صوتي ميسر للأوامر الصوتية وإيماءات اللمس لفاقدي البصر وكبار السن",
-  "start_url": "index.html",
+  "short_name": "مصحف صوتي",
+  "description": "تلو آيات القرآن الكريم بالأوامر الصوتية العربية بصوت بشري طبيعي",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#022c22",
   "theme_color": "#022c22",
@@ -11,15 +12,15 @@
   "lang": "ar",
   "icons": [
     {
-      "src": "icons/icon-192.svg",
+      "src": "icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-512.svg",
+      "src": "icons/icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]
