@@ -126,6 +126,7 @@ export const RECITERS = [
     name: "محمود خليل الحصري",
     subname: "مرتل",
     folder: "Husary_64kbps",
+    surahServer: "server13.mp3quran.net/husr",
     sampleText: "تلاوة متقنة هادئة مناسبة للتدبر والحفظ ومخارج الحروف",
     aliases: ["الحصري", "حصري", "الشيخ الحصري"]
   },
@@ -134,6 +135,7 @@ export const RECITERS = [
     name: "محمد صديق المنشاوي",
     subname: "مرتل",
     folder: "Minshawy_Murattal_128kbps",
+    surahServer: "server10.mp3quran.net/minsh",
     sampleText: "تلاوة خاشعة شجية تأسر القلوب",
     aliases: ["المنشاوي", "منشاوي", "الشيخ المنشاوي"]
   },
@@ -142,6 +144,7 @@ export const RECITERS = [
     name: "عبد الباسط عبد الصمد",
     subname: "مرتل",
     folder: "Abdul_Basit_Murattal_64kbps",
+    surahServer: "server7.mp3quran.net/basit",
     sampleText: "صوت نقي فخم ومعروف في العالم الإسلامي",
     aliases: ["عبد الباسط", "عبدالباسط", "عبد الصمد"]
   },
@@ -150,6 +153,7 @@ export const RECITERS = [
     name: "مشاري بن راشد العفاسي",
     subname: "مرتل",
     folder: "Alafasy_128kbps",
+    surahServer: "server8.mp3quran.net/afs",
     sampleText: "أداء مميز وصوت عذب حديث",
     aliases: ["العفاسي", "عفاسي", "مشاري"]
   },
@@ -158,6 +162,7 @@ export const RECITERS = [
     name: "ماهر المعيقلي",
     subname: "إمام الحرم المكي",
     folder: "Maher_AlMuaiqly_64kbps",
+    surahServer: "server12.mp3quran.net/maher",
     sampleText: "تلاوة رخيمة هادئة تأخذك إلى رحاب الحرم المكي",
     aliases: ["المعيقلي", "معيقلي", "ماهر"]
   },
@@ -166,6 +171,7 @@ export const RECITERS = [
     name: "علي عبد الرحمن الحذيفي",
     subname: "إمام المسجد النبوي",
     folder: "Hudhaify_64kbps",
+    surahServer: "server9.mp3quran.net/hthfi",
     sampleText: "تلاوة محكمة واضحة بمخارج فصحى دقيقة",
     aliases: ["الحذيفي", "حذيفي", "علي الحذيفي"]
   },
@@ -174,6 +180,7 @@ export const RECITERS = [
     name: "سعد الغامدي",
     subname: "مرتل",
     folder: "Ghamadi_40kbps",
+    surahServer: "server7.mp3quran.net/s_gmd",
     sampleText: "صوت سلس مريح ومحبوب للمراجعة اليومية",
     aliases: ["الغامدي", "غامدي", "سعد"]
   },
@@ -182,6 +189,7 @@ export const RECITERS = [
     name: "أحمد بن علي العجمي",
     subname: "مرتل",
     folder: "Ahmed_ibn_Ali_al-Ajamy_64kbps_QuranExplorer.Com",
+    surahServer: "server10.mp3quran.net/ajm",
     sampleText: "نبرة قوية مؤثرة وحضور صوتي عالٍ",
     aliases: ["العجمي", "عجمي", "احمد العجمي"]
   }
@@ -194,4 +202,15 @@ export function getAyahAudioUrl(reciterFolder, surahNumber, ayahNumber) {
   const s = String(surahNumber).padStart(3, '0');
   const a = String(ayahNumber).padStart(3, '0');
   return `https://everyayah.com/data/${reciterFolder}/${s}${a}.mp3`;
+}
+
+/**
+ * دالة مساعدة لبناء رابط صوت السورة الكاملة المتدفق (Continuous Surah Streaming)
+ * يدعم التخزين المسبق التدريجي للمتصفح (Progressive Buffer) مثل SoundCloud و Spotify
+ */
+export function getSurahAudioUrl(reciter, surahNumber) {
+  if (!reciter) return null;
+  const s = String(surahNumber).padStart(3, '0');
+  const server = reciter.surahServer || 'server8.mp3quran.net/afs';
+  return `https://${server}/${s}.mp3`;
 }

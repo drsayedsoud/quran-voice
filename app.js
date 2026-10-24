@@ -162,6 +162,16 @@ class QuranVoiceApp {
       }
     };
 
+    // عند تغير السورة في نمط التدفق المستمر (Surah Streaming Mode)
+    this.player.onSurahChange = (surah, reciter) => {
+      this.currentSurah = surah;
+      this.currentAyah = 1;
+      if (reciter) this.currentReciter = reciter;
+      this.isPlaying = true;
+      this.updateUI();
+      saveLastPosition(this.currentSurah, this.currentAyah, this.currentReciter.id);
+    };
+
     // متابعة وقت الاستماع وتحديث شريط التقدم
     this.player.onTimeUpdate = (currentTime, duration, percent) => {
       if (this.dom.progressBar) {
@@ -421,13 +431,22 @@ class QuranVoiceApp {
       case 'PLAY_SURAH':
         this.topicPlaylist = []; // إلغاء قائمة الموضوع إذا طلب سورة محددة
         this.currentSurah = parsed.payload.surah;
-        this.currentAyah = parsed.payload.ayahNumber || 1;
         if (parsed.payload.reciter) {
           this.currentReciter = parsed.payload.reciter;
         }
-        this.dom.voiceStatus.textContent = parsed.message;
-        sound.playSuccessChime();
-        this.playCurrentAyah();
+
+        // إذا طلب السورة كاملة (الافتراضي عند طلب سورة)، يتم تشغيل النمط الهجين المتدفق السريع كملف متصل (SoundCloud-style)
+        if (!parsed.payload.ayahNumber || parsed.payload.ayahNumber === 1) {
+          this.currentAyah = 1;
+          this.dom.voiceStatus.textContent = `${parsed.message} (تلاوة متدفقة مسترسلة)`;
+          sound.playSuccessChime();
+          this.playSurahStream(this.currentSurah, this.currentReciter);
+        } else {
+          this.currentAyah = parsed.payload.ayahNumber;
+          this.dom.voiceStatus.textContent = parsed.message;
+          sound.playSuccessChime();
+          this.playCurrentAyah();
+        }
         break;
 
       case 'PLAY_AYAH':
@@ -447,7 +466,11 @@ class QuranVoiceApp {
         sound.playSuccessChime();
         this.updateUI();
         if (this.isPlaying) {
-          this.playCurrentAyah();
+          if (this.player && this.player.mode === 'surah') {
+            this.playSurahStream(this.currentSurah, this.currentReciter);
+          } else {
+            this.playCurrentAyah();
+          }
         }
         break;
 
@@ -546,6 +569,23 @@ class QuranVoiceApp {
 
     // تسجيل الأمر الصوتي في Firebase للأدمن لتحسين اللهجات
     logVoiceCommand(transcript, parsed, success);
+  }
+
+  // تشغيل سورة كاملة بنمط التدفق السلس المتصل (SoundCloud-style Surah Streaming)
+  playSurahStream(surah = null, reciter = null) {
+    this.requestWakeLock(this.wakeLockDurationMs);
+    this.isPlaying = true;
+    if (surah) this.currentSurah = surah;
+    if (reciter) this.currentReciter = reciter;
+    this.currentAyah = 1;
+    this.topicPlaylist = [];
+    this.topicIndex = 0;
+
+    if (this.player) {
+      this.player.playSurahStream(this.currentSurah, this.currentReciter);
+    }
+    this.updateUI();
+    saveLastPosition(this.currentSurah, this.currentAyah, this.currentReciter.id);
   }
 
   // تشغيل الآية الحالية بالصوت عبر المشغل المزدوج بدون فواصل (Gapless Playback)
@@ -1082,6 +1122,9 @@ class QuranVoiceApp {
       if (this.dom.ayahBadge) {
         this.dom.ayahBadge.textContent = `الآية ${this.currentAyah}`;
       }
+    } else if (this.player && this.player.mode === 'surah') {
+      if (this.dom.surahMeta) this.dom.surahMeta.textContent = `${this.currentSurah.type} • ${this.currentSurah.ayahs} آية • سورة كاملة`;
+      if (this.dom.ayahBadge) this.dom.ayahBadge.textContent = 'تلاوة متدفقة مسترسلة';
     } else {
       if (this.dom.surahMeta) this.dom.surahMeta.textContent = `${this.currentSurah.type} • ${this.currentSurah.ayahs} آية`;
       if (this.dom.ayahBadge) this.dom.ayahBadge.textContent = `الآية ${this.currentAyah}`;
@@ -1110,9 +1153,7 @@ class QuranVoiceApp {
       this.dom.surahSelect.addEventListener('change', (e) => {
         const selected = SURAHS.find(s => s.id === parseInt(e.target.value, 10));
         if (selected) {
-          this.currentSurah = selected;
-          this.currentAyah = 1;
-          this.playCurrentAyah();
+          this.playSurahStream(selected);
         }
       });
     }
@@ -1123,7 +1164,13 @@ class QuranVoiceApp {
         if (selected) {
           this.currentReciter = selected;
           this.updateUI();
-          if (this.isPlaying) this.playCurrentAyah();
+          if (this.isPlaying) {
+            if (this.player && this.player.mode === 'surah') {
+              this.playSurahStream(this.currentSurah, this.currentReciter);
+            } else {
+              this.playCurrentAyah();
+            }
+          }
         }
       });
     }

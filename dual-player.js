@@ -4,7 +4,7 @@
  * مع نظام تخزين مؤقت استباقي في الخلفية (Lookahead Buffer) للـ 5 آيات القادمة
  */
 
-import { SURAHS, getAyahAudioUrl } from './quran-data.js';
+import { SURAHS, getAyahAudioUrl, getSurahAudioUrl } from './quran-data.js';
 
 export class DualQuranPlayer {
   constructor(options = {}) {
@@ -29,6 +29,9 @@ export class DualQuranPlayer {
     this.repeatCount = 1;
     this.currentRepeat = 1;
 
+    // النمط الهجين: 'ayah' للآيات والمواضع والقصص، أو 'surah' للتدفق المتصل لسورة كاملة (SoundCloud-style)
+    this.mode = 'ayah';
+
     // قوائم التشغيل الموضوعية
     this.topicPlaylist = [];
     this.topicIndex = 0;
@@ -43,6 +46,7 @@ export class DualQuranPlayer {
 
     // مسارات ردود الفعل (Callbacks)
     this.onAyahChange = null;        // (surah, ayah, reciter, isAutoTransition)
+    this.onSurahChange = null;       // (surah, reciter)
     this.onTimeUpdate = null;        // (currentTime, duration, percent)
     this.onPlayStateChange = null;   // (isPlaying)
     this.onRepeat = null;           // (currentRepeat, repeatCount)
@@ -90,6 +94,19 @@ export class DualQuranPlayer {
   // معالجة نهاية الآية الحالية (التبديل الفوري بدون فواصل)
   handleTrackEnded(deck) {
     if (deck !== this.activeDeck) return;
+
+    // 0. معالجة ختام السورة الكاملة في نمط التدفق المستمر (Surah Streaming Mode)
+    if (this.mode === 'surah') {
+      const nextSurah = SURAHS.find(s => s.id === this.currentSurah.id + 1);
+      if (nextSurah) {
+        this.playSurahStream(nextSurah, this.currentReciter);
+      } else {
+        this.isPlaying = false;
+        if (this.onPlayStateChange) this.onPlayStateChange(false);
+        if (this.onQuranFinished) this.onQuranFinished();
+      }
+      return;
+    }
 
     // 1. معالجة تكرار الآية إن كان مفعلاً
     if (this.currentRepeat < this.repeatCount) {
@@ -198,8 +215,55 @@ export class DualQuranPlayer {
     this.prefetchUpcoming(this.prefetchCount);
   }
 
+  // تشغيل سورة كاملة بتدفق متصل فائق السرعة وبث مباشر (Progressive Streaming / SoundCloud-style)
+  playSurahStream(surah, reciter = null) {
+    this.mode = 'surah';
+    this.topicPlaylist = [];
+    this.topicIndex = 0;
+    this.repeatCount = 1;
+    this.currentRepeat = 1;
+
+    if (reciter) this.currentReciter = reciter;
+    this.currentSurah = surah || this.currentSurah;
+    this.currentAyah = 1;
+
+    // إلغاء أي مهام تحميل للآيات الفردية في الخلفية لتركيز سرعة الشبكة والذاكرة كلياً للبث المباشر للسورة
+    this.abortLookahead();
+    this.standbyDeck.pause();
+    this.standbyDeck.src = '';
+    this.standbyTrack = null;
+
+    const url = getSurahAudioUrl(this.currentReciter, this.currentSurah.id);
+    this.activeDeck.src = url;
+    this.activeDeck.preload = 'auto';
+    this.activeDeck.volume = this.volume;
+    this.isPlaying = true;
+
+    // فك حظر الصوت في متصفحات الموبايل
+    this.unlockMobileAudio();
+
+    const playPromise = this.activeDeck.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(err => {
+        console.warn('[DualPlayer] Surah stream playback delay/error:', err);
+        this.activeDeck.play().catch(() => {});
+      });
+    }
+
+    if (this.onPlayStateChange) this.onPlayStateChange(true);
+    if (this.onSurahChange) {
+      this.onSurahChange(this.currentSurah, this.currentReciter);
+    }
+    if (this.onAyahChange) {
+      this.onAyahChange(this.currentSurah, 1, this.currentReciter, false);
+    }
+
+    this.updateMediaSession();
+  }
+
   // تشغيل آية محددة
   playAyah(surah, ayah, reciter = null, isManual = false) {
+    this.mode = 'ayah';
     if (reciter) this.currentReciter = reciter;
     this.currentSurah = surah;
     this.currentAyah = ayah;
@@ -453,7 +517,11 @@ export class DualQuranPlayer {
   // تشغيل أو استئناف
   play() {
     if (!this.activeDeck.src || this.activeDeck.src === window.location.href) {
-      this.playAyah(this.currentSurah, this.currentAyah, this.currentReciter);
+      if (this.mode === 'surah') {
+        this.playSurahStream(this.currentSurah, this.currentReciter);
+      } else {
+        this.playAyah(this.currentSurah, this.currentAyah, this.currentReciter);
+      }
     } else {
       this.activeDeck.play();
       this.isPlaying = true;
@@ -496,8 +564,15 @@ export class DualQuranPlayer {
     return this.activeDeck ? this.activeDeck.duration : 0;
   }
 
-  // الانتقال للآية السابقة
+  // الانتقال للآية السابقة أو السورة السابقة في نمط التدفق
   prev() {
+    if (this.mode === 'surah') {
+      const prevIdx = SURAHS.findIndex(s => s.id === this.currentSurah.id) - 1;
+      const prevS = prevIdx >= 0 ? SURAHS[prevIdx] : SURAHS[SURAHS.length - 1];
+      this.playSurahStream(prevS, this.currentReciter);
+      return;
+    }
+
     if (this.topicPlaylist && this.topicPlaylist.length > 0) {
       if (this.topicIndex > 0) {
         this.topicIndex--;
@@ -523,8 +598,15 @@ export class DualQuranPlayer {
     this.playAyah(prevS, prevA, this.currentReciter, true);
   }
 
-  // الانتقال للآية التالية يدوياً
+  // الانتقال للآية التالية أو السورة التالية في نمط التدفق
   next() {
+    if (this.mode === 'surah') {
+      const nextIdx = SURAHS.findIndex(s => s.id === this.currentSurah.id) + 1;
+      const nextS = nextIdx < SURAHS.length ? SURAHS[nextIdx] : SURAHS[0];
+      this.playSurahStream(nextS, this.currentReciter);
+      return;
+    }
+
     if (this.topicPlaylist && this.topicPlaylist.length > 0) {
       if (this.topicIndex < this.topicPlaylist.length - 1) {
         this.topicIndex++;
@@ -544,8 +626,12 @@ export class DualQuranPlayer {
   updateMediaSession() {
     if ('mediaSession' in navigator && this.currentSurah && this.currentReciter) {
       try {
+        const title = this.mode === 'surah'
+          ? `سورة ${this.currentSurah.name} (تلاوة متدفقة مستمرة)`
+          : `سورة ${this.currentSurah.name} - الآية ${this.currentAyah}`;
+
         navigator.mediaSession.metadata = new MediaMetadata({
-          title: `سورة ${this.currentSurah.name} - الآية ${this.currentAyah}`,
+          title: title,
           artist: `الشيخ ${this.currentReciter.name}`,
           album: 'المصحف الصوتي الميسر',
           artwork: [
