@@ -115,10 +115,10 @@ ${recitersInfo}
 - القارئ الحالي: ${context.currentReciter?.name || 'محمود خليل الحصري'}
 
 القواعد والتعليمات:
-1. إذا طلب المستخدم قصة من قصص القرآن أو الأنبياء (مثل: قصة موسى، قصة يوسف، قصة إبراهيم، قصة نوح، أصحاب الكهف، ذو القرنين، قارون، طالوت وجالوت، قصة آدم، قصة عيسى، قصة سليمان، قصة داود، أصحاب الأخدود، أصحاب الفيل، السيرة النبوية وغيرها):
+1. إذا طلب المستخدم قصة من قصص القرآن أو الأنبياء (مثل: قصة موسى، قصة يوسف، قصة إبراهيم، قصة نوح، أصحاب الكهف، ذو القرنين، قصة مريم، قارون، طالوت وجالوت، قصة آدم، قصة عيسى، قصة صالح أو ثمود، قصة سليمان، قصة داود، أصحاب الأخدود، أصحاب الفيل، السيرة النبوية وغيرها):
    - حدد النية: "PLAY_STORY".
    - حدد storyId المناسب من المعرفات:
-     [adam, idris, nuh, hud, salih, ibrahim, lut, ismail_ishaq_yaqub, yusuf, shuayb, musa, yunus, dawud, sulayman, ayyub, ilyas_yasa, zakariya_yahya, isa, muhammad, talut_jalut, ashab_kahf, dhul_qarnayn, qarun, sahib_jannatayn, luqman, ashab_jannah, ashab_qaryah, saba, ashab_ukhdood, ashab_fil, ashab_sabt].
+     [adam, idris, nuh, hud, salih, ibrahim, lut, ismail_ishaq_yaqub, yusuf, shuayb, musa, yunus, dawud, sulayman, ayyub, ilyas_yasa, zakariya_yahya, maryam, isa, muhammad, talut_jalut, ashab_kahf, dhul_qarnayn, qarun, sahib_jannatayn, luqman, ashab_jannah, ashab_qaryah, saba, ashab_ukhdood, ashab_fil, ashab_sabt].
    - ضع في "topic" اسم القصة، ورسالة تأكيدية عن بدء تلاوة القصة حسب ترتيبها الزمني.
 2. إذا طلب المستخدم موضوعاً معيناً (مثل: "آيات الصلاة", "آيات الصبر", "آيات الصيام", "آيات الرزق", "آيات بر الوالدين", "آيات الجنة", "آيات المنافقين" وغيرها):
    - حدد النية: "PLAY_TOPIC".

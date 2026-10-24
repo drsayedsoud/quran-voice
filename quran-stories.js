@@ -89,39 +89,12 @@ export const QURAN_STORIES = [
     description: "الدعوة الطويلة، وصناعة الفلك، والطوفان العظيم، وغرق الابن، واستواء السفينة على الجودي",
     scenes: [
       {
-        title: "إرسال نوح وبداية الدعوة إلى التوحيد",
-        passages: [{ surahId: 71, startAyah: 1, endAyah: 4, label: "سورة نوح (1 - 4)" }]
+        title: "دعوة نوح لقومه ليلاً ونهاراً وصبره واستغفاره في سورة نوح",
+        passages: [{ surahId: 71, startAyah: 1, endAyah: 28, label: "سورة نوح (1 - 28)" }]
       },
       {
-        title: "جهاد نوح في الدعوة وإصرار قومه على الشرك وأصنامهم",
-        passages: [{ surahId: 71, startAyah: 5, endAyah: 24, label: "سورة نوح (5 - 24)" }]
-      },
-      {
-        title: "جدال الملأ وسخريتهم ومطالبتهم بطرد المساكين",
-        passages: [{ surahId: 11, startAyah: 27, endAyah: 35, label: "سورة هود (27 - 35)" }]
-      },
-      {
-        title: "الوحي لنوح بصنع الفلك وسخرية القوم",
-        passages: [{ surahId: 11, startAyah: 36, endAyah: 39, label: "سورة هود (36 - 39)" }]
-      },
-      {
-        title: "فوران التنور وانفجار عيون الأرض وانهمار ماء السماء",
-        passages: [
-          { surahId: 11, startAyah: 40, endAyah: 40, label: "سورة هود (40)" },
-          { surahId: 54, startAyah: 10, endAyah: 13, label: "سورة القمر (10 - 13)" }
-        ]
-      },
-      {
-        title: "ركوب الفلك ونداء نوح لابنه العاصي وغرقه في الموج",
-        passages: [{ surahId: 11, startAyah: 41, endAyah: 43, label: "سورة هود (41 - 43)" }]
-      },
-      {
-        title: "قيل يا أرض ابلعي ماءك واستواء السفينة على الجودي",
-        passages: [{ surahId: 11, startAyah: 44, endAyah: 44, label: "سورة هود (44)" }]
-      },
-      {
-        title: "سؤال نوح بشأن ابنه واستغفاره والأمر بالهبوط بسلام",
-        passages: [{ surahId: 11, startAyah: 45, endAyah: 48, label: "سورة هود (45 - 48)" }]
+        title: "صناعة الفلك، والطوفان، وغرق الابن، واستواء السفينة على الجودي",
+        passages: [{ surahId: 11, startAyah: 25, endAyah: 49, label: "سورة هود (25 - 49)" }]
       }
     ]
   },
@@ -135,40 +108,16 @@ export const QURAN_STORIES = [
     description: "إرسال هود لإرم ذات العماد، واستكبارهم، وريح العذاب الصرصر العاتية",
     scenes: [
       {
-        title: "إرسال هود إلى عاد (إرم ذات العماد)",
-        passages: [
-          { surahId: 11, startAyah: 50, endAyah: 50, label: "سورة هود (50)" },
-          { surahId: 89, startAyah: 6, endAyah: 8, label: "سورة الفجر (6 - 8)" }
-        ]
+        title: "دعوة هود لقوم عاد واستكبارهم ومحاورتهم ونجاة المؤمنين",
+        passages: [{ surahId: 11, startAyah: 50, endAyah: 60, label: "سورة هود (50 - 60)" }]
       },
       {
-        title: "تذكيرهم بنعم الله وبسطتهم في الخلق والبطش",
-        passages: [{ surahId: 26, startAyah: 123, endAyah: 135, label: "سورة الشعراء (123 - 135)" }]
+        title: "إنذار عاد بالأحقاف وظهور عارض العذاب وظنهم أنه غيث",
+        passages: [{ surahId: 46, startAyah: 21, endAyah: 26, label: "سورة الأحقاف (21 - 26)" }]
       },
       {
-        title: "استكبار عاد وقالوا من أشد منا قوة",
-        passages: [
-          { surahId: 41, startAyah: 15, endAyah: 15, label: "سورة فصلت (15)" },
-          { surahId: 11, startAyah: 51, endAyah: 57, label: "سورة هود (51 - 57)" }
-        ]
-      },
-      {
-        title: "ظهور السحاب العارض وظنهم أنه غيث",
-        passages: [{ surahId: 46, startAyah: 24, endAyah: 24, label: "سورة الأحقاف (24)" }]
-      },
-      {
-        title: "حلول العذاب بالريح الصرصر العاتية سخرها عليهم 7 ليال و8 أيام حسوماً",
-        passages: [
-          { surahId: 69, startAyah: 6, endAyah: 8, label: "سورة الحاقة (6 - 8)" },
-          { surahId: 54, startAyah: 18, endAyah: 21, label: "سورة القمر (18 - 21)" }
-        ]
-      },
-      {
-        title: "هلاك عاد كأعجاز نخل خاوية ونجاة هود والمؤمنين",
-        passages: [
-          { surahId: 11, startAyah: 58, endAyah: 58, label: "سورة هود (58)" },
-          { surahId: 46, startAyah: 25, endAyah: 25, label: "سورة الأحقاف (25)" }
-        ]
+        title: "ريح العذاب الصرصر العاتية سخرت عليهم 7 ليال و8 أيام حسوماً",
+        passages: [{ surahId: 69, startAyah: 6, endAyah: 8, label: "سورة الحاقة (6 - 8)" }]
       }
     ]
   },
@@ -178,45 +127,20 @@ export const QURAN_STORIES = [
     id: "salih",
     name: "قصة صالح عليه السلام مع قوم ثمود",
     category: "prophets",
-    aliases: ["صالح", "سيدنا صالح", "قصة صالح", "قصة سيدنا صالح", "قوم ثمود", "ناقة صالح"],
+    aliases: ["صالح", "سيدنا صالح", "قصة صالح", "قصة سيدنا صالح", "قوم ثمود", "ثمود", "قصة ثمود", "ناقة صالح", "اصحاب الحجر"],
     description: "معجزة الناقة، ومؤامرة الرهط التسعة، وعقر الناقة، وهلاك ثمود بالصيحة",
     scenes: [
       {
-        title: "إرسال صالح وتذكيرهم بنعم نحت البيوت في الجبال",
-        passages: [
-          { surahId: 11, startAyah: 61, endAyah: 61, label: "سورة هود (61)" },
-          { surahId: 7, startAyah: 73, endAyah: 74, label: "سورة الأعراف (73 - 74)" }
-        ]
+        title: "دعوة صالح لقوم ثمود ومعجزة الناقة وعقرها وهلاكهم بالصيحة",
+        passages: [{ surahId: 11, startAyah: 61, endAyah: 68, label: "سورة هود (61 - 68)" }]
       },
       {
-        title: "إخراج الناقة آية وقسمة شرب الماء والتحذير من مسها بسوء",
-        passages: [
-          { surahId: 26, startAyah: 154, endAyah: 156, label: "سورة الشعراء (154 - 156)" },
-          { surahId: 91, startAyah: 11, endAyah: 13, label: "سورة الشمس (11 - 13)" }
-        ]
+        title: "مؤامرة الرهط التسعة المفسدين لاغتيال صالح ومكر الله بهم",
+        passages: [{ surahId: 27, startAyah: 48, endAyah: 53, label: "سورة النمل (48 - 53)" }]
       },
       {
-        title: "مؤامرة الرهط التسعة الذين يفسدون في الأرض",
-        passages: [{ surahId: 27, startAyah: 48, endAyah: 50, label: "سورة النمل (48 - 50)" }]
-      },
-      {
-        title: "انبعاث أشقاهم وعقر الناقة وتحديهم للعذاب",
-        passages: [
-          { surahId: 91, startAyah: 14, endAyah: 14, label: "سورة الشمس (14)" },
-          { surahId: 54, startAyah: 27, endAyah: 29, label: "سورة القمر (27 - 29)" },
-          { surahId: 7, startAyah: 77, endAyah: 77, label: "سورة الأعراف (77)" }
-        ]
-      },
-      {
-        title: "إنذار صالح: تمتعوا في داركم ثلاثة أيام",
-        passages: [{ surahId: 11, startAyah: 65, endAyah: 65, label: "سورة هود (65)" }]
-      },
-      {
-        title: "حلول الهلاك بالصيحة والرجفة ونجاة صالح والمؤمنين",
-        passages: [
-          { surahId: 11, startAyah: 66, endAyah: 68, label: "سورة هود (66 - 68)" },
-          { surahId: 7, startAyah: 78, endAyah: 79, label: "سورة الأعراف (78 - 79)" }
-        ]
+        title: "عاقبة طغيان ثمود وانبعاث أشقاهم في سورة الشمس",
+        passages: [{ surahId: 91, startAyah: 11, endAyah: 15, label: "سورة الشمس (11 - 15)" }]
       }
     ]
   },
@@ -287,33 +211,12 @@ export const QURAN_STORIES = [
     description: "إنكار الفاحشة الشاذة، ووصول رسل الملائكة، وقلب قريتهم عاليها سافلها",
     scenes: [
       {
-        title: "إرسال لوط وإنكاره على قومه إتيان الفاحشة وقطع السبيل",
-        passages: [
-          { surahId: 7, startAyah: 80, endAyah: 81, label: "سورة الأعراف (80 - 81)" },
-          { surahId: 29, startAyah: 28, endAyah: 29, label: "سورة العنكبوت (28 - 29)" }
-        ]
+        title: "إنكار لوط الفاحشة على قومه ودعوتهم للتقوى ومحاورتهم",
+        passages: [{ surahId: 26, startAyah: 160, endAyah: 175, label: "سورة الشعراء (160 - 175)" }]
       },
       {
-        title: "رد القوم: أخرجوا آل لوط من قريتكم إنهم أناس يتطهرون",
-        passages: [
-          { surahId: 7, startAyah: 82, endAyah: 82, label: "سورة الأعراف (82)" },
-          { surahId: 27, startAyah: 56, endAyah: 56, label: "سورة النمل (56)" }
-        ]
-      },
-      {
-        title: "وصول رسل الملائكة ومهاجمة قومه لبيته",
-        passages: [{ surahId: 11, startAyah: 77, endAyah: 79, label: "سورة هود (77 - 79)" }]
-      },
-      {
-        title: "كشف الملائكة عن هويتهم وعمى أبصار المعتدين وأمر الإسراء ليلاً",
-        passages: [
-          { surahId: 54, startAyah: 37, endAyah: 37, label: "سورة القمر (37)" },
-          { surahId: 11, startAyah: 81, endAyah: 81, label: "سورة هود (81)" }
-        ]
-      },
-      {
-        title: "حلول العذاب بالصبح: قلب القرية عاليها سافلها وحجارة من سجيل",
-        passages: [{ surahId: 11, startAyah: 82, endAyah: 83, label: "سورة هود (82 - 83)" }]
+        title: "وصول رسل الملائكة وأمر الإسراء ليلاً وقلب القرية عاليها سافلها",
+        passages: [{ surahId: 11, startAyah: 77, endAyah: 83, label: "سورة هود (77 - 83)" }]
       }
     ]
   },
@@ -690,42 +593,51 @@ export const QURAN_STORIES = [
     ]
   },
 
-  // 18. قصة عيسى بن مريم عليهما السلام
+  // 18. قصة مريم ابنة عمران عليها السلام
+  {
+    id: "maryam",
+    name: "قصة مريم ابنة عمران عليها السلام",
+    category: "prophets",
+    aliases: ["مريم", "مريم العذراء", "السيدة مريم", "مريم ابنة عمران", "مريم بنت عمران", "قصة مريم", "قصة مريم العذراء", "قصة السيدة مريم", "عذراء"],
+    description: "نذر امرأة عمران، وكفالة زكريا، وبشارة جبريل بالمسيح، والمخاض إلى جذع النخلة، وكلام عيسى في المهد، والثناء الإلهي",
+    scenes: [
+      {
+        title: "نذر امرأة عمران وولادة مريم وكفالة زكريا لها في المحراب",
+        passages: [{ surahId: 3, startAyah: 35, endAyah: 37, label: "سورة آل عمران (35 - 37)" }]
+      },
+      {
+        title: "اصطفاء الملائكة لمريم وتطهيرها والبشارة بالمسيح عيسى ابن مريم",
+        passages: [{ surahId: 3, startAyah: 42, endAyah: 47, label: "سورة آل عمران (42 - 47)" }]
+      },
+      {
+        title: "اعتزال مريم وتمثل الروح بشراً والمخاض وجذع النخلة ونطق الرضيع في المهد",
+        passages: [{ surahId: 19, startAyah: 16, endAyah: 36, label: "سورة مريم (16 - 36)" }]
+      },
+      {
+        title: "ثناء الله على مريم ابنة عمران وتصديقها بكلمات ربها وكتبه",
+        passages: [{ surahId: 66, startAyah: 12, endAyah: 12, label: "سورة التحريم (12)" }]
+      }
+    ]
+  },
+
+  // 19. قصة عيسى بن مريم عليهما السلام
   {
     id: "isa",
     name: "قصة عيسى بن مريم عليهما السلام",
     category: "prophets",
-    aliases: ["عيسى", "المسيح", "عيسي", "سيدنا عيسى", "سيدنا عيسي", "قصة عيسى", "مريم", "قصة مريم", "السيدة مريم", "مريم العذراء", "مريم وعيسى", "المائدة"],
-    description: "ولادة مريم، وبشارة جبريل، والمخاض وجذع النخلة، وكلام عيسى في المهد، والمعجزات، ورفعه للسماء",
+    aliases: ["عيسى", "المسيح", "عيسي", "سيدنا عيسى", "سيدنا عيسي", "قصة عيسى", "قصة سيدنا عيسى", "المسيح عيسى", "المائدة"],
+    description: "رسالة المسيح، ومعجزات إبراء الأكمه وإحياء الموتى، ومائدة الحواريين، ورفعه للسماء، ومساءلته يوم القيامة",
     scenes: [
       {
-        title: "نذر أم مريم وولادتها لمريم واصطفاء مريم وبشارة جبريل بالمسيح",
-        passages: [
-          { surahId: 3, startAyah: 35, endAyah: 37, label: "سورة آل عمران (35 - 37)" },
-          { surahId: 3, startAyah: 42, endAyah: 47, label: "سورة آل عمران (42 - 47)" }
-        ]
+        title: "رسالة عيسى وتعليمه الكتاب والحكمة ومعجزاته لبني إسرائيل",
+        passages: [{ surahId: 3, startAyah: 48, endAyah: 51, label: "سورة آل عمران (48 - 51)" }]
       },
       {
-        title: "المخاض إلى جذع النخلة وتساقط الرطب وجريان السري",
-        passages: [{ surahId: 19, startAyah: 16, endAyah: 26, label: "سورة مريم (16 - 26)" }]
+        title: "نعم الله على المسيح وطلب الحواريين نزول المائدة من السماء",
+        passages: [{ surahId: 5, startAyah: 110, endAyah: 115, label: "سورة المائدة (110 - 115)" }]
       },
       {
-        title: "مجيء مريم بالطفل وكلام عيسى في المهد معلناً عبوديته ونبوته",
-        passages: [{ surahId: 19, startAyah: 27, endAyah: 33, label: "سورة مريم (27 - 33)" }]
-      },
-      {
-        title: "معجزات عيسى: خلق الطير وإبراء الأكمه والأبرص وإحياء الموتى",
-        passages: [
-          { surahId: 3, startAyah: 49, endAyah: 50, label: "سورة آل عمران (49 - 50)" },
-          { surahId: 5, startAyah: 110, endAyah: 110, label: "سورة المائدة (110)" }
-        ]
-      },
-      {
-        title: "إيمان الحواريين وطلب نزول المائدة من السماء",
-        passages: [{ surahId: 5, startAyah: 111, endAyah: 115, label: "سورة المائدة (111 - 115)" }]
-      },
-      {
-        title: "مكر الأعداء لقتله ورفعه إلى السماء وشبه لهم",
+        title: "مكر الأعداء لقتله وبراءته وشبه لهم ورفعه إلى السماء",
         passages: [
           { surahId: 4, startAyah: 156, endAyah: 159, label: "سورة النساء (156 - 159)" },
           { surahId: 3, startAyah: 54, endAyah: 55, label: "سورة آل عمران (54 - 55)" }
@@ -1059,13 +971,13 @@ export function findStoryByQuery(queryText) {
 
   // تفريغ البوادئ والأوامر الصوتية الشائعة لاستخلاص جوهر اسم القصة/النبي
   let core = clean
-    .replace(/^(جلب|هات|عايز|شغل|اقرا|تلاوه|تلاوة|سرد|احكي|احكي لي|سمعني|سماع)\s+/, '')
+    .replace(/^(جلب|هات|عايز|عاوز|شغل|اقرا|تلاوه|تلاوة|سرد|احكي|احكي لي|سمعني|سماع)\s+/, '')
     .replace(/^(ايات|ايات عن|اية|ايه|موضوع|قصص|قصه|قصة|حكايه|حكاية|سيره|سيرة)\s+/, '')
     .replace(/^(سيدنا|نبي الله|النبي|رسول الله|الرسول)\s+/, '')
     .trim();
 
   const words = clean.split(/\s+/);
-  const storyKeywords = ['قصه', 'قصة', 'حكايه', 'حكاية', 'سيره', 'سيرة', 'احكي', 'روايه', 'رواية', 'اخبار', 'خبر', 'ايات', 'اية', 'ايه', 'جلب', 'هات', 'عايز', 'سرد', 'تلاوه', 'تلاوة', 'عن'];
+  const storyKeywords = ['قصه', 'قصة', 'حكايه', 'حكاية', 'سيره', 'سيرة', 'احكي', 'روايه', 'رواية', 'اخبار', 'خبر', 'ايات', 'اية', 'ايه', 'جلب', 'هات', 'عايز', 'عاوز', 'سرد', 'تلاوه', 'تلاوة', 'عن'];
   const hasStoryKeyword = words.some(w => storyKeywords.includes(w)) || clean.startsWith('احكي');
   const hasSurahKeyword = words.includes('سوره') || words.includes('سورة');
 
