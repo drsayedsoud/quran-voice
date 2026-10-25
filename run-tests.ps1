@@ -28,7 +28,7 @@ if (-not $browserPath) {
 
 Write-Host ""
 Write-Host "=================================================================" -ForegroundColor Cyan
-Write-Host "   Automated Test Suite for Quran Voice PWA (371 Tests)" -ForegroundColor Cyan
+Write-Host "   Automated Test Suite for Quran Voice PWA (377 Tests)" -ForegroundColor Cyan
 Write-Host "=================================================================" -ForegroundColor Cyan
 Write-Host "Executing tests via headless browser: $browserPath" -ForegroundColor Yellow
 
@@ -42,17 +42,15 @@ $cmdArgs = @(
     "--allow-file-access-from-files",
     "--disable-web-security",
     "--user-data-dir=`"$tempUserData`"",
-    "--virtual-time-budget=6000",
+    "--virtual-time-budget=25000",
     "--run-all-compositor-stages-before-draw",
     "--dump-dom",
     "`"$testFileUrl`""
 ) -join " "
 
-$cmdLine = "cmd /c `"$browserPath`" $cmdArgs"
-
 try {
-    Invoke-Expression "$cmdLine > `"$dumpFile`""
-    $domOutput = Get-Content $dumpFile -Raw
+    Start-Process -FilePath $browserPath -ArgumentList $cmdArgs -RedirectStandardOutput $dumpFile -Wait -NoNewWindow
+    $domOutput = Get-Content $dumpFile -Raw -Encoding UTF8
 } finally {
     Remove-Item -Path $tempUserData -Recurse -Force -ErrorAction SilentlyContinue | Out-Null
     Remove-Item -Path $dumpFile -Force -ErrorAction SilentlyContinue | Out-Null
@@ -89,6 +87,19 @@ if ($match.Success -and -not [string]::IsNullOrWhiteSpace($match.Groups[1].Value
         exit 1
     }
 } else {
-    Write-Host "ERROR: Could not find #testOutputSummary in browser DOM output." -ForegroundColor Red
+    Write-Host "ERROR: Could not find #testOutputSummary in browser DOM output. DOM length: $($domOutput.Length)" -ForegroundColor Red
+    $statusMatch = [regex]::Match($domOutput, '<span id="progressStatus"[^>]*>(.*?)</span>', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+    if ($statusMatch.Success) {
+        Write-Host "Current Progress Status: $($statusMatch.Groups[1].Value)" -ForegroundColor Magenta
+    }
+    if ($match.Success) {
+        Write-Host "Match succeeded but group value was empty: [$($match.Groups[1].Value)]" -ForegroundColor Yellow
+        $divMatch = [regex]::Match($domOutput, '<div id="testOutputSummary"[^>]*>', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+        if ($divMatch.Success) {
+            Write-Host "Div tag: $($divMatch.Value)" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "Regex match did not succeed. Preview of DOM: $($domOutput.Substring(0, [Math]::Min(500, $domOutput.Length)))" -ForegroundColor Yellow
+    }
     exit 1
 }

@@ -131,7 +131,8 @@
       TestRunner,
       registerVoiceEngineTests,
       registerDualPlayerTests,
-      registerAudioUrlsTests
+      registerAudioUrlsTests,
+      registerOfflineTafsirTests
     } from './tests/test-suite.js';
 
     // عناصر الواجهة
@@ -168,6 +169,7 @@
       registerVoiceEngineTests(runner);
       registerDualPlayerTests(runner);
       registerAudioUrlsTests(runner);
+      registerOfflineTafsirTests(runner);
 
       let processed = 0;
       // تقدير عدد الاختبارات الكلي للتحديث السلس

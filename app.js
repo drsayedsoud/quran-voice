@@ -14,6 +14,7 @@ import {
 } from './voice-engine.js';
 import { parseWithGemini } from './gemini-service.js';
 import { sound } from './sound-effects.js';
+import { getTafsir, extractTermMeaning, seedTafsirIfNeeded } from './tafsir-service.js';
 import { 
   initUserSession, 
   saveLastPosition, 
@@ -104,6 +105,9 @@ class QuranVoiceApp {
 
     // استعادة آخر جلسة محلية
     this.restoreLocalPosition();
+
+    // تهيئة ومزامنة التفسير الميسر الأوفلاين (IndexedDB)
+    seedTafsirIfNeeded().catch(() => {});
 
     // تهيئة جلسة Firebase
     initUserSession((user) => {
@@ -1093,65 +1097,56 @@ class QuranVoiceApp {
     }
   }
 
-  // جلب وقراءة التفسير الميسر للآية أو لكلمة محددة ونطقه صوتياً ثم استئناف التلاوة تلقائياً
+  // جلب وقراءة التفسير الميسر أوفلاين (IndexedDB / Local Cache 0ms) ثم استئناف التلاوة تلقائياً
   async fetchAndShowTafsir(requestedTerm = '') {
     const surah = this.currentSurah;
     const ayahNum = this.currentAyah;
     this.dom.voiceStatus.textContent = 'جاري جلب التفسير الميسر...';
 
     try {
-      const resp = await fetch(`https://api.alquran.cloud/v1/ayah/${surah.id}:${ayahNum}/ar.muyassar`);
-      const data = await resp.json();
+      const fullTafsir = await getTafsir(surah.id, ayahNum);
 
-      if (data && data.data && data.data.text) {
-        let fullTafsir = data.data.text.trim();
-        let displayText = fullTafsir;
-        let speakText = `تفسير الآية ${ayahNum} من سورة ${surah.name}: ${fullTafsir}`;
+      let displayText = fullTafsir;
+      let speakText = `تفسير الآية ${ayahNum} من سورة ${surah.name}: ${fullTafsir}`;
 
-        // إذا طلب المستخدم تفسير كلمة معينة أو معنى محدد، نبحث عنه داخل نص التفسير الميسر
-        const cleanTerm = (requestedTerm || '').trim();
-        if (cleanTerm && cleanTerm.length > 1 && cleanTerm !== 'الايه' && cleanTerm !== 'الآية') {
-          // محاولة استخراج الجملة أو الشرح المتعلق بالكلمة
-          const sentences = fullTafsir.split(/[\.\،\;\:\n]/).map(s => s.trim()).filter(Boolean);
-          const matchedSentence = sentences.find(s => s.includes(cleanTerm));
-          if (matchedSentence) {
-            speakText = `معنى كلمة ${cleanTerm} في الآية: ${matchedSentence}`;
-          }
+      // إذا طلب المستخدم تفسير كلمة معينة أو معنى محدد، نبحث عنه داخل نص التفسير الميسر
+      const cleanTerm = (requestedTerm || '').trim();
+      if (cleanTerm && cleanTerm.length > 1 && cleanTerm !== 'الايه' && cleanTerm !== 'الآية') {
+        const matchedSentence = extractTermMeaning(fullTafsir, cleanTerm);
+        if (matchedSentence) {
+          speakText = `معنى كلمة ${cleanTerm} في الآية: ${matchedSentence}`;
         }
-
-        // كتابة التفسير على الشاشة
-        if (this.dom.tafsirText) {
-          this.dom.tafsirText.textContent = displayText;
-        }
-        if (this.dom.tafsirModal) {
-          this.dom.tafsirModal.classList.remove('hidden');
-        }
-        this.dom.voiceStatus.textContent = `تفسير سورة ${surah.name} آية ${ayahNum}`;
-
-        // نطق التفسير صوتياً بالكامل عبر مركب الصوت، وعند الانتهاء: معاودة القراءة من الموضع الواقف عليه تلقائياً
-        sound.speak(speakText, () => {
-          console.log('[Tafsir] Finished speaking tafsir. Resuming playback from saved position...');
-          this.dom.voiceStatus.textContent = 'استئناف التلاوة...';
-          
-          // إخفاء نافذة التفسير بعد القراءة
-          setTimeout(() => {
-            if (this.dom.tafsirModal) {
-              this.dom.tafsirModal.classList.add('hidden');
-            }
-          }, 800);
-
-          // معاودة القراءة من الموضع الذي توقفت عنده
-          if (this.resumePlaybackAfterTafsir) {
-            this.resumePlaybackAfterTafsir = false;
-            setTimeout(() => {
-              this.playCurrentAyah();
-            }, 600);
-          }
-        });
-
-      } else {
-        throw new Error('No tafsir text found in response');
       }
+
+      // كتابة التفسير على الشاشة
+      if (this.dom.tafsirText) {
+        this.dom.tafsirText.textContent = displayText;
+      }
+      if (this.dom.tafsirModal) {
+        this.dom.tafsirModal.classList.remove('hidden');
+      }
+      this.dom.voiceStatus.textContent = `تفسير سورة ${surah.name} آية ${ayahNum}`;
+
+      // نطق التفسير صوتياً بالكامل عبر مركب الصوت، وعند الانتهاء: معاودة القراءة من الموضع الواقف عليه تلقائياً
+      sound.speak(speakText, () => {
+        console.log('[Tafsir] Finished speaking tafsir. Resuming playback from saved position...');
+        this.dom.voiceStatus.textContent = 'استئناف التلاوة...';
+        
+        // إخفاء نافذة التفسير بعد القراءة
+        setTimeout(() => {
+          if (this.dom.tafsirModal) {
+            this.dom.tafsirModal.classList.add('hidden');
+          }
+        }, 800);
+
+        // معاودة القراءة من الموضع الذي توقفت عنده
+        if (this.resumePlaybackAfterTafsir) {
+          this.resumePlaybackAfterTafsir = false;
+          setTimeout(() => {
+            this.playCurrentAyah();
+          }, 600);
+        }
+      });
     } catch (e) {
       console.warn('Tafsir fetch error:', e);
       sound.speak("عذراً، تعذر جلب التفسير حالياً، جاري استئناف التلاوة", () => {
