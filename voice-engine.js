@@ -420,12 +420,34 @@ export function parseVoiceCommand(rawTranscript) {
     return result;
   }
 
-  // تغيير القارئ فقط دون تحديد سورة
-  if (matchedReciter && (norm.startsWith('بصوت') || norm.includes('غير القارئ') || norm.includes('حول صوت'))) {
-    result.intent = 'SET_RECITER';
-    result.payload = { reciter: matchedReciter };
-    result.message = `تم تغيير القارئ إلى الشيخ ${matchedReciter.name}`;
-    return result;
+  // تغيير القارئ أو التبديل إلى وضع المصحف المعلم للأطفال
+  if (matchedReciter && (
+    norm.startsWith('بصوت') ||
+    norm.includes('غير القارئ') ||
+    norm.includes('حول صوت') ||
+    norm.includes('المصحف المعلم') ||
+    norm.includes('مصحف المعلم') ||
+    norm.includes('وضع المعلم') ||
+    norm.includes('حفظلي ابني') ||
+    norm.includes('حفظ الطفل') ||
+    norm.includes('تحفيظ') ||
+    norm.includes('المعلم')
+  )) {
+    let hasSurahMentioned = false;
+    for (const surah of SURAHS) {
+      if (matchesSurahWord(norm, normalizeArabic(surah.name))) {
+        hasSurahMentioned = true;
+        break;
+      }
+    }
+    if (!hasSurahMentioned) {
+      result.intent = 'SET_RECITER';
+      result.payload = { reciter: matchedReciter };
+      result.message = matchedReciter.id.includes('muallim')
+        ? `تم التبديل إلى ${matchedReciter.name} مع ترديد الأطفال`
+        : `تم تغيير القارئ إلى الشيخ ${matchedReciter.name}`;
+      return result;
+    }
   }
 
   // استثناء خاص لـ: "اية الكرسي"
@@ -495,11 +517,13 @@ export function parseVoiceCommand(rawTranscript) {
     return result;
   }
 
-  // إذا لم نجد سورة ولكن ذكر القارئ فقط
+  // إذا لم نجد سورة ولكن ذكر القارئ أو نمط المعلم فقط
   if (matchedReciter) {
     result.intent = 'SET_RECITER';
     result.payload = { reciter: matchedReciter };
-    result.message = `تم اختيار الشيخ ${matchedReciter.name}`;
+    result.message = matchedReciter.id.includes('muallim')
+      ? `تم التبديل إلى ${matchedReciter.name} مع ترديد الأطفال`
+      : `تم اختيار الشيخ ${matchedReciter.name}`;
     return result;
   }
 

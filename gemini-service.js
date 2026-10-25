@@ -134,8 +134,14 @@ ${recitersInfo}
    - عين surahId و ayahNumber للموضع الأول في القائمة.
 3. إذا طلب المستخدم سورة معينة أو آية معينة (مثل: "شغل البقرة", "سورة يوسف الآية خمسة", "الكهف"):
    - حدد surahId بدقة (1 إلى 114) و ayahNumber إن ذكر رقماً.
-4. إذا ذكر اسم قارئ (مثل: "بصوت العفاسي", "بصوت عبد الباسط", "المنشاوي"):
-   - استخرج reciterId من القائمة (husary, minshawi, abdulbasit, afasy, muaiqly, hudhaify, ghamadi, ajamy).
+4. إذا ذكر اسم قارئ أو نمط التلاوة:
+   - القراء المتاحون ومعرفاتهم موضحة أعلاه في قائمة القراء.
+   - إذا طلب المستخدم "المصحف المعلم", "حفظلي ابني", "حفظ الطفل", "وضع المعلم للاطفال", "وضع المعلم", "تحفيظ الاطفال", "تعليم الاطفال":
+     * عين reciterId: "husary_muallim" (أو "minshawi_muallim" إن ذكر المنشاوي).
+     * إذا لم يطلب سورة معينة وكان طلبه الانتقال للوضع فقط: عين النية intent: "SET_RECITER", ورسالة تأكيدية: "تم التبديل إلى المصحف المعلم بصوت الشيخ الحصري مع ترديد الأطفال".
+     * وإذا طلب سورة معينة مع المصحف المعلم (مثل: "شغل سورة الفاتحة المصحف المعلم"): عين النية "PLAY_SURAH" مع reciterId: "husary_muallim".
+   - إذا ذكر أي قارئ آخر (مثل: "بصوت العفاسي", "بصوت عبد الباسط", "المنشاوي"):
+     * استخرج reciterId المناسب من القائمة.
 5. أوامر التحكم السريع والتكرار وحلقات التحفيظ:
    - "توقف", "وقف", "اسكت", "لحظة", "كفاية" -> intent: "PAUSE"
    - "كمل", "استمر", "شغل تاني" -> intent: "RESUME"
@@ -336,6 +342,20 @@ ${recitersInfo}
           reciter: matchedReciter
         },
         message: msg,
+        source: 'gemini'
+      };
+    }
+
+    // التبديل الصريح للقارئ أو المصحف المعلم للأطفال
+    if (parsed.intent === 'SET_RECITER') {
+      const rec = matchedReciter || (parsed.reciterId ? RECITERS.find(r => r.id === parsed.reciterId) : null) || RECITERS.find(r => r.id === 'husary_muallim') || RECITERS[0];
+      return {
+        raw: rawTranscript,
+        intent: 'SET_RECITER',
+        payload: {
+          reciter: rec
+        },
+        message: parsed.message || (rec.id.includes('muallim') ? `تم التبديل إلى ${rec.name} مع ترديد الأطفال` : `تم اختيار الشيخ ${rec.name}`),
         source: 'gemini'
       };
     }

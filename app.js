@@ -128,9 +128,10 @@ class QuranVoiceApp {
     }
 
     if (this.dom.reciterSelect) {
-      this.dom.reciterSelect.innerHTML = RECITERS.map(r => 
-        `<option value="${r.id}">الشيخ ${r.name} (${r.subname})</option>`
-      ).join('');
+      this.dom.reciterSelect.innerHTML = RECITERS.map(r => {
+        const prefix = r.id.includes('muallim') ? '🌟 ' : 'الشيخ ';
+        return `<option value="${r.id}">${prefix}${r.name} (${r.subname})</option>`;
+      }).join('');
     }
   }
 
@@ -493,13 +494,17 @@ class QuranVoiceApp {
         this.currentReciter = parsed.payload.reciter;
         this.dom.voiceStatus.textContent = parsed.message;
         sound.playSuccessChime();
+        sound.speak(parsed.message || `تم التبديل إلى الشيخ ${this.currentReciter.name}`);
         this.updateUI();
+        saveLastPosition(this.currentSurah, this.currentAyah, this.currentReciter.id);
         if (this.isPlaying) {
           if (this.player && this.player.mode === 'surah') {
             this.playSurahStream(this.currentSurah, this.currentReciter);
           } else {
             this.playCurrentAyah();
           }
+        } else if (parsed.payload.reciter?.id?.includes('muallim')) {
+          this.playCurrentAyah();
         }
         break;
 
@@ -1257,7 +1262,11 @@ class QuranVoiceApp {
       }
     }
 
-    if (this.dom.reciterName) this.dom.reciterName.textContent = `بصوت الشيخ ${this.currentReciter.name}`;
+    if (this.dom.reciterName) {
+      this.dom.reciterName.textContent = this.currentReciter.id.includes('muallim')
+        ? `${this.currentReciter.name} (${this.currentReciter.subname})`
+        : `بصوت الشيخ ${this.currentReciter.name}`;
+    }
 
     if (this.dom.playBtn) {
       this.dom.playBtn.innerHTML = this.isPlaying 
