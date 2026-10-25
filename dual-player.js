@@ -416,11 +416,21 @@ export class DualQuranPlayer {
     this.standbyDeck.load(); // فك التشفير والتخزين في ذاكرة المتصفح مسبقاً
   }
 
+  // إلغاء أي مهام تحميل مسبق جارية للآيات في الخلفية
+  abortLookahead() {
+    if (this.prefetchAbortController) {
+      try {
+        this.prefetchAbortController.abort();
+      } catch (e) {
+        // تجاهل
+      }
+      this.prefetchAbortController = null;
+    }
+  }
+
   // سحب الـ 5 آيات القادمة وتخزينها في الكاش المسبق (Background Lookahead Buffer)
   async prefetchUpcoming(count = 5) {
-    if (this.prefetchAbortController) {
-      this.prefetchAbortController.abort();
-    }
+    this.abortLookahead();
     this.prefetchAbortController = new AbortController();
     const signal = this.prefetchAbortController.signal;
 
@@ -728,6 +738,16 @@ export class DualQuranPlayer {
       return;
     }
 
+    // إذا كان في حلقة حفظ (Range Loop) وضغط السابق يدوياً
+    if (this.loopState && this.loopState.active && this.loopState.type === 'RANGE') {
+      if (this.currentAyah > this.loopState.fromAyah) {
+        this.playAyah(this.loopState.surah, this.currentAyah - 1, this.currentReciter, true);
+      } else {
+        this.playAyah(this.loopState.surah, this.loopState.fromAyah, this.currentReciter, true);
+      }
+      return;
+    }
+
     if (this.topicPlaylist && this.topicPlaylist.length > 0) {
       if (this.topicIndex > 0) {
         this.topicIndex--;
@@ -760,6 +780,28 @@ export class DualQuranPlayer {
       const nextS = nextIdx < SURAHS.length ? SURAHS[nextIdx] : SURAHS[0];
       this.playSurahStream(nextS, this.currentReciter);
       return;
+    }
+
+    // إذا كان في حلقة حفظ (Range Loop) وضغط التالي يدوياً
+    if (this.loopState && this.loopState.active && this.loopState.type === 'RANGE') {
+      if (this.currentAyah < this.loopState.toAyah) {
+        this.playAyah(this.loopState.surah, this.currentAyah + 1, this.currentReciter, true);
+        return;
+      } else {
+        if (this.loopState.currentLoop < this.loopState.totalLoops) {
+          this.loopState.currentLoop++;
+          if (this.onRepeat) this.onRepeat(this.loopState.currentLoop, this.loopState.totalLoops, this.loopState);
+          this.playAyah(this.loopState.surah, this.loopState.fromAyah, this.currentReciter, true);
+          return;
+        } else {
+          const finishedLoop = { ...this.loopState };
+          this.clearLoop();
+          if (this.onLoopFinished) this.onLoopFinished(finishedLoop);
+          const trackAfter = this.computeTrackAfter(this.currentSurah, this.currentAyah);
+          if (trackAfter) this.playAyah(trackAfter.surah, trackAfter.ayah, this.currentReciter, true);
+          return;
+        }
+      }
     }
 
     if (this.topicPlaylist && this.topicPlaylist.length > 0) {

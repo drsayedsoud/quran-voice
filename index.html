@@ -7,7 +7,9 @@
   
   <!-- إعدادات تطبيق الويب PWA -->
   <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
   <meta name="theme-color" content="#022c22">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -75,9 +77,10 @@
         <div class="inline-flex items-center px-3 py-0.5 sm:px-4 sm:py-1 rounded-full bg-amber-500/20 border border-amber-400/30 text-amber-300 text-[11px] sm:text-xs font-bold shadow-inner" id="ayahBadge">
           الآية 1
         </div>
-        <div id="repeatBadge" class="hidden items-center gap-1 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-amber-500/30 border border-amber-400/60 text-amber-200 text-[10px] sm:text-xs font-bold shadow-inner animate-pulse" title="وضع التكرار والحفظ نشط">
+        <div id="repeatBadge" class="hidden items-center gap-1.5 px-3 py-0.5 sm:px-3.5 sm:py-1 rounded-full bg-amber-500/30 border border-amber-400 text-amber-200 text-[10px] sm:text-xs font-bold shadow-inner cursor-pointer hover:bg-amber-500/40 active:scale-95 transition-all animate-pulse" title="وضع التكرار والحفظ نشط (انقر هنا لإلغاء التكرار)">
           <span>🔁</span>
           <span id="repeatBadgeText">تكرار 1/3</span>
+          <span class="text-[10px] text-amber-300/80 hover:text-white mr-0.5 font-bold" title="إلغاء التكرار">✕</span>
         </div>
         <div class="inline-flex items-center px-2 py-0.5 sm:px-3 sm:py-1 rounded-full bg-emerald-800/80 border border-amber-400/30 text-amber-300 text-[10px] sm:text-xs font-semibold shadow-inner" title="محرك الذكاء الاصطناعي نشط لفهم الأوامر والبحث الموضوعي في القرآن">
           <span class="ml-1 text-xs">✨</span>

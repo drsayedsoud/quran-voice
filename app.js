@@ -417,6 +417,9 @@ class QuranVoiceApp {
 
     switch (parsed.intent) {
       case 'PLAY_STORY':
+        if (this.player) this.player.clearLoop();
+        this.repeatCount = 1;
+        this.currentRepeat = 1;
         this.topicPlaylist = parsed.payload.passages || [];
         this.topicIndex = 0;
         if (parsed.payload.reciter) {
@@ -439,6 +442,9 @@ class QuranVoiceApp {
         break;
 
       case 'PLAY_TOPIC':
+        if (this.player) this.player.clearLoop();
+        this.repeatCount = 1;
+        this.currentRepeat = 1;
         this.topicPlaylist = parsed.payload.passages || [];
         this.topicIndex = 0;
         if (parsed.payload.reciter) {
@@ -459,6 +465,9 @@ class QuranVoiceApp {
         break;
 
       case 'PLAY_SURAH':
+        if (this.player) this.player.clearLoop();
+        this.repeatCount = 1;
+        this.currentRepeat = 1;
         this.topicPlaylist = []; // إلغاء قائمة الموضوع إذا طلب سورة محددة
         this.currentSurah = parsed.payload.surah;
         if (parsed.payload.reciter) {
@@ -480,6 +489,9 @@ class QuranVoiceApp {
         break;
 
       case 'PLAY_AYAH':
+        if (this.player) this.player.clearLoop();
+        this.repeatCount = 1;
+        this.currentRepeat = 1;
         this.currentSurah = parsed.payload.surah;
         this.currentAyah = parsed.payload.ayahNumber;
         if (parsed.payload.reciter) {
@@ -516,6 +528,9 @@ class QuranVoiceApp {
         const toAyah = parsed.payload.toAyah || fromAyah;
         const times = parsed.payload.times || 3;
 
+        this.repeatCount = times;
+        this.currentRepeat = 1;
+
         if (parsed.payload.reciter) {
           this.currentReciter = parsed.payload.reciter;
         }
@@ -542,8 +557,6 @@ class QuranVoiceApp {
           if (this.player) {
             this.player.setLoopAyah(times);
           } else {
-            this.repeatCount = times;
-            this.currentRepeat = 1;
             this.playCurrentAyah();
           }
         }
@@ -552,15 +565,7 @@ class QuranVoiceApp {
         break;
 
       case 'CANCEL_REPEAT':
-        if (this.player) {
-          this.player.clearLoop();
-        }
-        this.repeatCount = 1;
-        this.currentRepeat = 1;
-        sound.playSuccessChime();
-        this.dom.voiceStatus.textContent = parsed.message || 'تم إلغاء التكرار ومتابعة التلاوة الطبيعية';
-        sound.speak("تم إلغاء التكرار ومتابعة التلاوة");
-        this.updateUI();
+        this.cancelRepeat();
         break;
 
       case 'PAUSE':
@@ -682,6 +687,19 @@ class QuranVoiceApp {
     }
     this.updateUI();
     saveLastPosition(this.currentSurah, this.currentAyah, this.currentReciter.id);
+  }
+
+  // إلغاء وضع التكرار وحلقات التحفيظ يدوياً أو صوتياً
+  cancelRepeat() {
+    if (this.player) {
+      this.player.clearLoop();
+    }
+    this.repeatCount = 1;
+    this.currentRepeat = 1;
+    sound.playSuccessChime();
+    this.dom.voiceStatus.textContent = 'تم إلغاء التكرار ومتابعة التلاوة الطبيعية';
+    sound.speak("تم إلغاء التكرار ومتابعة التلاوة");
+    this.updateUI();
   }
 
   play() {
@@ -1285,10 +1303,17 @@ class QuranVoiceApp {
     this.dom.nextBtn.addEventListener('click', () => this.nextAyah(true));
     this.dom.micBtn.addEventListener('click', () => this.startListening());
 
+    if (this.dom.repeatBadge) {
+      this.dom.repeatBadge.addEventListener('click', () => this.cancelRepeat());
+    }
+
     if (this.dom.surahSelect) {
       this.dom.surahSelect.addEventListener('change', (e) => {
         const selected = SURAHS.find(s => s.id === parseInt(e.target.value, 10));
         if (selected) {
+          if (this.player) this.player.clearLoop();
+          this.repeatCount = 1;
+          this.currentRepeat = 1;
           this.playSurahStream(selected);
         }
       });
