@@ -3,3 +3,6 @@ Thumbs.db
 node_modules/
 .vercel
 *.log
+reciters_api.json
+find_reciter.ps1
+assabile.html

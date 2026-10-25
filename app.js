@@ -129,7 +129,9 @@ class QuranVoiceApp {
 
     if (this.dom.reciterSelect) {
       this.dom.reciterSelect.innerHTML = RECITERS.map(r => {
-        const prefix = r.id.includes('muallim') ? '🌟 ' : 'الشيخ ';
+        let prefix = 'الشيخ ';
+        if (r.id.includes('muallim')) prefix = '👶 ';
+        else if (r.id.includes('mujawwad')) prefix = '✨ ';
         return `<option value="${r.id}">${prefix}${r.name} (${r.subname})</option>`;
       }).join('');
     }
@@ -1281,9 +1283,13 @@ class QuranVoiceApp {
     }
 
     if (this.dom.reciterName) {
-      this.dom.reciterName.textContent = this.currentReciter.id.includes('muallim')
-        ? `${this.currentReciter.name} (${this.currentReciter.subname})`
-        : `بصوت الشيخ ${this.currentReciter.name}`;
+      if (this.currentReciter.id.includes('muallim')) {
+        this.dom.reciterName.textContent = `👶 ${this.currentReciter.name} (${this.currentReciter.subname})`;
+      } else if (this.currentReciter.id.includes('mujawwad')) {
+        this.dom.reciterName.textContent = `✨ ${this.currentReciter.name} (${this.currentReciter.subname})`;
+      } else {
+        this.dom.reciterName.textContent = `بصوت الشيخ ${this.currentReciter.name}`;
+      }
     }
 
     if (this.dom.playBtn) {

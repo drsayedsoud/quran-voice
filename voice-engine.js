@@ -197,17 +197,19 @@ export function parseVoiceCommand(rawTranscript) {
     return result;
   }
 
-  // 1. فحص طلب تغيير القارئ المذكور في الجملة
+  // 1. فحص طلب تغيير القارئ المذكور في الجملة (مطابقة الأطول والأكثر دقة لمنع تداخل المعلم مع المرتل والمجود)
   let matchedReciter = null;
+  let bestMatchLength = 0;
   for (const reciter of RECITERS) {
     for (const alias of reciter.aliases) {
       const normAlias = normalizeArabic(alias);
-      if (norm.includes(normAlias)) {
-        matchedReciter = reciter;
-        break;
+      if (normAlias.length > 1 && norm.includes(normAlias)) {
+        if (normAlias.length > bestMatchLength) {
+          bestMatchLength = normAlias.length;
+          matchedReciter = reciter;
+        }
       }
     }
-    if (matchedReciter) break;
   }
 
   // 2. فحص قصص الأنبياء وقصص القرآن الكريم مرتبة حسب التسلسل الزمني (المسار اللحظي 0ms)
@@ -420,7 +422,7 @@ export function parseVoiceCommand(rawTranscript) {
     return result;
   }
 
-  // تغيير القارئ أو التبديل إلى وضع المصحف المعلم للأطفال
+  // تغيير القارئ أو التبديل إلى وضع المصحف المعلم للأطفال أو المجود
   if (matchedReciter && (
     norm.startsWith('بصوت') ||
     norm.includes('غير القارئ') ||
@@ -431,7 +433,10 @@ export function parseVoiceCommand(rawTranscript) {
     norm.includes('حفظلي ابني') ||
     norm.includes('حفظ الطفل') ||
     norm.includes('تحفيظ') ||
-    norm.includes('المعلم')
+    norm.includes('ترديد') ||
+    norm.includes('المعلم') ||
+    norm.includes('مجود') ||
+    norm.includes('المجود')
   )) {
     let hasSurahMentioned = false;
     for (const surah of SURAHS) {
@@ -445,7 +450,9 @@ export function parseVoiceCommand(rawTranscript) {
       result.payload = { reciter: matchedReciter };
       result.message = matchedReciter.id.includes('muallim')
         ? `تم التبديل إلى ${matchedReciter.name} مع ترديد الأطفال`
-        : `تم تغيير القارئ إلى الشيخ ${matchedReciter.name}`;
+        : (matchedReciter.id.includes('mujawwad')
+            ? `تم التبديل إلى ${matchedReciter.name}`
+            : `تم تغيير القارئ إلى الشيخ ${matchedReciter.name}`);
       return result;
     }
   }
@@ -523,7 +530,9 @@ export function parseVoiceCommand(rawTranscript) {
     result.payload = { reciter: matchedReciter };
     result.message = matchedReciter.id.includes('muallim')
       ? `تم التبديل إلى ${matchedReciter.name} مع ترديد الأطفال`
-      : `تم اختيار الشيخ ${matchedReciter.name}`;
+      : (matchedReciter.id.includes('mujawwad')
+          ? `تم التبديل إلى ${matchedReciter.name}`
+          : `تم اختيار الشيخ ${matchedReciter.name}`);
     return result;
   }
 

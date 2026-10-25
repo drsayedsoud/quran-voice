@@ -136,10 +136,12 @@ ${recitersInfo}
    - حدد surahId بدقة (1 إلى 114) و ayahNumber إن ذكر رقماً.
 4. إذا ذكر اسم قارئ أو نمط التلاوة:
    - القراء المتاحون ومعرفاتهم موضحة أعلاه في قائمة القراء.
-   - إذا طلب المستخدم "المصحف المعلم", "حفظلي ابني", "حفظ الطفل", "وضع المعلم للاطفال", "وضع المعلم", "تحفيظ الاطفال", "تعليم الاطفال":
-     * عين reciterId: "husary_muallim" (أو "minshawi_muallim" إن ذكر المنشاوي).
-     * إذا لم يطلب سورة معينة وكان طلبه الانتقال للوضع فقط: عين النية intent: "SET_RECITER", ورسالة تأكيدية: "تم التبديل إلى المصحف المعلم بصوت الشيخ الحصري مع ترديد الأطفال".
-     * وإذا طلب سورة معينة مع المصحف المعلم (مثل: "شغل سورة الفاتحة المصحف المعلم"): عين النية "PLAY_SURAH" مع reciterId: "husary_muallim".
+   - إذا طلب المستخدم "المصحف المعلم", "مصحف الترديد", "ترديد الأطفال", "حفظلي ابني", "حفظ الطفل", "وضع المعلم للاطفال", "وضع المعلم", "تحفيظ الاطفال", "تعليم الاطفال":
+     * عين reciterId: "minshawi_muallim" (أو "husary_muallim" إن ذكر الحصري صراحة).
+     * إذا لم يطلب سورة معينة وكان طلبه الانتقال للوضع فقط: عين النية intent: "SET_RECITER", ورسالة تأكيدية: "تم التبديل إلى المصحف المعلم مع ترديد الأطفال".
+     * وإذا طلب سورة معينة مع المصحف المعلم (مثل: "شغل سورة الفاتحة المصحف المعلم"): عين النية "PLAY_SURAH" مع reciterId: "minshawi_muallim" (أو "husary_muallim" إن ذكر الحصري).
+   - إذا طلب تلاوة مجودة أو "المصحف المجود":
+     * عين reciterId المناسب مثل "minshawi_mujawwad" أو "abdulbasit_mujawwad" أو "husary_mujawwad".
    - إذا ذكر أي قارئ آخر (مثل: "بصوت العفاسي", "بصوت عبد الباسط", "المنشاوي"):
      * استخرج reciterId المناسب من القائمة.
 5. أوامر التحكم السريع والتكرار وحلقات التحفيظ:
@@ -348,7 +350,7 @@ ${recitersInfo}
 
     // التبديل الصريح للقارئ أو المصحف المعلم للأطفال
     if (parsed.intent === 'SET_RECITER') {
-      const rec = matchedReciter || (parsed.reciterId ? RECITERS.find(r => r.id === parsed.reciterId) : null) || RECITERS.find(r => r.id === 'husary_muallim') || RECITERS[0];
+      const rec = matchedReciter || (parsed.reciterId ? RECITERS.find(r => r.id === parsed.reciterId) : null) || RECITERS.find(r => r.id === 'minshawi_muallim') || RECITERS[0];
       return {
         raw: rawTranscript,
         intent: 'SET_RECITER',

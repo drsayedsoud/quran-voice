@@ -3,7 +3,7 @@
  * يتيح العمل أوفلاين وتشغيل الـ PWA بسرعة فائقة
  */
 
-const CACHE_NAME = 'quran-voice-v14';
+const CACHE_NAME = 'quran-voice-v15';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

@@ -131,27 +131,31 @@ export const RECITERS = [
     aliases: ["الحصري", "حصري", "الشيخ الحصري"]
   },
   {
-    id: "husary_muallim",
-    name: "محمود خليل الحصري (المصحف المعلم)",
-    subname: "ترديد أطفال",
-    folder: "Husary_Muallim_128kbps",
-    surahServer: "cdn.mp3quran.net/audio/mahmoud-husary/r2",
-    sampleText: "المصحف المعلم برواية حفص مع ترديد الأطفال لتعليم الصغار والناشئة مخارج الحروف وأحكام التلاوة",
-    aliases: [
-      "المصحف المعلم", "مصحف المعلم", "المعلم", "معلم",
-      "معلم الحصري", "الحصري معلم", "الحصري المعلم", "المصحف المعلم الحصري",
-      "حفظلي ابني", "حفظ الطفل", "تحفيظ الاطفال", "تحفيظ الطفل", "وضع المعلم للاطفال", "وضع المعلم", "المعلم للاطفال", "تعليم الاطفال"
-    ]
-  },
-  {
     id: "minshawi_muallim",
     name: "محمد صديق المنشاوي (المصحف المعلم)",
     subname: "ترديد أطفال",
     folder: "Minshawy_Teacher_128kbps",
-    surahServer: "cdn.mp3quran.net/audio/muhammad-minshawi/r2",
-    sampleText: "المصحف المعلم بصوت الشيخ المنشاوي مع ترديد الأطفال بنبرة خاشعة شجية",
+    surahServer: "cdn.mp3quran.net/audio/muhammad-minshawi/r3",
+    sampleText: "المصحف المعلم بصوت الشيخ المنشاوي مع ترديد الأطفال بنبرة خاشعة شجية لتعليم الصغار والناشئة",
     aliases: [
-      "معلم المنشاوي", "المنشاوي معلم", "المنشاوي المعلم", "المصحف المعلم المنشاوي"
+      "المصحف المعلم", "مصحف المعلم", "المعلم", "معلم",
+      "مصحف الترديد", "مصحف ترديد", "ترديد الأطفال", "ترديد الاطفال", "ترديد اطفال",
+      "تحفيظ الأطفال", "تحفيظ الاطفال", "تعليم الأطفال", "تعليم الاطفال",
+      "وضع المعلم للأطفال", "وضع المعلم للاطفال", "وضع المعلم", "المعلم للأطفال", "المعلم للاطفال",
+      "حفظلي ابني", "حفظ الطفل", "تحفيظ الطفل",
+      "معلم المنشاوي", "المنشاوي معلم", "المنشاوي المعلم", "المصحف المعلم المنشاوي", "منشاوي معلم", "مصحف المنشاوي المعلم", "ترديد المنشاوي"
+    ]
+  },
+  {
+    id: "husary_muallim",
+    name: "محمود خليل الحصري (المصحف المعلم)",
+    subname: "ترديد أطفال",
+    folder: "Husary_Muallim_128kbps",
+    surahServer: "archive.org/download/Quran--alhosary--teacher-repeat-kids-high-quality",
+    sampleText: "المصحف المعلم برواية حفص بصوت الشيخ الحصري مع ترديد الأطفال لتعليم مخارج الحروف وأحكام التلاوة",
+    aliases: [
+      "معلم الحصري", "الحصري معلم", "الحصري المعلم", "المصحف المعلم الحصري", "حصري معلم",
+      "مصحف الحصري المعلم", "مصحف الحصري معلم", "ترديد الحصري", "مصحف الحصري ترديد", "المصحف المعلم بصوت الحصري"
     ]
   },
   {
@@ -171,6 +175,33 @@ export const RECITERS = [
     surahServer: "server7.mp3quran.net/basit",
     sampleText: "صوت نقي فخم ومعروف في العالم الإسلامي",
     aliases: ["عبد الباسط", "عبدالباسط", "عبد الصمد"]
+  },
+  {
+    id: "minshawi_mujawwad",
+    name: "محمد صديق المنشاوي (المصحف المجود)",
+    subname: "مجود",
+    folder: "Minshawy_Mujawwad_192kbps",
+    surahServer: "cdn.mp3quran.net/audio/muhammad-minshawi/r2",
+    sampleText: "تلاوة مجودة بالمقامات الخاشعة والأداء الشجي الفريد",
+    aliases: ["المنشاوي مجود", "منشاوي مجود", "مجود المنشاوي", "تلاوة مجودة المنشاوي", "المصحف المجود المنشاوي", "مجود", "المصحف المجود", "تلاوة مجودة"]
+  },
+  {
+    id: "abdulbasit_mujawwad",
+    name: "عبد الباسط عبد الصمد (المصحف المجود)",
+    subname: "مجود",
+    folder: "Abdul_Basit_Mujawwad_128kbps",
+    surahServer: "cdn.mp3quran.net/audio/abdulbasit-abdulsamad/r2",
+    sampleText: "التلاوة المجودة التاريخية الخالدة برواية حفص",
+    aliases: ["عبد الباسط مجود", "عبدالباسط مجود", "مجود عبد الباسط", "تلاوة مجودة عبد الباسط", "المصحف المجود عبد الباسط"]
+  },
+  {
+    id: "husary_mujawwad",
+    name: "محمود خليل الحصري (المصحف المجود)",
+    subname: "مجود",
+    folder: "Husary_128kbps_Mujawwad",
+    surahServer: "cdn.mp3quran.net/audio/mahmoud-husary/r2",
+    sampleText: "المصحف المجود المتقن بأعلى درجات ضبط أحكام التجويد ومخارج الحروف",
+    aliases: ["الحصري مجود", "حصري مجود", "مجود الحصري", "تلاوة مجودة الحصري", "المصحف المجود الحصري"]
   },
   {
     id: "afasy",
@@ -235,6 +266,7 @@ export function getAyahAudioUrl(reciterFolder, surahNumber, ayahNumber) {
 export function getSurahAudioUrl(reciter, surahNumber) {
   if (!reciter) return null;
   const s = String(surahNumber).padStart(3, '0');
-  const server = reciter.surahServer || 'server8.mp3quran.net/afs';
+  let server = reciter.surahServer || 'server8.mp3quran.net/afs';
+  server = server.replace(/^https?:\/\//, '').replace(/\/$/, '');
   return `https://${server}/${s}.mp3`;
 }
