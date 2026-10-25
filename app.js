@@ -68,6 +68,8 @@ class QuranVoiceApp {
       progressBar: document.getElementById('progressBar'),
       reciterSelect: document.getElementById('reciterSelect'),
       surahSelect: document.getElementById('surahSelect'),
+      repeatBadge: document.getElementById('repeatBadge'),
+      repeatBadgeText: document.getElementById('repeatBadgeText'),
       gestureArea: document.getElementById('gestureArea'),
       tafsirModal: document.getElementById('tafsirModal'),
       tafsirText: document.getElementById('tafsirText'),
@@ -190,9 +192,36 @@ class QuranVoiceApp {
       }
     };
 
-    // عند تكرار الآية
-    this.player.onRepeat = (currentRepeat, repeatCount) => {
-      this.dom.voiceStatus.textContent = `تكرار الآية (${currentRepeat}/${repeatCount})`;
+    // عند تكرار الآية أو دورة حفظ جديدة
+    this.player.onRepeat = (currentRepeat, repeatCount, loopState) => {
+      if (loopState && loopState.type === 'RANGE') {
+        const msg = `🔁 دورة الحفظ (${currentRepeat}/${repeatCount}): سورة ${loopState.surah.name} (الآيات ${loopState.fromAyah} - ${loopState.toAyah})`;
+        this.dom.voiceStatus.textContent = msg;
+        sound.speak(`الدورة ${currentRepeat}`);
+      } else if (loopState && loopState.type === 'SURAH') {
+        const msg = `🔁 تكرار السورة (${currentRepeat}/${repeatCount}): سورة ${loopState.surah.name}`;
+        this.dom.voiceStatus.textContent = msg;
+        sound.speak(`الدورة ${currentRepeat}`);
+      } else {
+        this.dom.voiceStatus.textContent = `تكرار الآية (${currentRepeat}/${repeatCount})`;
+      }
+      this.updateUI();
+    };
+
+    // عند اكتمال حلقات التكرار والحفظ بنجاح
+    this.player.onLoopFinished = (finishedLoop) => {
+      sound.playSuccessChime();
+      let finishMsg = 'تم إكمال التكرار بنجاح';
+      if (finishedLoop && finishedLoop.type === 'RANGE') {
+        finishMsg = `تم إكمال تكرار الآيات من ${finishedLoop.fromAyah} إلى ${finishedLoop.toAyah} ${finishedLoop.totalLoops} مرات بنجاح، تقبل الله حفظك`;
+      } else if (finishedLoop && finishedLoop.type === 'SURAH') {
+        finishMsg = `تم إكمال تكرار سورة ${finishedLoop.surah.name} ${finishedLoop.totalLoops} مرات بنجاح`;
+      } else if (finishedLoop && finishedLoop.type === 'CURRENT_AYAH') {
+        finishMsg = `تم إكمال تكرار الآية ${finishedLoop.totalLoops} مرات بنجاح`;
+      }
+      this.dom.voiceStatus.textContent = finishMsg;
+      sound.speak(finishMsg);
+      this.updateUI();
     };
 
     // عند الانتقال لموضع جديد في باقة البحث الموضوعي أو قصة قرآنية
@@ -474,12 +503,59 @@ class QuranVoiceApp {
         }
         break;
 
+      case 'REPEAT_MODE':
       case 'REPEAT_AYAH':
-        this.repeatCount = parsed.payload.times || 3;
-        this.currentRepeat = 1;
-        this.dom.voiceStatus.textContent = parsed.message;
+        const repType = parsed.payload.repeatType || 'CURRENT_AYAH';
+        const targetSurah = parsed.payload.surah || this.currentSurah;
+        const fromAyah = parsed.payload.fromAyah || (repType === 'CURRENT_AYAH' ? this.currentAyah : 1);
+        const toAyah = parsed.payload.toAyah || fromAyah;
+        const times = parsed.payload.times || 3;
+
+        if (parsed.payload.reciter) {
+          this.currentReciter = parsed.payload.reciter;
+        }
+
+        this.topicPlaylist = [];
+        this.topicIndex = 0;
         sound.playSuccessChime();
-        this.playCurrentAyah();
+        this.dom.voiceStatus.textContent = parsed.message;
+
+        if (repType === 'RANGE') {
+          this.currentSurah = targetSurah;
+          this.currentAyah = fromAyah;
+          if (this.player) {
+            this.player.setLoopRange(targetSurah, fromAyah, toAyah, times);
+          }
+        } else if (repType === 'SURAH') {
+          this.currentSurah = targetSurah;
+          this.currentAyah = 1;
+          if (this.player) {
+            this.player.setLoopSurah(targetSurah, times);
+          }
+        } else {
+          // CURRENT_AYAH
+          if (this.player) {
+            this.player.setLoopAyah(times);
+          } else {
+            this.repeatCount = times;
+            this.currentRepeat = 1;
+            this.playCurrentAyah();
+          }
+        }
+        this.isPlaying = true;
+        this.updateUI();
+        break;
+
+      case 'CANCEL_REPEAT':
+        if (this.player) {
+          this.player.clearLoop();
+        }
+        this.repeatCount = 1;
+        this.currentRepeat = 1;
+        sound.playSuccessChime();
+        this.dom.voiceStatus.textContent = parsed.message || 'تم إلغاء التكرار ومتابعة التلاوة الطبيعية';
+        sound.speak("تم إلغاء التكرار ومتابعة التلاوة");
+        this.updateUI();
         break;
 
       case 'PAUSE':
@@ -834,11 +910,17 @@ class QuranVoiceApp {
         }
       } else if (Math.abs(deltaY) > 70 && Math.abs(deltaX) < 60) {
         if (deltaY > 0) {
-          // سحب لأسفل = تكرار الآية الحالية
+          // سحب لأسفل = تكرار الآية الحالية 3 مرات
           sound.vibrate([60, 40]);
-          this.repeatCount = 3;
-          this.currentRepeat = 1;
-          this.playCurrentAyah();
+          if (this.player) {
+            this.player.setLoopAyah(3);
+          } else {
+            this.repeatCount = 3;
+            this.currentRepeat = 1;
+            this.playCurrentAyah();
+          }
+          this.isPlaying = true;
+          this.updateUI();
           sound.speak("تكرار الآية ثلاث مرات");
         } else {
           // سحب لأعلى = معرفة الموضع الحالي
@@ -1111,8 +1193,35 @@ class QuranVoiceApp {
   updateUI() {
     if (this.dom.surahName) this.dom.surahName.textContent = `سورة ${this.currentSurah.name}`;
 
-    // إذا كان التشغيل ضمن قصة قرآنية مرتبة زمنياً أو باقة موضوعية
-    if (this.topicPlaylist && this.topicPlaylist.length > 0 && this.topicIndex >= 0 && this.topicIndex < this.topicPlaylist.length) {
+    const isLoopActive = this.player && this.player.loopState && this.player.loopState.active;
+    const ls = isLoopActive ? this.player.loopState : null;
+
+    // إذا كان هناك وضع تكرار أو حلقة تحفيظ نشطة
+    if (isLoopActive) {
+      if (ls.type === 'RANGE') {
+        if (this.dom.surahMeta) {
+          this.dom.surahMeta.textContent = `🔁 وضع التحفيظ: سورة ${ls.surah.name} (الآيات ${ls.fromAyah} - ${ls.toAyah}) • الدورة ${ls.currentLoop} من ${ls.totalLoops}`;
+        }
+        if (this.dom.ayahBadge) {
+          this.dom.ayahBadge.textContent = `الآية ${this.currentAyah} (حفظ ${ls.fromAyah}-${ls.toAyah})`;
+        }
+      } else if (ls.type === 'SURAH') {
+        if (this.dom.surahMeta) {
+          this.dom.surahMeta.textContent = `🔁 تكرار السورة: سورة ${ls.surah.name} كاملة • الدورة ${ls.currentLoop} من ${ls.totalLoops}`;
+        }
+        if (this.dom.ayahBadge) {
+          this.dom.ayahBadge.textContent = `الآية ${this.currentAyah}`;
+        }
+      } else {
+        if (this.dom.surahMeta) {
+          this.dom.surahMeta.textContent = `🔁 تكرار الآية الحالية • التكرار ${ls.currentLoop} من ${ls.totalLoops}`;
+        }
+        if (this.dom.ayahBadge) {
+          this.dom.ayahBadge.textContent = `الآية ${this.currentAyah} (${ls.currentLoop}/${ls.totalLoops})`;
+        }
+      }
+    } else if (this.topicPlaylist && this.topicPlaylist.length > 0 && this.topicIndex >= 0 && this.topicIndex < this.topicPlaylist.length) {
+      // إذا كان التشغيل ضمن قصة قرآنية مرتبة زمنياً أو باقة موضوعية
       const passage = this.topicPlaylist[this.topicIndex];
       const storyTitle = passage.storyName ? `قصة ${passage.storyName} • ` : '';
       const scene = passage.passageLabel || passage.sceneTitle || '';
@@ -1128,6 +1237,24 @@ class QuranVoiceApp {
     } else {
       if (this.dom.surahMeta) this.dom.surahMeta.textContent = `${this.currentSurah.type} • ${this.currentSurah.ayahs} آية`;
       if (this.dom.ayahBadge) this.dom.ayahBadge.textContent = `الآية ${this.currentAyah}`;
+    }
+
+    // تحديث شارة التكرار المرئية
+    if (this.dom.repeatBadge && this.dom.repeatBadgeText) {
+      if (isLoopActive) {
+        this.dom.repeatBadge.classList.remove('hidden');
+        this.dom.repeatBadge.classList.add('inline-flex');
+        if (ls.type === 'RANGE') {
+          this.dom.repeatBadgeText.textContent = `حفظ (${ls.fromAyah}-${ls.toAyah}) • ${ls.currentLoop}/${ls.totalLoops}`;
+        } else if (ls.type === 'SURAH') {
+          this.dom.repeatBadgeText.textContent = `سورة • ${ls.currentLoop}/${ls.totalLoops}`;
+        } else {
+          this.dom.repeatBadgeText.textContent = `آية • ${ls.currentLoop}/${ls.totalLoops}`;
+        }
+      } else {
+        this.dom.repeatBadge.classList.add('hidden');
+        this.dom.repeatBadge.classList.remove('inline-flex');
+      }
     }
 
     if (this.dom.reciterName) this.dom.reciterName.textContent = `بصوت الشيخ ${this.currentReciter.name}`;

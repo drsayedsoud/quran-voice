@@ -136,23 +136,34 @@ ${recitersInfo}
    - حدد surahId بدقة (1 إلى 114) و ayahNumber إن ذكر رقماً.
 4. إذا ذكر اسم قارئ (مثل: "بصوت العفاسي", "بصوت عبد الباسط", "المنشاوي"):
    - استخرج reciterId من القائمة (husary, minshawi, abdulbasit, afasy, muaiqly, hudhaify, ghamadi, ajamy).
-5. أوامر التحكم السريع:
+5. أوامر التحكم السريع والتكرار وحلقات التحفيظ:
    - "توقف", "وقف", "اسكت", "لحظة", "كفاية" -> intent: "PAUSE"
    - "كمل", "استمر", "شغل تاني" -> intent: "RESUME"
    - "اللي بعدها", "التالية" -> intent: "NEXT_AYAH"
    - "اللي قبلها", "السابقة" -> intent: "PREV_AYAH"
-   - "كرر", "عيد" -> intent: "REPEAT_AYAH", repeatTimes: (عدد المرات إن ذكر وإلا 3)
+   - أوامر التكرار والتحفيظ:
+     * تكرار الآية الحالية: "كرر", "عيد", "كرر الآية", "كرر الآية الحالية 3 مرات", "عيد الآية دي 5 مرات", "كررها مرتين" ->
+       intent: "REPEAT_MODE", repeatType: "CURRENT_AYAH", repeatTimes: (عدد المرات إن ذكر وإلا 3).
+     * تكرار سورة كاملة: "كرر سورة [اسم السورة] [عدد] مرات", "عيد سورة الكهف مرتين", "شغل سورة الملك وكررها 5 مرات" ->
+       intent: "REPEAT_MODE", repeatType: "SURAH", surahId: (رقم السورة 1-114), repeatTimes: (عدد المرات إن ذكر وإلا 3).
+     * تكرار نطاق محدد من الآيات (وضع التحفيظ): "سورة [اسم السورة] من الآية [X] إلى الآية [Y] كررهم [N] مرات" أو "كرر من آية X إلى Y في سورة كذا N مرات" (إذا لم يذكر اسم السورة فاستخدم السورة الحالية من السياق):
+       intent: "REPEAT_MODE", repeatType: "RANGE", surahId: (رقم السورة المذكورة أو سورة السياق الحالي), fromAyah: (رقم آية البداية), toAyah: (رقم آية النهاية), repeatTimes: (عدد المرات إن ذكر وإلا 3).
+     * إلغاء التكرار: "إلغاء التكرار", "وقف التكرار", "بطل تكرار", "كمل عادي", "اقرأ بدون تكرار" ->
+       intent: "CANCEL_REPEAT".
    - "ما معنى كذا", "ما تفسير كذا", "اشرح لي كذا", "فسر لي", "معنى الآية" -> intent: "TAFSIR", topic: "الكلمة أو العبارة المراد تفسيرها أو فارغ للآية الحالية"
    - "أنا فين", "ما هي السورة" -> intent: "STATUS_CHECK"
    - "لوحة التحكم", "لوحة الإدارة", "صفحة الإدارة", "صفحة الأدمن", "الأدمن", "افتح الإدارة" -> intent: "OPEN_ADMIN"
 6. صيغة الإرجاع:
 أرجع كائن JSON فقط بدون أي علامات markdown إضافية:
 {
-  "intent": "PLAY_STORY" | "PLAY_TOPIC" | "PLAY_AYAH" | "PLAY_SURAH" | "PAUSE" | "RESUME" | "NEXT_AYAH" | "PREV_AYAH" | "REPEAT_AYAH" | "TAFSIR" | "SET_RECITER" | "STATUS_CHECK" | "OPEN_ADMIN" | "UNKNOWN",
+  "intent": "PLAY_STORY" | "PLAY_TOPIC" | "PLAY_AYAH" | "PLAY_SURAH" | "PAUSE" | "RESUME" | "NEXT_AYAH" | "PREV_AYAH" | "REPEAT_MODE" | "CANCEL_REPEAT" | "TAFSIR" | "SET_RECITER" | "STATUS_CHECK" | "OPEN_ADMIN" | "UNKNOWN",
   "storyId": "معرف القصة إن كانت قصة قرآنية وإلا null",
   "topic": "اسم القصة أو الموضوع أو الكلمة/العبارة للتفسير إن وجد",
   "surahId": رقم السورة (1-114) إن وجد وإلا null,
   "ayahNumber": رقم الآية إن وجد وإلا 1,
+  "repeatType": "CURRENT_AYAH" | "SURAH" | "RANGE" | null,
+  "fromAyah": رقم آية البداية في حالة تكرار النطاق RANGE وإلا null,
+  "toAyah": رقم آية النهاية في حالة تكرار النطاق RANGE وإلا null,
   "passages": [
     { "surahId": 2, "ayahNumber": 43, "label": "اسم السورة والآية" }
   ],
@@ -260,6 +271,73 @@ ${recitersInfo}
       matchedSurah = SURAHS.find(s => s.id === Number(parsed.surahId)) || null;
     } else if (passages.length > 0) {
       matchedSurah = passages[0].surah;
+    }
+
+    // إلغاء التكرار
+    if (parsed.intent === 'CANCEL_REPEAT') {
+      return {
+        raw: rawTranscript,
+        intent: 'CANCEL_REPEAT',
+        payload: {},
+        message: parsed.message || 'تم إلغاء وضع التكرار ومتابعة التلاوة الطبيعية',
+        source: 'gemini'
+      };
+    }
+
+    // أوامر التكرار وأنماط التحفيظ
+    if (parsed.intent === 'REPEAT_MODE' || parsed.intent === 'REPEAT_AYAH') {
+      let repType = parsed.repeatType;
+      let fA = parsed.fromAyah ? Number(parsed.fromAyah) : null;
+      let tA = parsed.toAyah ? Number(parsed.toAyah) : null;
+
+      if (!repType) {
+        if (fA && tA) repType = 'RANGE';
+        else if (matchedSurah && (!parsed.ayahNumber || parsed.ayahNumber === 1) && !fA) repType = 'SURAH';
+        else repType = 'CURRENT_AYAH';
+      }
+
+      let s = matchedSurah;
+      if (!s && context.currentSurah) {
+        s = SURAHS.find(sur => sur.id === context.currentSurah.id);
+      }
+      if (!s) s = SURAHS[0];
+
+      if (repType === 'CURRENT_AYAH') {
+        fA = context.currentAyah || 1;
+        tA = fA;
+      } else if (repType === 'SURAH') {
+        fA = 1;
+        tA = s.ayahs;
+      } else if (repType === 'RANGE') {
+        fA = fA || 1;
+        tA = tA || fA;
+        if (fA > tA) { const tmp = fA; fA = tA; tA = tmp; }
+        fA = Math.max(1, Math.min(fA, s.ayahs));
+        tA = Math.max(1, Math.min(tA, s.ayahs));
+      }
+
+      const times = Number(parsed.repeatTimes) || 3;
+      let msg = parsed.message;
+      if (!msg) {
+        if (repType === 'CURRENT_AYAH') msg = `تكرار الآية ${fA} (${times} مرات)`;
+        else if (repType === 'SURAH') msg = `تكرار سورة ${s.name} كاملة (${times} مرات)`;
+        else msg = `تكرار سورة ${s.name} من الآية ${fA} إلى ${tA} (${times} مرات)`;
+      }
+
+      return {
+        raw: rawTranscript,
+        intent: 'REPEAT_MODE',
+        payload: {
+          repeatType: repType,
+          surah: s,
+          fromAyah: fA,
+          toAyah: tA,
+          times: times,
+          reciter: matchedReciter
+        },
+        message: msg,
+        source: 'gemini'
+      };
     }
 
     const intent = parsed.intent || (passages.length > 0 ? 'PLAY_TOPIC' : 'UNKNOWN');

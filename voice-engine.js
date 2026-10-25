@@ -150,6 +150,7 @@ export const COMMON_TOPICS = {
 // تحويل الكلمات الرقمية المنطوقة إلى أرقام صحيحة
 const ARABIC_NUMBERS = {
   'صفر': 0, 'واحد': 1, 'واحدة': 1, 'اول': 1, 'الاولي': 1, 'الاولى': 1, 'اثنين': 2, 'اثنان': 2, 'تانية': 2, 'ثانية': 2,
+  'مرتين': 2, 'مرتان': 2,
   'تلاتة': 3, 'ثلاثة': 3, 'ثلاث': 3, 'تلات': 3, 'اربعة': 4, 'اربع': 4, 'خمسة': 5, 'خمس': 5,
   'ستة': 6, 'ست': 6, 'سبعة': 7, 'سبع': 7, 'ثمانية': 8, 'تمانية': 8, 'تمان': 8, 'ثمان': 8,
   'تسعة': 9, 'تسع': 9, 'عشرة': 10, 'عشر': 10,
@@ -268,12 +269,88 @@ export function parseVoiceCommand(rawTranscript) {
     return result;
   }
 
-  // 8. تكرار الآية
-  if (norm.includes('كرر') || norm.includes('عيد') || norm.includes('تكرار') || norm.includes('مره تانيه')) {
-    const times = extractNumber(norm) || 3;
-    result.intent = 'REPEAT_AYAH';
-    result.payload = { times };
-    result.message = `سيتم تكرار الآية ${times} مرات`;
+  // 8. أوامر التكرار والحفظ وإلغاء التكرار
+  if (norm.includes('الغاء التكرار') || norm.includes('وقف التكرار') || norm.includes('بطل تكرار') || norm.includes('بدون تكرار') || norm.includes('كمل عادي') || norm.includes('الغي التكرار')) {
+    result.intent = 'CANCEL_REPEAT';
+    result.message = 'تم إلغاء وضع التكرار ومتابعة التلاوة الطبيعية';
+    return result;
+  }
+
+  if (norm.includes('كرر') || norm.includes('عيد') || norm.includes('تكرار') || norm.includes('مره تانيه') || norm.includes('مرتين')) {
+    let times = 3;
+    if (norm.includes('مرتين') || norm.includes('مرتان')) {
+      times = 2;
+    } else {
+      const timesMatch = norm.match(/(?:كرر|عيد|تكرار|كررهم|عيدهم)\s*(?:بقى|يا سيدي)?\s*(\d+|[^\s]+)?\s*(?:مرات|مره)?/) ||
+                         norm.match(/(\d+)\s*(?:مرات|مره)/);
+      if (timesMatch && timesMatch[1]) {
+        const parsedT = extractNumber(timesMatch[1]);
+        if (parsedT) times = parsedT;
+      } else {
+        const generalNum = extractNumber(norm);
+        if (generalNum) times = generalNum;
+      }
+    }
+
+    // فحص هل يوجد سورة مذكورة
+    let matchedSurahForRepeat = null;
+    for (const surah of SURAHS) {
+      const normName = normalizeArabic(surah.name);
+      if (matchesSurahWord(norm, normName)) {
+        matchedSurahForRepeat = surah;
+        break;
+      }
+    }
+
+    // فحص هل يوجد نطاق آيات (من آية X إلى آية Y)
+    const rangeMatch = norm.match(/من\s*(?:ايه|الايه|الآية|الاية)?\s*(\d+|[^\s]+)\s*(?:الي|إلى|لـ|ل|للايه|للآية|حتى|حتي|لغاية)\s*(?:ايه|الايه|الآية|الاية)?\s*(\d+|[^\s]+)/);
+    
+    if (rangeMatch) {
+      let fromA = extractNumber(rangeMatch[1]) || 1;
+      let toA = extractNumber(rangeMatch[2]) || fromA;
+      if (fromA > toA) { const tmp = fromA; fromA = toA; toA = tmp; }
+      if (matchedSurahForRepeat) {
+        fromA = Math.max(1, Math.min(fromA, matchedSurahForRepeat.ayahs));
+        toA = Math.max(1, Math.min(toA, matchedSurahForRepeat.ayahs));
+      }
+
+      result.intent = 'REPEAT_MODE';
+      result.payload = {
+        repeatType: 'RANGE',
+        surah: matchedSurahForRepeat,
+        fromAyah: fromA,
+        toAyah: toA,
+        times: times,
+        reciter: matchedReciter
+      };
+      const surahNamePart = matchedSurahForRepeat ? `سورة ${matchedSurahForRepeat.name} ` : '';
+      result.message = `تكرار ${surahNamePart}من الآية ${fromA} إلى الآية ${toA} (${times} مرات)`;
+      return result;
+    }
+
+    // فحص تكرار سورة كاملة
+    if (matchedSurahForRepeat && (norm.includes('سوره') || !norm.includes('ايه'))) {
+      result.intent = 'REPEAT_MODE';
+      result.payload = {
+        repeatType: 'SURAH',
+        surah: matchedSurahForRepeat,
+        fromAyah: 1,
+        toAyah: matchedSurahForRepeat.ayahs,
+        times: times,
+        reciter: matchedReciter
+      };
+      result.message = `تكرار سورة ${matchedSurahForRepeat.name} كاملة (${times} مرات)`;
+      return result;
+    }
+
+    // تكرار الآية الحالية
+    result.intent = 'REPEAT_MODE';
+    result.payload = {
+      repeatType: 'CURRENT_AYAH',
+      times: times,
+      reciter: matchedReciter
+    };
+    result.message = `تكرار الآية الحالية (${times} مرات)`;
     return result;
   }
 

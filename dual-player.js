@@ -29,6 +29,17 @@ export class DualQuranPlayer {
     this.repeatCount = 1;
     this.currentRepeat = 1;
 
+    // منظومة التكرار الذكي وحلقات التحفيظ (Smart Loop & Memorization Engine)
+    this.loopState = {
+      active: false,
+      type: null, // 'CURRENT_AYAH' | 'RANGE' | 'SURAH'
+      surah: null,
+      fromAyah: 1,
+      toAyah: 1,
+      totalLoops: 1,
+      currentLoop: 1
+    };
+
     // النمط الهجين: 'ayah' للآيات والمواضع والقصص، أو 'surah' للتدفق المتصل لسورة كاملة (SoundCloud-style)
     this.mode = 'ayah';
 
@@ -49,7 +60,8 @@ export class DualQuranPlayer {
     this.onSurahChange = null;       // (surah, reciter)
     this.onTimeUpdate = null;        // (currentTime, duration, percent)
     this.onPlayStateChange = null;   // (isPlaying)
-    this.onRepeat = null;           // (currentRepeat, repeatCount)
+    this.onRepeat = null;           // (currentRepeat, repeatCount, loopState)
+    this.onLoopFinished = null;     // (finishedLoopState)
     this.onQuranFinished = null;    // ()
     this.onError = null;            // (error, track)
     this.onTopicTransition = null;  // (passage, index, total)
@@ -97,6 +109,26 @@ export class DualQuranPlayer {
 
     // 0. معالجة ختام السورة الكاملة في نمط التدفق المستمر (Surah Streaming Mode)
     if (this.mode === 'surah') {
+      if (this.loopState && this.loopState.active && this.loopState.type === 'SURAH') {
+        if (this.loopState.currentLoop < this.loopState.totalLoops) {
+          this.loopState.currentLoop++;
+          if (this.onRepeat) {
+            this.onRepeat(this.loopState.currentLoop, this.loopState.totalLoops, this.loopState);
+          }
+          this.activeDeck.currentTime = 0;
+          this.activeDeck.play().catch(e => console.warn('[DualPlayer] Replay surah error:', e));
+          return;
+        } else {
+          // اكتملت دورات تكرار السورة كاملة
+          const finishedLoop = { ...this.loopState };
+          this.clearLoop();
+          if (this.onLoopFinished) this.onLoopFinished(finishedLoop);
+          this.isPlaying = false;
+          if (this.onPlayStateChange) this.onPlayStateChange(false);
+          return;
+        }
+      }
+
       const nextSurah = SURAHS.find(s => s.id === this.currentSurah.id + 1);
       if (nextSurah) {
         this.playSurahStream(nextSurah, this.currentReciter);
@@ -108,19 +140,61 @@ export class DualQuranPlayer {
       return;
     }
 
-    // 1. معالجة تكرار الآية إن كان مفعلاً
+    // 1. معالجة تكرار الآية الحالية (Single Ayah Loop)
+    if (this.loopState && this.loopState.active && this.loopState.type === 'CURRENT_AYAH') {
+      if (this.loopState.currentLoop < this.loopState.totalLoops) {
+        this.loopState.currentLoop++;
+        if (this.onRepeat) {
+          this.onRepeat(this.loopState.currentLoop, this.loopState.totalLoops, this.loopState);
+        }
+        this.activeDeck.currentTime = 0;
+        this.activeDeck.play().catch(e => console.warn('[DualPlayer] Replay error:', e));
+        return;
+      } else {
+        const finishedLoop = { ...this.loopState };
+        this.clearLoop();
+        if (this.onLoopFinished) this.onLoopFinished(finishedLoop);
+        this.executeGaplessSwitch();
+        return;
+      }
+    }
+
+    // للتوافق مع التكرار الكلاسيكي
     if (this.currentRepeat < this.repeatCount) {
       this.currentRepeat++;
       if (this.onRepeat) {
-        this.onRepeat(this.currentRepeat, this.repeatCount);
+        this.onRepeat(this.currentRepeat, this.repeatCount, null);
       }
       this.activeDeck.currentTime = 0;
       this.activeDeck.play().catch(e => console.warn('[DualPlayer] Replay error:', e));
       return;
     }
-
     this.currentRepeat = 1;
     this.repeatCount = 1;
+
+    // 2. معالجة تكرار نطاق من الآيات (Range Loop) لحلقات الحفظ والتثبيت
+    if (this.loopState && this.loopState.active && this.loopState.type === 'RANGE') {
+      if (this.currentAyah >= this.loopState.toAyah) {
+        if (this.loopState.currentLoop < this.loopState.totalLoops) {
+          this.loopState.currentLoop++;
+          if (this.onRepeat) {
+            this.onRepeat(this.loopState.currentLoop, this.loopState.totalLoops, this.loopState);
+          }
+          // التحويل الفوري للمشغل الاحتياطي الذي يحتوي بالفعل على آية البداية (0ms Gapless Loop)
+          this.executeGaplessSwitch();
+          return;
+        } else {
+          // اكتملت جميع دورات التكرار المحددة للنطاق
+          const finishedLoop = { ...this.loopState };
+          this.clearLoop();
+          if (this.onLoopFinished) this.onLoopFinished(finishedLoop);
+          this.executeGaplessSwitch();
+          return;
+        }
+      }
+      this.executeGaplessSwitch();
+      return;
+    }
 
     // 2. فحص إذا كان الاستماع لباقة موضوعية أو قصة قرآنية
     if (this.topicPlaylist && this.topicPlaylist.length > 0) {
@@ -207,8 +281,8 @@ export class DualQuranPlayer {
 
     this.updateMediaSession();
 
-    // تجهيز المشغل الاحتياطي (الذي أصبح حراً الآن) بالآية التالية لما بعد الحالية
-    const trackAfterNext = this.computeTrackAfter(nextTrack.surah, nextTrack.ayah);
+    // تجهيز المشغل الاحتياطي (الذي أصبح حراً الآن) بالآية التالية (مع مراعاة التكرار والحلقات)
+    const trackAfterNext = this.computeNextTrack();
     this.prepareStandby(trackAfterNext);
 
     // تحديث طابور التحميل المسبق للـ 5 آيات في الخلفية
@@ -220,8 +294,9 @@ export class DualQuranPlayer {
     this.mode = 'surah';
     this.topicPlaylist = [];
     this.topicIndex = 0;
-    this.repeatCount = 1;
-    this.currentRepeat = 1;
+    if (!this.loopState || this.loopState.type !== 'SURAH') {
+      this.clearLoop();
+    }
 
     if (reciter) this.currentReciter = reciter;
     this.currentSurah = surah || this.currentSurah;
@@ -398,6 +473,26 @@ export class DualQuranPlayer {
       return list;
     }
 
+    // في حال تكرار نطاق آيات (حلقات الحفظ)
+    if (this.loopState && this.loopState.active && this.loopState.type === 'RANGE') {
+      const s = this.loopState.surah;
+      let nextA = curA;
+      for (let i = 1; i <= count; i++) {
+        if (nextA < this.loopState.toAyah) {
+          nextA++;
+        } else {
+          nextA = this.loopState.fromAyah;
+        }
+        list.push({
+          surah: s,
+          ayah: nextA,
+          reciter: this.currentReciter,
+          url: getAyahAudioUrl(this.currentReciter.folder, s.id, nextA)
+        });
+      }
+      return list;
+    }
+
     // في التلاوة العادية
     for (let i = 1; i <= count; i++) {
       if (curA < curS.ayahs) {
@@ -441,6 +536,66 @@ export class DualQuranPlayer {
         };
       }
       return null;
+    }
+
+    // فحص وضع تكرار النطاق (Range Loop) لحلقات الحفظ والتثبيت
+    if (this.loopState && this.loopState.active && this.loopState.type === 'RANGE') {
+      const s = this.loopState.surah;
+      if (this.currentAyah < this.loopState.toAyah) {
+        const nextAyah = this.currentAyah + 1;
+        return {
+          surah: s,
+          ayah: nextAyah,
+          reciter: this.currentReciter,
+          url: getAyahAudioUrl(this.currentReciter.folder, s.id, nextAyah),
+          filename: `${String(s.id).padStart(3, '0')}${String(nextAyah).padStart(3, '0')}.mp3`
+        };
+      } else {
+        // وصلنا لآخر آية في النطاق!
+        // إذا كان هناك دورة تكرار قادمة، نجهز آية البداية في المشغل الاحتياطي فوراً (0ms Gapless Loop)
+        if (this.loopState.currentLoop < this.loopState.totalLoops) {
+          const startAyah = this.loopState.fromAyah;
+          return {
+            surah: s,
+            ayah: startAyah,
+            reciter: this.currentReciter,
+            url: getAyahAudioUrl(this.currentReciter.folder, s.id, startAyah),
+            filename: `${String(s.id).padStart(3, '0')}${String(startAyah).padStart(3, '0')}.mp3`,
+            isLoopReset: true
+          };
+        } else {
+          // انتهت كل دورات التكرار: نحسب الآية التي تلي النطاق
+          return this.computeTrackAfter(s, this.loopState.toAyah);
+        }
+      }
+    }
+
+    // فحص تكرار السورة آية بآية
+    if (this.loopState && this.loopState.active && this.loopState.type === 'SURAH' && this.mode === 'ayah') {
+      const s = this.loopState.surah;
+      if (this.currentAyah < s.ayahs) {
+        const nextAyah = this.currentAyah + 1;
+        return {
+          surah: s,
+          ayah: nextAyah,
+          reciter: this.currentReciter,
+          url: getAyahAudioUrl(this.currentReciter.folder, s.id, nextAyah),
+          filename: `${String(s.id).padStart(3, '0')}${String(nextAyah).padStart(3, '0')}.mp3`
+        };
+      } else {
+        if (this.loopState.currentLoop < this.loopState.totalLoops) {
+          return {
+            surah: s,
+            ayah: 1,
+            reciter: this.currentReciter,
+            url: getAyahAudioUrl(this.currentReciter.folder, s.id, 1),
+            filename: `${String(s.id).padStart(3, '0')}001.mp3`,
+            isLoopReset: true
+          };
+        } else {
+          return this.computeTrackAfter(s, s.ayahs);
+        }
+      }
     }
 
     return this.computeTrackAfter(this.currentSurah, this.currentAyah);
@@ -648,5 +803,87 @@ export class DualQuranPlayer {
         // بعض المتصفحات القديمة قد لا تدعم جميع أفعال MediaSession
       }
     }
+  }
+
+  // ==================== منظومة إدارة التكرار وحلقات التحفيظ ====================
+
+  // تفعيل تكرار نطاق من الآيات للحفظ والتثبيت (Range Loop)
+  setLoopRange(surah, fromAyah, toAyah, totalLoops = 3) {
+    let s = surah || this.currentSurah;
+    let fA = Math.max(1, Math.min(Number(fromAyah) || 1, s.ayahs));
+    let tA = Math.max(1, Math.min(Number(toAyah) || fA, s.ayahs));
+    if (fA > tA) { const tmp = fA; fA = tA; tA = tmp; }
+
+    this.mode = 'ayah';
+    this.topicPlaylist = [];
+    this.topicIndex = 0;
+    this.repeatCount = 1;
+    this.currentRepeat = 1;
+
+    this.loopState = {
+      active: true,
+      type: 'RANGE',
+      surah: s,
+      fromAyah: fA,
+      toAyah: tA,
+      totalLoops: Math.max(1, totalLoops),
+      currentLoop: 1
+    };
+
+    // البدء فوراً بآية البداية في النطاق
+    this.playAyah(s, fA, this.currentReciter, true);
+  }
+
+  // تفعيل تكرار سورة كاملة (Surah Loop)
+  setLoopSurah(surah, totalLoops = 3) {
+    let s = surah || this.currentSurah;
+    this.topicPlaylist = [];
+    this.topicIndex = 0;
+    this.repeatCount = 1;
+    this.currentRepeat = 1;
+
+    this.loopState = {
+      active: true,
+      type: 'SURAH',
+      surah: s,
+      fromAyah: 1,
+      toAyah: s.ayahs,
+      totalLoops: Math.max(1, totalLoops),
+      currentLoop: 1
+    };
+
+    // تشغيل السورة كاملة بنمط التدفق السريع
+    this.playSurahStream(s, this.currentReciter);
+  }
+
+  // تفعيل تكرار الآية الحالية فقط (Current Ayah Loop)
+  setLoopAyah(totalLoops = 3) {
+    this.loopState = {
+      active: true,
+      type: 'CURRENT_AYAH',
+      surah: this.currentSurah,
+      fromAyah: this.currentAyah,
+      toAyah: this.currentAyah,
+      totalLoops: Math.max(1, totalLoops),
+      currentLoop: 1
+    };
+    this.repeatCount = totalLoops;
+    this.currentRepeat = 1;
+    this.playAyah(this.currentSurah, this.currentAyah, this.currentReciter, true);
+  }
+
+  // إلغاء أي تكرار نشط ومتابعة التلاوة الطبيعية
+  clearLoop() {
+    this.loopState = {
+      active: false,
+      type: null,
+      surah: null,
+      fromAyah: 1,
+      toAyah: 1,
+      totalLoops: 1,
+      currentLoop: 1
+    };
+    this.repeatCount = 1;
+    this.currentRepeat = 1;
   }
 }

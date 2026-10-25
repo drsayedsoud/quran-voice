@@ -70,10 +70,14 @@
       <div class="absolute -top-12 -right-12 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
       <div class="absolute -bottom-12 -left-12 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
 
-      <!-- رقم الآية وشارة الذكاء الاصطناعي -->
-      <div class="flex items-center justify-center gap-2 mb-1.5 sm:mb-2.5">
+      <!-- رقم الآية وشارة الذكاء الاصطناعي وشارة التكرار -->
+      <div class="flex items-center justify-center gap-2 mb-1.5 sm:mb-2.5 flex-wrap">
         <div class="inline-flex items-center px-3 py-0.5 sm:px-4 sm:py-1 rounded-full bg-amber-500/20 border border-amber-400/30 text-amber-300 text-[11px] sm:text-xs font-bold shadow-inner" id="ayahBadge">
           الآية 1
+        </div>
+        <div id="repeatBadge" class="hidden items-center gap-1 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-amber-500/30 border border-amber-400/60 text-amber-200 text-[10px] sm:text-xs font-bold shadow-inner animate-pulse" title="وضع التكرار والحفظ نشط">
+          <span>🔁</span>
+          <span id="repeatBadgeText">تكرار 1/3</span>
         </div>
         <div class="inline-flex items-center px-2 py-0.5 sm:px-3 sm:py-1 rounded-full bg-emerald-800/80 border border-amber-400/30 text-amber-300 text-[10px] sm:text-xs font-semibold shadow-inner" title="محرك الذكاء الاصطناعي نشط لفهم الأوامر والبحث الموضوعي في القرآن">
           <span class="ml-1 text-xs">✨</span>
