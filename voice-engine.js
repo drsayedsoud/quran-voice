@@ -51,10 +51,18 @@ export function cleanQuranicTranscript(text) {
 
 export function matchesSurahWord(normText, normCandidate) {
   if (!normText || !normCandidate) return false;
-  
-  const words = normText.split(/\s+/);
-  if (words.includes(normCandidate)) return true;
 
+  // 1. المطابقة الدقيقة إذا كان النص بالكامل هو اسم السورة أو مرادفها
+  if (normText === normCandidate) return true;
+
+  // 2. مطابقة حدود الكلمات والعبارات المركبة (Phrase / Word Boundary Matching)
+  // يضمن دعم السور المركبة بدون كلمة سورة مثل: "شغل ال عمران" أو "اقرا قل هو الله احد"
+  const paddedText = ` ${normText} `;
+  const paddedCandidate = ` ${normCandidate} `;
+  if (paddedText.includes(paddedCandidate)) return true;
+
+  // 3. فحص ما بعد كلمة "سورة" أو "صورة"
+  const words = normText.split(/\s+/);
   const surahIdx = words.findIndex(w => w === 'سوره' || w === 'سورة');
   if (surahIdx !== -1 && surahIdx < words.length - 1) {
     const afterSurah = words.slice(surahIdx + 1).join(' ');
@@ -63,11 +71,16 @@ export function matchesSurahWord(normText, normCandidate) {
     }
   }
 
-  if (normCandidate.length >= 3) {
-    if (words.some(w => w === normCandidate || w === ('ال' + normCandidate) || ('ال' + w) === normCandidate)) {
+  // 4. مطابقة الكلمة المفردة مع أو بدون "ال" التعريف (مثال: "كهف" و "الكهف")
+  if (!normCandidate.includes(' ') && normCandidate.length >= 3) {
+    const withAl = normCandidate.startsWith('ال') ? normCandidate : 'ال' + normCandidate;
+    const withoutAl = normCandidate.startsWith('ال') ? normCandidate.slice(2) : normCandidate;
+    
+    if (paddedText.includes(` ${withAl} `) || (withoutAl.length >= 3 && paddedText.includes(` ${withoutAl} `))) {
       return true;
     }
   }
+
   return false;
 }
 
@@ -96,8 +109,24 @@ export function pickBestAlternative(resultItem) {
 export function isThematicQuery(text) {
   if (!text) return false;
   const norm = normalizeArabic(text);
-  const thematicKeywords = ['ايات', 'موضوع', 'عن', 'قصة', 'احاديث', 'فضل', 'تحدث عن', 'عايز ايات', 'هات ايات'];
-  return thematicKeywords.some(kw => norm.includes(kw));
+
+  // إذا ذكر المستخدم كلمة "سورة"، فهو يطلب سورة محددة وليس بحثاً موضوعياً
+  if (norm.includes('سوره') || norm.includes('سورة')) {
+    return false;
+  }
+
+  const thematicKeywords = ['ايات', 'موضوع', 'قصة', 'احاديث', 'فضل', 'تحدث عن', 'عايز ايات', 'هات ايات'];
+  if (thematicKeywords.some(kw => norm.includes(kw))) {
+    return true;
+  }
+
+  // كلمة "عن" يجب أن تكون منفصلة بمسافات لتفادي الكلمات التي تحتوي عليها كـ "العنكبوت"
+  const padded = ` ${norm} `;
+  if (padded.includes(' عن ') || norm.startsWith('عن ')) {
+    return true;
+  }
+
+  return false;
 }
 
 // باقات مدمجة لأشهر الموضوعات القرآنية للعمل اللحظي الفوري بدون انتظار الشبكة
@@ -239,7 +268,9 @@ export function parseVoiceCommand(rawTranscript) {
   }
 
   // 4. طلب التفسير أو شرح المعنى أو معنى كلمة معينة (معالجة سريعة فورية)
-  if (norm.includes('تفسير') || norm.includes('فسر') || norm.includes('معنى') || norm.includes('معني') || norm.includes('اشرح') || norm.includes('شرح')) {
+  // استثناء سورة الشرح (سورة 94) وسورة ألم نشرح حتى لا يظن أنها طلب شرح تفسير
+  const isSharhSurah = norm.includes('سوره الشرح') || norm.includes('سورة الشرح') || norm.includes('الم نشرح') || norm.includes('الشرح');
+  if (!isSharhSurah && (norm.includes('تفسير') || norm.includes('فسر') || norm.includes('معنى') || norm.includes('معني') || norm.includes('اشرح') || (norm.includes('شرح') && !norm.includes('سوره') && !norm.includes('سورة')))) {
     result.intent = 'TAFSIR';
     // استخراج الكلمة أو العبارة المراد معرفة معناها أو تفسيرها إن وجدت
     let term = rawTranscript
@@ -283,14 +314,20 @@ export function parseVoiceCommand(rawTranscript) {
     if (norm.includes('مرتين') || norm.includes('مرتان')) {
       times = 2;
     } else {
-      const timesMatch = norm.match(/(?:كرر|عيد|تكرار|كررهم|عيدهم)\s*(?:بقى|يا سيدي)?\s*(\d+|[^\s]+)?\s*(?:مرات|مره)?/) ||
-                         norm.match(/(\d+)\s*(?:مرات|مره)/);
-      if (timesMatch && timesMatch[1]) {
-        const parsedT = extractNumber(timesMatch[1]);
-        if (parsedT) times = parsedT;
+      // فحص عدد المرات بدقة (مثلاً: "7 مرات" أو "كررهم 5 مرات" أو "عيدها 4")
+      const timesByWord = norm.match(/(\d+|[^\s]+)\s*(?:مرات|مره)/);
+      if (timesByWord && timesByWord[1]) {
+        const num = extractNumber(timesByWord[1]);
+        if (num) times = num;
       } else {
-        const generalNum = extractNumber(norm);
-        if (generalNum) times = generalNum;
+        const afterCmd = norm.match(/(?:كررهم|عيدهم|كررها|عيدها|تكرار|كرر|عيد)\s*(?:بقى|يا سيدي)?\s*(\d+|[^\s]+)/);
+        if (afterCmd && afterCmd[1]) {
+          const num = extractNumber(afterCmd[1]);
+          if (num) times = num;
+        } else {
+          const generalNum = extractNumber(norm);
+          if (generalNum) times = generalNum;
+        }
       }
     }
 

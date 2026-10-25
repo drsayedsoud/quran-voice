@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة الاختبارات الآلية الشاملة | المصحف الصوتي الميسر</title>
+  <link rel="icon" href="icons/icon-192.svg" type="image/svg+xml">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Tajawal', sans-serif;
+      background: radial-gradient(circle at 50% 0%, #064e3b 0%, #022c22 45%, #01140f 100%);
+      min-height: 100vh;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(6, 78, 59, 0.4);
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #059669;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="text-white p-3 sm:p-6 flex flex-col items-center">
+
+  <div class="w-full max-w-5xl">
+    <!-- رأس الصفحة -->
+    <header class="flex flex-col sm:flex-row items-center justify-between gap-4 bg-emerald-950/70 border border-emerald-700/50 backdrop-blur-md rounded-2xl p-4 sm:p-6 mb-6 shadow-2xl">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-amber-400 to-emerald-500 flex items-center justify-center text-2xl shadow-lg shadow-emerald-900/50">
+          🧪
+        </div>
+        <div>
+          <h1 class="text-xl sm:text-2xl font-extrabold text-amber-300 flex items-center gap-2">
+            منظومة الاختبارات الآلية الموثوقة
+            <span class="text-xs bg-emerald-800 text-emerald-200 px-2 py-0.5 rounded-full font-medium">v1.0 Automation</span>
+          </h1>
+          <p class="text-xs sm:text-sm text-emerald-200/80">
+            فحص شامل لمحرك الأوامر الصوتية (الـ 114 سورة والقراء)، ومنطق المشغل المزدوج وحلقات الحفظ، وروابط البث الحي
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="runTestsBtn" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 text-white font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-950/60 transition-all flex items-center gap-2 text-sm cursor-pointer">
+          <span id="btnIcon">▶️</span>
+          <span>إعادة تشغيل الاختبارات</span>
+        </button>
+        <a href="index.html" class="bg-emerald-900/80 hover:bg-emerald-800 border border-emerald-700/60 text-emerald-200 px-3.5 py-2.5 rounded-xl text-sm transition-all flex items-center gap-1.5" title="الرجوع للتطبيق">
+          <span>🏠</span>
+          <span class="hidden sm:inline">التطبيق</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- شريط المؤشرات الحيوية -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      <div class="bg-emerald-900/40 border border-emerald-700/40 backdrop-blur rounded-2xl p-3.5 flex items-center justify-between">
+        <div>
+          <span class="text-xs text-emerald-300/80 block">إجمالي الاختبارات</span>
+          <span id="statTotal" class="text-2xl font-black text-white">0</span>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-emerald-800/60 flex items-center justify-center text-lg">📊</div>
+      </div>
+
+      <div class="bg-emerald-900/40 border border-emerald-700/40 backdrop-blur rounded-2xl p-3.5 flex items-center justify-between">
+        <div>
+          <span class="text-xs text-emerald-300/80 block">الناجحة</span>
+          <span id="statPassed" class="text-2xl font-black text-emerald-400">0</span>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-emerald-800/60 flex items-center justify-center text-lg">✅</div>
+      </div>
+
+      <div class="bg-emerald-900/40 border border-emerald-700/40 backdrop-blur rounded-2xl p-3.5 flex items-center justify-between">
+        <div>
+          <span class="text-xs text-emerald-300/80 block">الفاشلة</span>
+          <span id="statFailed" class="text-2xl font-black text-rose-400">0</span>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-rose-950/60 border border-rose-800/40 flex items-center justify-center text-lg">❌</div>
+      </div>
+
+      <div class="bg-emerald-900/40 border border-emerald-700/40 backdrop-blur rounded-2xl p-3.5 flex items-center justify-between">
+        <div>
+          <span class="text-xs text-emerald-300/80 block">زمن التنفيذ</span>
+          <span id="statDuration" class="text-2xl font-black text-amber-300">0 ms</span>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-emerald-800/60 flex items-center justify-center text-lg">⚡</div>
+      </div>
+    </div>
+
+    <!-- شريط التقدم الفوري -->
+    <div class="bg-emerald-950/60 border border-emerald-800/60 rounded-xl p-3 mb-6">
+      <div class="flex items-center justify-between text-xs text-emerald-200 mb-1.5 font-medium">
+        <span id="progressStatus">جاري تهيئة منصة الاختبارات...</span>
+        <span id="progressPercent">0%</span>
+      </div>
+      <div class="w-full h-2.5 bg-emerald-950 rounded-full overflow-hidden border border-emerald-800/80">
+        <div id="progressBar" class="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-amber-400 w-0 transition-all duration-150"></div>
+      </div>
+    </div>
+
+    <!-- شريط التصفية والبحث -->
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
+      <div class="flex items-center gap-1.5 bg-emerald-950/80 p-1 rounded-xl border border-emerald-800/60 w-full sm:w-auto text-xs">
+        <button data-filter="all" class="filter-btn active bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold">الكل</button>
+        <button data-filter="failed" class="filter-btn text-emerald-200 hover:text-white px-3 py-1.5 rounded-lg">الفاشلة فقط (<span id="filterFailedCount">0</span>)</button>
+        <button data-filter="passed" class="filter-btn text-emerald-200 hover:text-white px-3 py-1.5 rounded-lg">الناجحة فقط</button>
+      </div>
+
+      <input id="searchInput" type="text" placeholder="ابحث باسم السورة، القارئ، أو الاختبار..." class="w-full sm:w-72 bg-emerald-950/80 border border-emerald-800/80 rounded-xl px-3 py-1.5 text-xs text-emerald-100 placeholder-emerald-400/50 focus:outline-none focus:border-amber-400">
+    </div>
+
+    <!-- منطقة عرض نتائج الاختبارات -->
+    <div id="suitesContainer" class="space-y-4">
+      <!-- يتم بناء الأجنحة ديناميكياً هنا -->
+    </div>
+
+    <!-- عنصر غير مرئي لتخزين ملخص النتائج البرمجي للقراءة المباشرة (Headless Automated CI/CD Hook) -->
+    <div id="testOutputSummary" class="hidden" data-status="pending" data-passed="0" data-failed="0" data-total="0"></div>
+  </div>
+
+  <!-- سكربت تشغيل الاختبارات -->
+  <script type="module">
+    import {
+      TestRunner,
+      registerVoiceEngineTests,
+      registerDualPlayerTests,
+      registerAudioUrlsTests
+    } from './tests/test-suite.js';
+
+    // عناصر الواجهة
+    const dom = {
+      runBtn: document.getElementById('runTestsBtn'),
+      btnIcon: document.getElementById('btnIcon'),
+      statTotal: document.getElementById('statTotal'),
+      statPassed: document.getElementById('statPassed'),
+      statFailed: document.getElementById('statFailed'),
+      statDuration: document.getElementById('statDuration'),
+      progressStatus: document.getElementById('progressStatus'),
+      progressPercent: document.getElementById('progressPercent'),
+      progressBar: document.getElementById('progressBar'),
+      filterFailedCount: document.getElementById('filterFailedCount'),
+      searchInput: document.getElementById('searchInput'),
+      suitesContainer: document.getElementById('suitesContainer'),
+      summaryHook: document.getElementById('testOutputSummary'),
+      filterBtns: document.querySelectorAll('.filter-btn')
+    };
+
+    let currentFilter = 'all';
+    let searchQuery = '';
+    let currentResults = null;
+
+    async function executeSuite() {
+      dom.runBtn.disabled = true;
+      dom.btnIcon.textContent = '⏳';
+      dom.suitesContainer.innerHTML = '';
+      dom.progressStatus.textContent = 'جاري تنفيذ الاختبارات وفحص جميع السور والخوادم...';
+      dom.progressBar.style.width = '0%';
+      dom.progressPercent.textContent = '0%';
+
+      const runner = new TestRunner();
+      registerVoiceEngineTests(runner);
+      registerDualPlayerTests(runner);
+      registerAudioUrlsTests(runner);
+
+      let processed = 0;
+      // تقدير عدد الاختبارات الكلي للتحديث السلس
+      const estimatedTotal = 275;
+
+      const results = await runner.runAll((progress) => {
+        processed++;
+        const percent = Math.min(100, Math.round((processed / estimatedTotal) * 100));
+        dom.progressBar.style.width = `${percent}%`;
+        dom.progressPercent.textContent = `${percent}%`;
+        dom.progressStatus.textContent = `فحص: ${progress.testName}`;
+      });
+
+      currentResults = results;
+      dom.progressBar.style.width = '100%';
+      dom.progressPercent.textContent = '100%';
+      dom.progressStatus.textContent = `اكتملت الاختبارات بنجاح في ${results.durationMs} مللي ثانية`;
+
+      // تحديث المؤشرات
+      dom.statTotal.textContent = results.total;
+      dom.statPassed.textContent = results.passed;
+      dom.statFailed.textContent = results.failed;
+      dom.statDuration.textContent = `${results.durationMs} ms`;
+      dom.filterFailedCount.textContent = results.failed;
+
+      // تحديث خطاف CI/CD
+      dom.summaryHook.setAttribute('data-status', results.failed === 0 ? 'success' : 'failure');
+      dom.summaryHook.setAttribute('data-passed', String(results.passed));
+      dom.summaryHook.setAttribute('data-failed', String(results.failed));
+      dom.summaryHook.setAttribute('data-total', String(results.total));
+      dom.summaryHook.innerText = JSON.stringify({
+        status: results.failed === 0 ? 'SUCCESS' : 'FAILURE',
+        passed: results.passed,
+        failed: results.failed,
+        total: results.total,
+        durationMs: results.durationMs
+      });
+
+      renderResults();
+
+      dom.runBtn.disabled = false;
+      dom.btnIcon.textContent = '▶️';
+    }
+
+    function renderResults() {
+      if (!currentResults) return;
+      dom.suitesContainer.innerHTML = '';
+
+      for (const suite of currentResults.details) {
+        // تصفية الفحوصات
+        const filteredTests = suite.tests.filter(test => {
+          if (currentFilter === 'passed' && test.status !== 'pass') return false;
+          if (currentFilter === 'failed' && test.status !== 'fail') return false;
+          if (searchQuery && !test.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+          return true;
+        });
+
+        if (filteredTests.length === 0 && (currentFilter !== 'all' || searchQuery)) {
+          continue;
+        }
+
+        const suiteCard = document.createElement('div');
+        suiteCard.className = 'bg-emerald-950/70 border border-emerald-800/60 rounded-2xl p-4 shadow-xl';
+
+        const allPassed = suite.failed === 0;
+        suiteCard.innerHTML = `
+          <div class="flex items-center justify-between mb-3 border-b border-emerald-800/40 pb-2.5">
+            <h3 class="font-bold text-sm sm:text-base ${allPassed ? 'text-amber-300' : 'text-rose-300'} flex items-center gap-2">
+              <span>${allPassed ? '🛡️' : '⚠️'}</span>
+              <span>${suite.name}</span>
+            </h3>
+            <div class="flex items-center gap-2 text-xs">
+              <span class="bg-emerald-900/90 text-emerald-300 px-2 py-0.5 rounded-md font-semibold">${suite.passed} ناجح</span>
+              ${suite.failed > 0 ? `<span class="bg-rose-950 text-rose-300 px-2 py-0.5 rounded-md font-bold">${suite.failed} فاشل</span>` : ''}
+            </div>
+          </div>
+          <div class="space-y-1.5 max-h-96 overflow-y-auto custom-scrollbar pr-1">
+            ${filteredTests.map(test => {
+              const isPass = test.status === 'pass';
+              return `
+                <div class="flex flex-col gap-1 p-2 rounded-xl text-xs ${isPass ? 'bg-emerald-900/25 hover:bg-emerald-900/40 text-emerald-100' : 'bg-rose-950/50 border border-rose-800/50 text-rose-200'} transition-colors">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2 truncate">
+                      <span class="${isPass ? 'text-emerald-400' : 'text-rose-400'} font-bold">${isPass ? '✓' : '✗'}</span>
+                      <span class="truncate">${test.name}</span>
+                    </div>
+                    <span class="text-[10px] text-emerald-400/60 shrink-0 mr-2">${test.duration}ms</span>
+                  </div>
+                  ${test.error ? `<div class="bg-black/50 p-2 rounded-lg text-rose-300 font-mono text-[11px] mt-1 whitespace-pre-wrap">${test.error}</div>` : ''}
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+
+        dom.suitesContainer.appendChild(suiteCard);
+      }
+    }
+
+    // ربط أحداث التصفية والبحث
+    dom.filterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        dom.filterBtns.forEach(b => b.classList.remove('active', 'bg-emerald-700', 'text-white'));
+        btn.classList.add('active', 'bg-emerald-700', 'text-white');
+        currentFilter = btn.dataset.filter;
+        renderResults();
+      });
+    });
+
+    dom.searchInput.addEventListener('input', (e) => {
+      searchQuery = e.target.value.trim();
+      renderResults();
+    });
+
+    dom.runBtn.addEventListener('click', executeSuite);
+
+    // تشغيل تلقائي فور تحميل الصفحة
+    window.addEventListener('DOMContentLoaded', () => {
+      executeSuite();
+    });
+  </script>
+</body>
+</html>
