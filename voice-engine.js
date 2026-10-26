@@ -259,9 +259,10 @@ export function parseVoiceCommand(rawTranscript) {
     }
   }
 
-  // 3. فحص أوامر التحكم العاجلة (إيقاف وتوقف)
-  // إيقاف مؤقت / توقف مع حفظ موضع التلاوة
-  if (norm.match(/^(توقف|وقف|ايقاف|اسكت|اصمت|لحظه|استني|استنى|pause|stop)/) || norm.includes('توقف') || norm.includes('وقف القراءه') || norm.includes('ايقاف مؤقت') || norm === 'كفايه') {
+  // 3. فحص أوامر التحكم العاجلة (إيقاف وتوقف التلاوة)
+  // لا نعتبره إيقافاً عاماً إذا كان أمراً مستهدفاً لإيقاف وضع محدد (كإيقاف التكرار أو القيادة أو التوفير)
+  const isTargetedStop = norm.includes('تكرار') || norm.includes('تحفيظ') || norm.includes('قياده') || norm.includes('سواقه') || norm.includes('سياره') || norm.includes('سفر') || norm.includes('توفير') || norm.includes('المصحف') || norm.includes('الشاشه');
+  if (!isTargetedStop && (norm.match(/^(توقف|وقف|ايقاف|اسكت|اصمت|لحظه|استني|استنى|pause|stop)/) || norm.includes('توقف') || norm.includes('وقف القراءه') || norm.includes('ايقاف مؤقت') || norm === 'كفايه')) {
     result.intent = 'PAUSE';
     result.message = 'تم إيقاف التلاوة وحفظ الموضع';
     return result;
@@ -318,7 +319,7 @@ export function parseVoiceCommand(rawTranscript) {
 
   // أ. وضع القيادة والسفر الذكي (Car & Travel Mode)
   const isCarModeContext = norm.includes('القياده') || norm.includes('قياده') || norm.includes('السفر') || norm.includes('سفر') || norm.includes('العربيه') || norm.includes('عربيه') || norm.includes('السياره') || norm.includes('سياره') || norm.includes('السواقه') || norm.includes('سواقه');
-  const isExitCommand = norm.includes('خروج') || norm.includes('اخرج') || norm.includes('ايقاف') || norm.includes('وقف') || norm.includes('الغاء') || norm.includes('الغي') || norm.includes('تعطيل') || norm.includes('عطل') || norm.includes('اقفل') || norm.includes('قفل') || norm.includes('انهاء');
+  const isExitCommand = norm.includes('خروج') || norm.includes('اخرج') || norm.includes('ايقاف') || norm.includes('وقف') || norm.includes('الغا') || norm.includes('الغي') || norm.includes('تعطيل') || norm.includes('عطل') || norm.includes('اقفل') || norm.includes('قفل') || norm.includes('انها');
 
   if (isCarModeContext && (norm.includes('وضع') || norm.includes('نمط') || isExitCommand || norm.includes('شغل') || norm.includes('تفعيل') || norm.includes('بدء') || norm.startsWith('قياده') || norm.startsWith('سواقه') || norm.startsWith('السواقه') || norm === 'سواقه' || norm === 'القياده')) {
     if (isExitCommand) {
@@ -333,9 +334,8 @@ export function parseVoiceCommand(rawTranscript) {
 
   // ب. أوامر إظهار وإخفاء نص الآية والمصحف الشريف (Show / Hide Quran & Audio-Only Mode)
   if (
-    norm.includes('اظهار المصحف') || norm.includes('اظهر المصحف') || norm.includes('عرض المصحف') || norm.includes('افتح المصحف') || norm.includes('بين المصحف') ||
-    norm.includes('اظهار الايه') || norm.includes('اظهر الايه') || norm.includes('عرض الايه') || norm.includes('اظهار النص') || norm.includes('اظهر النص') ||
-    norm.includes('اظهار الشاشه') || norm.includes('اظهر الشاشه') || norm.includes('شغل المصحف') || norm.includes('شغل الشاشه') || norm.includes('شغل عرض الايه')
+    norm.includes('اظهار') || norm.includes('اظهر') || norm.includes('عرض المصحف') || norm.includes('افتح المصحف') || norm.includes('بين المصحف') ||
+    norm.includes('عرض الايه') || norm.includes('شغل المصحف') || norm.includes('شغل الشاشه') || norm.includes('شغل عرض الايه')
   ) {
     result.intent = 'SHOW_AYAH';
     result.message = 'إظهار نص الآية والمصحف الشريف';
@@ -343,9 +343,7 @@ export function parseVoiceCommand(rawTranscript) {
   }
 
   if (
-    norm.includes('اخفاء المصحف') || norm.includes('اخفي المصحف') || norm.includes('قفل المصحف') || norm.includes('اقفل المصحف') ||
-    norm.includes('اخفاء الايه') || norm.includes('اخفي الايه') || norm.includes('اخفاء النص') || norm.includes('اخفي النص') ||
-    norm.includes('اخفاء الشاشه') || norm.includes('اخفي الشاشه') || norm.includes('اقفل الشاشه') ||
+    norm.includes('اخفا') || norm.includes('اخفي') || norm.includes('قفل المصحف') || norm.includes('اقفل المصحف') ||
     norm.includes('صوت فقط') || norm.includes('وضع الصوت فقط') || norm.includes('استماع فقط') || norm.includes('وضع الاستماع') ||
     norm.includes('سماع فقط') || norm.includes('بدون شاشه') || norm.includes('بدون نص')
   ) {

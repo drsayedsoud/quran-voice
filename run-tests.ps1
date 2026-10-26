@@ -80,10 +80,11 @@ if ($match.Success -and -not [string]::IsNullOrWhiteSpace($match.Groups[1].Value
             exit 0
         } else {
             Write-Host "`nFAILURE: $($res.failed) test(s) failed:`n" -ForegroundColor Red
-            $failMatches = [regex]::Matches($domOutput, '<div class="test-item failed"[^>]*>([\s\S]*?)</div>\s*</div>')
-            foreach ($fm in $failMatches) {
-                $cleanText = [regex]::Replace($fm.Value, '<[^>]+>', ' ').Trim()
-                Write-Host "  -> $cleanText" -ForegroundColor Yellow
+            if ($res.failures) {
+                foreach ($f in $res.failures) {
+                    Write-Host "  -> [$($f.suite)] $($f.test)" -ForegroundColor Red
+                    Write-Host "     Error: $($f.error)" -ForegroundColor Yellow
+                }
             }
             Write-Host ""
             exit 1
