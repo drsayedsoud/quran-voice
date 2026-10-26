@@ -42,9 +42,6 @@ class QuranVoiceApp {
     this.listeningTimer = null;
     this.speechLang = localStorage.getItem('speech_lang') || 'ar-EG'; // الافتراضي اللهجة المصرية
 
-    // خاصية إبقاء الشاشة نشطة ومضاءة دائماً (Always-On Display) دون إغلاق
-    this.wakeLock = null;
-
     // تتبع حالة استئناف القراءة بعد التفسير وحفظ الموضع
     this.resumePlaybackAfterTafsir = false;
     this.savedResumeState = null;
@@ -135,7 +132,6 @@ class QuranVoiceApp {
   }
 
   async init() {
-    this.initWakeLock();
     this.initAudioPlayer();
     this.initSpeechRecognition();
     this.initTouchGestures();
@@ -427,7 +423,6 @@ class QuranVoiceApp {
 
   // معالجة وتنفيذ الأمر الصوتي
   async executeVoiceCommand(transcript) {
-    this.requestWakeLock();
     const cleaned = cleanQuranicTranscript(transcript);
     console.log('Voice Command Input:', cleaned);
 
@@ -726,7 +721,6 @@ class QuranVoiceApp {
 
   // تشغيل سورة كاملة بنمط التدفق السلس المتصل (SoundCloud-style Surah Streaming)
   playSurahStream(surah = null, reciter = null) {
-    this.requestWakeLock();
     this.isPlaying = true;
     if (surah) this.currentSurah = surah;
     if (reciter) this.currentReciter = reciter;
@@ -743,7 +737,6 @@ class QuranVoiceApp {
 
   // تشغيل الآية الحالية بالصوت عبر المشغل المزدوج بدون فواصل (Gapless Playback)
   playCurrentAyah() {
-    this.requestWakeLock();
     this.isPlaying = true;
     if (this.player) {
       this.player.topicPlaylist = this.topicPlaylist || [];
@@ -770,7 +763,6 @@ class QuranVoiceApp {
   }
 
   play() {
-    this.requestWakeLock();
     if (this.player) {
       this.player.play();
     }
@@ -866,64 +858,6 @@ class QuranVoiceApp {
         console.warn('Recognition start error:', e);
       }
     }, 220);
-  }
-
-  // تفعيل وإدارة بقاء الشاشة مضاءة دائماً (Always-On Display) دون إغلاق أو انتهاء وقت
-  initWakeLock() {
-    const acquireLock = () => {
-      this.requestWakeLock();
-    };
-
-    // إعادة القفل فور عودة التطبيق للواجهة (عند التبديل بين التطبيقات أو فتح الهاتف)
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
-        acquireLock();
-      }
-    });
-
-    // إعادة القفل فور استعادة التركيز للنافذة
-    window.addEventListener('focus', acquireLock);
-
-    // تفعيل القفل التلقائي فور أي تفاعل من المستخدم
-    ['click', 'touchstart', 'keydown'].forEach(evt => {
-      window.addEventListener(evt, acquireLock, { passive: true });
-    });
-
-    // طلب القفل فوراً عند تشغيل التطبيق
-    acquireLock();
-  }
-
-  // طلب إبقاء الشاشة مضاءة دائماً (Always-On Display) دون حد زمني
-  async requestWakeLock() {
-    if (!('wakeLock' in navigator)) {
-      return;
-    }
-
-    try {
-      if (!this.wakeLock || this.wakeLock.released) {
-        this.wakeLock = await navigator.wakeLock.request('screen');
-        this.wakeLock.addEventListener('release', () => {
-          this.wakeLock = null;
-          // إعادة التفعيل التلقائي إذا كان التطبيق لا يزال معروضاً على الشاشة
-          if (document.visibilityState === 'visible') {
-            setTimeout(() => this.requestWakeLock(), 1200);
-          }
-        });
-        console.log('[Always-On Display] تم تفعيل إبقاء الشاشة مضاءة دائماً بنجاح.');
-      }
-    } catch (err) {
-      console.warn('[Always-On Display] تعذر قفل الشاشة:', err);
-    }
-  }
-
-  // تحرير قفل الشاشة (عند الخروج التام)
-  releaseWakeLock() {
-    if (this.wakeLock) {
-      try {
-        this.wakeLock.release();
-      } catch (e) {}
-      this.wakeLock = null;
-    }
   }
 
   // نظام إيماءات اللمس للمكفوفين (Touch Gestures) المتجاوب على كامل شاشات الهواتف
