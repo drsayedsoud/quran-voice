@@ -274,9 +274,13 @@ export function listenForAdminBroadcast(callback) {
     return onSnapshot(alertRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
-        if (data.active && data.message) {
+        if (data && data.active && data.message) {
           callback(data);
+        } else {
+          callback({ active: false });
         }
+      } else {
+        callback({ active: false });
       }
     }, (err) => {
       console.warn('Broadcast listener offline:', err.message);

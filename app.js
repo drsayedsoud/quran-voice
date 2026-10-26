@@ -72,6 +72,8 @@ class QuranVoiceApp {
       tafsirText: document.getElementById('tafsirText'),
       closeTafsirBtn: document.getElementById('closeTafsirBtn'),
       adminBanner: document.getElementById('adminBanner'),
+      adminBannerText: document.getElementById('adminBannerText'),
+      dismissAdminBannerBtn: document.getElementById('dismissAdminBannerBtn'),
       dialectToggleBtn: document.getElementById('dialectToggleBtn'),
       dialectFlag: document.getElementById('dialectFlag'),
       dialectLabel: document.getElementById('dialectLabel'),
@@ -1161,7 +1163,30 @@ class QuranVoiceApp {
 
   handleAdminBroadcast(broadcast) {
     if (!this.dom.adminBanner) return;
-    this.dom.adminBanner.textContent = `📢 تنبيه: ${broadcast.message}`;
+
+    // إذا تم إيقاف التنبيه أو حذفه من قبل المشرف
+    if (!broadcast || broadcast.active === false || !broadcast.message) {
+      this.dom.adminBanner.classList.add('hidden');
+      return;
+    }
+
+    // توليد معرف فريد للتنبيه للتحقق مما إذا كان المستخدم قد أغلقه مسبقاً
+    const broadcastId = broadcast.id || (broadcast.updatedAt ? String(broadcast.updatedAt.seconds || broadcast.updatedAt) : broadcast.message);
+    this.currentBroadcastId = broadcastId;
+
+    const lastDismissedId = localStorage.getItem('dismissed_broadcast_id');
+    if (lastDismissedId === broadcastId) {
+      // المستخدم سبق له إغلاق هذا التنبيه بعينه
+      this.dom.adminBanner.classList.add('hidden');
+      return;
+    }
+
+    if (this.dom.adminBannerText) {
+      this.dom.adminBannerText.textContent = broadcast.message;
+    } else {
+      this.dom.adminBanner.textContent = `📢 ${broadcast.message}`;
+    }
+
     this.dom.adminBanner.classList.remove('hidden');
     
     // قراءة صوتية إذا حدد الأدمن ذلك
@@ -1169,6 +1194,20 @@ class QuranVoiceApp {
       setTimeout(() => {
         sound.speak(broadcast.message);
       }, 1000);
+    }
+  }
+
+  // إغلاق وإزالة التنبيه وحفظ الإغلاق حتى لا يعاود الظهور
+  dismissAdminBanner(broadcastId = null) {
+    if (!this.dom.adminBanner) return;
+    this.dom.adminBanner.classList.add('hidden');
+    sound.vibrate([30]);
+
+    const idToSave = broadcastId || this.currentBroadcastId;
+    if (idToSave) {
+      try {
+        localStorage.setItem('dismissed_broadcast_id', idToSave);
+      } catch (e) {}
     }
   }
 
@@ -1380,6 +1419,14 @@ class QuranVoiceApp {
           return;
         }
         this.shareOnWhatsApp();
+      });
+    }
+
+    // زر إغلاق شريط تنبيهات المشرف
+    if (this.dom.dismissAdminBannerBtn) {
+      this.dom.dismissAdminBannerBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.dismissAdminBanner();
       });
     }
 

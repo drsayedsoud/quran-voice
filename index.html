@@ -30,8 +30,18 @@
 
   <!-- رأس الصفحة والتنبيهات المتجاوبة -->
   <header class="relative z-10 w-full px-2.5 sm:px-4 pt-1 sm:pt-2.5 pb-1 safe-top">
-    <!-- شريط تنبيه الأدمن المباشر -->
-    <div id="adminBanner" class="hidden mb-2 p-2 sm:p-2.5 bg-amber-500/20 border border-amber-500/40 rounded-2xl text-amber-200 text-xs sm:text-sm font-semibold text-center backdrop-blur-md animate-pulse"></div>
+    <!-- شريط تنبيه الأدمن المباشر مع زر الإغلاق وآلية الحذف -->
+    <div id="adminBanner" class="hidden mb-2 p-2 sm:p-2.5 bg-gradient-to-r from-amber-500/20 via-amber-600/20 to-amber-500/20 border border-amber-500/40 rounded-2xl text-amber-200 text-xs sm:text-sm font-semibold backdrop-blur-md shadow-lg transition-all duration-300">
+      <div class="flex items-center justify-between gap-2 max-w-md mx-auto">
+        <div class="flex items-center gap-2 min-w-0 flex-1">
+          <span class="text-base shrink-0 animate-bounce">📢</span>
+          <span id="adminBannerText" class="truncate text-right flex-1 leading-relaxed"></span>
+        </div>
+        <button id="dismissAdminBannerBtn" type="button" class="w-6 h-6 rounded-full bg-amber-500/20 hover:bg-amber-500 hover:text-black border border-amber-400/40 text-amber-300 flex items-center justify-center font-bold text-xs shrink-0 cursor-pointer active:scale-90 transition-all" title="إغلاق هذا التنبيه" aria-label="إغلاق التنبيه">
+          ✕
+        </button>
+      </div>
+    </div>
 
     <div class="flex items-center justify-between max-w-md mx-auto w-full gap-2">
       <div class="flex items-center gap-2 min-w-0">
