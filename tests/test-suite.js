@@ -12,6 +12,7 @@ import { SURAHS, RECITERS, getAyahAudioUrl, getSurahAudioUrl } from '../quran-da
 import { parseVoiceCommand, normalizeArabic, extractNumber } from '../voice-engine.js';
 import { DualQuranPlayer } from '../dual-player.js';
 import { getTafsir, extractTermMeaning, seedTafsirIfNeeded } from '../tafsir-service.js';
+import { DataSaverService } from '../data-saver-service.js';
 
 // ============================================================================
 // أدوات توكيد وفحص الاختبارات البسيطة والمحكمة (Lightweight Assertion Framework)
@@ -578,6 +579,72 @@ export function registerOfflineTafsirTests(runner) {
       const duration = performance.now() - start;
       t.assertNotNull(text);
       t.assert(duration < 15, `زمن الاسترجاع بطيء: ${duration}ms`);
+    });
+  });
+}
+
+// ============================================================================
+// 5. جناح اختبارات خدمة استهلاك باقة الإنترنت ووضع التوفير الذكي (DataSaverService)
+// ============================================================================
+
+export function registerDataSaverTests(runner) {
+  runner.addSuite('5. حساب استهلاك باقة الإنترنت ووضع التوفير الذكي (DataSaverService)', async (t) => {
+    const ds = new DataSaverService();
+    ds.resetTodayUsage();
+    ds.setDailyLimitMB(250);
+    ds.setSaverMode(false);
+
+    await t.test('القيمة الافتراضية للحد اليومي هي 250 ميجابايت', () => {
+      t.assertEqual(ds.getDailyLimitMB(), 250);
+    });
+
+    await t.test('تصفير عداد اليوم يبدأ من 0.0 MB', () => {
+      t.assertEqual(ds.getTodayUsageMB(), '0.0');
+      t.assertEqual(ds.getPercentage(), 0);
+    });
+
+    await t.test('حساب استهلاك 60 ثانية من الصوت بجودة 128kbps', () => {
+      // 60 sec * 128 kbps * 1000 / 8 = 960,000 bytes (~0.9 MB)
+      ds.recordAudioSeconds(60, 128);
+      const mb = parseFloat(ds.getTodayUsageMB());
+      t.assert(mb >= 0.8 && mb <= 1.0, `القيمة المتوقعة قرابة 0.9 MB ولكن تم حساب: ${mb}`);
+    });
+
+    await t.test('وضع التوفير الذكي يخفض الاستهلاك إلى النصف (64kbps)', () => {
+      ds.resetTodayUsage();
+      ds.setSaverMode(true);
+      ds.recordAudioSeconds(60); // 64kbps
+      const saverMb = parseFloat(ds.getTodayUsageMB());
+      t.assert(saverMb >= 0.4 && saverMb <= 0.6, `وضع التوفير يجب أن يستهلك ~0.46 MB ولكن استهلك: ${saverMb}`);
+    });
+
+    await t.test('حساب النسبة المئوية الدقيقة للبروجرس بار بناء على 250MB', () => {
+      ds.resetTodayUsage();
+      // تسجيل 125 MB = 50%
+      ds.recordBytes(125 * 1024 * 1024, 'audio');
+      t.assertEqual(ds.getPercentage(), 50);
+    });
+
+    await t.test('التدرج اللوني للبروجرس بار (أخضر <50% ثم أصفر <80% ثم أحمر >80%)', () => {
+      ds.resetTodayUsage();
+      ds.recordBytes(50 * 1024 * 1024, 'audio'); // 20%
+      t.assert(ds.getProgressColorClass().bar.includes('emerald'), 'أقل من 50% يجب أن يكون أخضر');
+
+      ds.resetTodayUsage();
+      ds.recordBytes(160 * 1024 * 1024, 'audio'); // 64%
+      t.assert(ds.getProgressColorClass().bar.includes('amber'), 'بين 50% و 80% يجب أن يكون أصفر/كهرماني');
+
+      ds.resetTodayUsage();
+      ds.recordBytes(220 * 1024 * 1024, 'audio'); // 88%
+      t.assert(ds.getProgressColorClass().bar.includes('rose') || ds.getProgressColorClass().bar.includes('red'), 'أكثر من 80% يجب أن يكون أحمر تحذيري');
+    });
+
+    await t.test('تبديل وضع التوفير وتخزينه', () => {
+      ds.setSaverMode(false);
+      t.assertEqual(ds.isSaverModeActive(), false);
+      const toggled = ds.toggleSaverMode();
+      t.assertEqual(toggled, true);
+      t.assertEqual(ds.isSaverModeActive(), true);
     });
   });
 }
