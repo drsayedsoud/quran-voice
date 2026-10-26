@@ -3,7 +3,7 @@
  * يتيح العمل أوفلاين وتشغيل الـ PWA بسرعة فائقة
  */
 
-const CACHE_NAME = 'quran-voice-v22';
+const CACHE_NAME = 'quran-voice-v24';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -18,6 +18,9 @@ const ASSETS_TO_CACHE = [
   './voice-engine.js',
   './tafsir-service.js',
   './tafsir-muyassar.json',
+  './quran-text-service.js',
+  './quran-uthmani.json',
+  './uthmanic-hafs.woff2',
   './sound-effects.js',
   './journal-service.js',
   './data-saver-service.js',

@@ -165,9 +165,50 @@
       </p>
 
       <!-- اسم القارئ الحالي -->
-      <div class="inline-flex items-center gap-1.5 px-2.5 xs:px-3 sm:px-4 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl bg-emerald-950/60 border border-emerald-800/60 text-emerald-200 text-[11px] sm:text-xs md:text-sm font-medium mb-2.5 sm:mb-4 max-w-full">
+      <div class="inline-flex items-center gap-1.5 px-2.5 xs:px-3 sm:px-4 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl bg-emerald-950/60 border border-emerald-800/60 text-emerald-200 text-[11px] sm:text-xs md:text-sm font-medium mb-2 sm:mb-2.5 max-w-full">
         <span class="shrink-0 text-xs">🎙️</span>
         <span id="reciterName" class="truncate">بصوت الشيخ محمود خليل الحصري</span>
+      </div>
+
+      <!-- نافذة عرض الآية الكريمة الفاخرة (الرسم العثماني المعتمد لمصحف المدينة) -->
+      <div id="ayahRoyalWindow" class="ayah-royal-window group relative w-full my-2 sm:my-3 cursor-pointer select-text transition-all duration-300" title="انقر لعرض التفسير الميسر لهذه الآية">
+        <!-- الإطار الداخلي وزخارف الزوايا الإسلامية الأربعة -->
+        <div class="ayah-inner-frame"></div>
+        <div class="ayah-corner ayah-corner-tl"></div>
+        <div class="ayah-corner ayah-corner-tr"></div>
+        <div class="ayah-corner ayah-corner-bl"></div>
+        <div class="ayah-corner ayah-corner-br"></div>
+
+        <!-- شريط أدوات النافذة المصغر: زر التفسير وأزرار تكبير الخط -->
+        <div class="relative z-10 flex items-center justify-between pb-1.5 mb-1.5 border-b border-amber-400/20 text-[10px] sm:text-xs text-amber-300/80 select-none">
+          <button id="openTafsirFromCardBtn" type="button" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-400/30 transition-all cursor-pointer active:scale-95" title="عرض التفسير الميسر للآية الحالية">
+            <span>📖</span>
+            <span class="font-bold">التفسير الميسر</span>
+          </button>
+          
+          <div class="flex items-center gap-1">
+            <span class="text-[10px] text-emerald-300/70 ml-1 hidden xs:inline">الخط:</span>
+            <button id="decreaseFontSizeBtn" type="button" class="w-6 h-6 rounded-lg bg-emerald-950/80 border border-emerald-700/60 hover:bg-emerald-800 text-amber-300 flex items-center justify-center font-bold text-xs transition-all active:scale-95 cursor-pointer" title="تصغير الخط">A-</button>
+            <button id="increaseFontSizeBtn" type="button" class="w-6 h-6 rounded-lg bg-emerald-950/80 border border-emerald-700/60 hover:bg-emerald-800 text-amber-300 flex items-center justify-center font-bold text-xs transition-all active:scale-95 cursor-pointer" title="تكبير الخط">A+</button>
+          </div>
+        </div>
+
+        <!-- ترويسة البسملة الشريفة (تظهر في الآية الأولى من السور) -->
+        <div id="ayahBasmalahHeader" class="ayah-basmalah-header hidden">
+          بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
+        </div>
+
+        <!-- نص الآية الكريمة بالرسم العثماني -->
+        <div id="ayahTextContainer" class="relative z-10 w-full min-h-[3.5rem] flex items-center justify-center py-1">
+          <p id="ayahUthmanicText" class="ayah-uthmanic-text ayah-size-normal">
+            بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ <span class="ayah-marker">﴿١﴾</span>
+          </p>
+        </div>
+
+        <!-- تلميح أسفل النافذة -->
+        <div class="relative z-10 text-center mt-1 text-[9.5px] sm:text-[10.5px] text-amber-400/60 font-medium select-none pointer-events-none">
+          ✨ انقر على الآية لقراءة التفسير الميسر
+        </div>
       </div>
 
       <!-- شريط تقدم الآية -->
@@ -575,6 +616,60 @@
 
         <button id="dismissPwaInstallBtn" type="button" class="w-full py-2 px-4 bg-transparent hover:bg-emerald-900/60 text-emerald-300/80 hover:text-white rounded-xl text-xs font-semibold cursor-pointer transition-all">
           لاحقاً
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- نافذة استطلاع الرأي السريع اللحظي للمستخدمين (Micro-Survey Modal) -->
+  <div id="microSurveyModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md transition-all duration-300">
+    <div class="bg-gradient-to-b from-slate-900 to-emerald-950 border border-amber-500/50 rounded-3xl p-5 sm:p-6 max-w-sm w-full shadow-2xl text-center relative overflow-hidden">
+      <!-- Glow effect -->
+      <div class="absolute -top-10 -right-10 w-28 h-28 bg-amber-500/15 rounded-full blur-2xl pointer-events-none"></div>
+      <div class="absolute -bottom-10 -left-10 w-28 h-28 bg-emerald-500/15 rounded-full blur-2xl pointer-events-none"></div>
+
+      <!-- Icon & Badge -->
+      <div class="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-400/40 text-amber-300 text-2xl flex items-center justify-center mx-auto mb-3 shadow-inner">
+        📊
+      </div>
+      <span class="inline-block text-[11px] font-black tracking-wider text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20 mb-2">
+        استطلاع رأي سريع
+      </span>
+
+      <!-- Question -->
+      <h3 id="surveyQuestionText" class="text-base sm:text-lg font-bold text-white mb-2 leading-relaxed px-1">
+        هل ترغب بإضافة تلاوة هذا القارئ؟
+      </h3>
+      <p class="text-xs text-emerald-300/80 mb-5">رأيك الكريم يساعدنا في تحسين وتطوير المصحف الصوتي</p>
+
+      <!-- Options (Rendered dynamically) -->
+      <div id="surveyOptionsContainer" class="flex flex-col gap-2.5 mb-3">
+        <!-- Dynamic Option Buttons -->
+      </div>
+
+      <!-- خانة كتابة رأي المستخدم أو مقترحه -->
+      <div id="surveyCommentSection" class="mt-2 mb-3 text-right">
+        <label id="surveyCommentLabel" class="block text-[11px] font-semibold text-emerald-300/80 mb-1">
+          رأيك أو مقترحك (اختياري):
+        </label>
+        <textarea id="surveyCommentInput" rows="2" maxlength="300" placeholder="اكتب رأيك أو مقترحك هنا ليصل للمشرف مباشرة..." class="w-full bg-slate-950/80 border border-emerald-700/50 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 resize-none"></textarea>
+        
+        <button id="surveySendCommentBtn" type="button" class="mt-2 w-full py-2.5 px-4 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-95 text-emerald-950 font-black rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20 cursor-pointer transition-all">
+          <span>✉️</span>
+          <span>إرسال رأيي للمشرف</span>
+        </button>
+      </div>
+
+      <!-- Success feedback -->
+      <div id="surveySuccessMsg" class="hidden py-3 text-emerald-300 font-bold text-sm flex items-center justify-center gap-2">
+        <span class="text-lg">🤍</span>
+        <span>شكراً جزيلاً! تم تسجيل رأيك بنجاح.</span>
+      </div>
+
+      <!-- Dismiss Button -->
+      <div class="mt-2">
+        <button id="surveyDismissBtn" type="button" class="w-full py-2 text-xs text-emerald-400/60 hover:text-emerald-200 transition-colors rounded-xl cursor-pointer">
+          تخطي هذا الاستفتاء
         </button>
       </div>
     </div>

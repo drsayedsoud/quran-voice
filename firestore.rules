@@ -20,14 +20,18 @@ service cloud.firestore {
       allow read, update, delete: if true;
     }
 
-    // 3. تنبيهات وإعلانات النظام الصوتي المباشر (Broadcast)
-    // يُسمح لجميع المستمعين بقراءة التنبيه اللحظي، وللأدمن ببث الرسائل
+    // 3. تنبيهات وإعلانات النظام الصوتي المباشر واستطلاعات الرأي
     match /system_config/{configDoc} {
       allow read: if true;
       allow write: if true;
     }
 
-    // 4. حظر الوصول الافتراضي لأي مسارات أخرى غير معرفة
+    // 4. استجابات وتصويتات استطلاعات الرأي السريعة (Micro-Surveys)
+    match /survey_responses/{responseId} {
+      allow read, write: if true;
+    }
+
+    // 5. حظر الوصول الافتراضي لأي مسارات أخرى غير معرفة
     match /{document=**} {
       allow read, write: if false;
     }

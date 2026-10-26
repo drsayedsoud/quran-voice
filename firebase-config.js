@@ -19,6 +19,7 @@ import {
   query, 
   orderBy, 
   limit, 
+  increment,
   serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
@@ -287,5 +288,90 @@ export function listenForAdminBroadcast(callback) {
     });
   } catch (e) {
     return () => {};
+  }
+}
+
+// الاستماع لاستطلاعات الرأي السريعة المباشرة الصادرة من الإدارة (Micro-Surveys)
+export function listenForActiveSurvey(callback) {
+  try {
+    const surveyRef = doc(db, "system_config", "survey");
+    return onSnapshot(surveyRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data && data.active && data.question) {
+          callback({ ...data, id: data.id || 'survey_active' });
+        } else {
+          callback({ active: false });
+        }
+      } else {
+        callback({ active: false });
+      }
+    }, (err) => {
+      console.warn('Survey listener offline:', err.message);
+    });
+  } catch (e) {
+    return () => {};
+  }
+}
+
+// تسجيل تصويت ورأي المستخدم في الاستطلاع بدقة لمنع تكرار تصويت نفس الجهاز
+export async function submitSurveyVote(surveyId, answer, comment = '') {
+  const deviceId = getUniqueDeviceId();
+  const responseId = `${surveyId}_${deviceId}`;
+  const responseRef = doc(db, "survey_responses", responseId);
+
+  const cleanComment = (comment || '').trim();
+  const hasComment = cleanComment.length > 0;
+
+  const responseData = {
+    surveyId: surveyId,
+    deviceId: deviceId,
+    answer: answer || (hasComment ? 'رأي مكتوب' : 'موافق'),
+    comment: cleanComment,
+    hasComment: hasComment,
+    timestamp: serverTimestamp(),
+    timeString: new Date().toLocaleTimeString('ar-EG'),
+    platform: navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop',
+    userAgent: (navigator.userAgent || '').slice(0, 100),
+    isPwa: window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
+  };
+
+  try {
+    // 1. تسجيل صوت ورأي الجهاز في مجموعة استجابات الاستفتاءات
+    await setDoc(responseRef, responseData);
+
+    // 2. تحديث التعداد التراكمي في وثيقة الاستبيان
+    const surveyRef = doc(db, "system_config", "survey");
+    const updatePayload = {
+      totalVotes: increment(1)
+    };
+    if (responseData.answer) {
+      updatePayload[`votes.${responseData.answer}`] = increment(1);
+    }
+    if (hasComment) {
+      updatePayload.totalComments = increment(1);
+    }
+
+    try {
+      await updateDoc(surveyRef, updatePayload);
+    } catch (updateErr) {
+      const sSnap = await getDoc(surveyRef);
+      if (sSnap.exists()) {
+        const currentData = sSnap.data();
+        const currentVotes = currentData.votes || {};
+        if (responseData.answer) {
+          currentVotes[responseData.answer] = (currentVotes[responseData.answer] || 0) + 1;
+        }
+        await updateDoc(surveyRef, {
+          totalVotes: (currentData.totalVotes || 0) + 1,
+          totalComments: (currentData.totalComments || 0) + (hasComment ? 1 : 0),
+          votes: currentVotes
+        });
+      }
+    }
+    return { success: true };
+  } catch (e) {
+    console.warn('Failed to submit survey vote:', e);
+    return { success: false, error: e.message };
   }
 }

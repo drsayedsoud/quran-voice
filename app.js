@@ -23,7 +23,9 @@ import {
   logVoiceCommand, 
   recordAyahListened,
   recordListeningTime,
-  listenForAdminBroadcast 
+  listenForAdminBroadcast,
+  listenForActiveSurvey,
+  submitSurveyVote 
 } from './firebase-config.js';
 
 class QuranVoiceApp {
@@ -125,7 +127,16 @@ class QuranVoiceApp {
       journalTodayCount: document.getElementById('journalTodayCount'),
       journalWeekCount: document.getElementById('journalWeekCount'),
       journalTotalCount: document.getElementById('journalTotalCount'),
-      journalMemorizedCount: document.getElementById('journalMemorizedCount')
+      journalMemorizedCount: document.getElementById('journalMemorizedCount'),
+      microSurveyModal: document.getElementById('microSurveyModal'),
+      surveyQuestionText: document.getElementById('surveyQuestionText'),
+      surveyOptionsContainer: document.getElementById('surveyOptionsContainer'),
+      surveyCommentSection: document.getElementById('surveyCommentSection'),
+      surveyCommentLabel: document.getElementById('surveyCommentLabel'),
+      surveyCommentInput: document.getElementById('surveyCommentInput'),
+      surveySendCommentBtn: document.getElementById('surveySendCommentBtn'),
+      surveySuccessMsg: document.getElementById('surveySuccessMsg'),
+      surveyDismissBtn: document.getElementById('surveyDismissBtn')
     };
 
     this.deferredInstallPrompt = null;
@@ -158,6 +169,20 @@ class QuranVoiceApp {
     listenForAdminBroadcast((broadcast) => {
       this.handleAdminBroadcast(broadcast);
     });
+
+    // الاستماع لاستطلاعات الرأي السريعة المباشرة من الإدارة
+    listenForActiveSurvey((survey) => {
+      this.handleActiveSurvey(survey);
+    });
+
+    if (this.dom.surveyDismissBtn) {
+      this.dom.surveyDismissBtn.addEventListener('click', () => {
+        if (this.currentSurveyId) {
+          sessionStorage.setItem('quran_survey_dismissed_' + this.currentSurveyId, 'true');
+        }
+        this.hideSurveyModal();
+      });
+    }
 
     // الاستماع لحدث تثبيت التطبيق PWA
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -1209,6 +1234,176 @@ class QuranVoiceApp {
         localStorage.setItem('dismissed_broadcast_id', idToSave);
       } catch (e) {}
     }
+  }
+
+  // إدارة استطلاع الرأي اللحظي (Micro-Survey Modal)
+  handleActiveSurvey(survey) {
+    if (!this.dom.microSurveyModal) return;
+
+    if (!survey || survey.active === false || !survey.question) {
+      this.hideSurveyModal();
+      return;
+    }
+
+    const surveyId = survey.id || 'survey_active';
+    this.currentSurveyId = surveyId;
+
+    // التحقق مما إذا كان المستخدم قد صوّت بالفعل أو تخطى الاستطلاع
+    const hasVoted = localStorage.getItem('quran_survey_voted_' + surveyId);
+    const hasDismissed = sessionStorage.getItem('quran_survey_dismissed_' + surveyId);
+    if (hasVoted || hasDismissed) {
+      return;
+    }
+
+    // تعيين نص السؤال
+    if (this.dom.surveyQuestionText) {
+      this.dom.surveyQuestionText.textContent = survey.question;
+    }
+
+    if (this.dom.surveySuccessMsg) {
+      this.dom.surveySuccessMsg.classList.add('hidden');
+    }
+
+    if (this.dom.surveyCommentInput) {
+      this.dom.surveyCommentInput.value = '';
+    }
+
+    const surveyType = survey.type || 'choices';
+    let selectedOption = null;
+
+    // حالة 1: استطلاع رأي مفتوح للكتابة فقط
+    if (surveyType === 'text') {
+      if (this.dom.surveyOptionsContainer) {
+        this.dom.surveyOptionsContainer.classList.add('hidden');
+      }
+      if (this.dom.surveyCommentSection) {
+        this.dom.surveyCommentSection.classList.remove('hidden');
+      }
+      if (this.dom.surveyCommentLabel) {
+        this.dom.surveyCommentLabel.textContent = 'اكتب رأيك أو اقتراحك الكريم:';
+      }
+      if (this.dom.surveyCommentInput) {
+        this.dom.surveyCommentInput.placeholder = 'اكتب هنا ما تود قوله للمشرف...';
+      }
+    } else {
+      // حالة 2: استفتاء باختيارات سريعة + إمكانية كتابة تعليق
+      if (this.dom.surveyOptionsContainer) {
+        this.dom.surveyOptionsContainer.classList.remove('hidden');
+      }
+      if (this.dom.surveyCommentSection) {
+        this.dom.surveyCommentSection.classList.remove('hidden');
+      }
+      if (this.dom.surveyCommentLabel) {
+        this.dom.surveyCommentLabel.textContent = 'إضافة رأي أو ملاحظة (اختياري):';
+      }
+
+      // توليد خيارات الاستفتاء ديناميكياً (افتراضياً: نعم / لا)
+      const options = Array.isArray(survey.options) && survey.options.length > 0 
+        ? survey.options 
+        : ['نعم', 'لا'];
+
+      if (this.dom.surveyOptionsContainer) {
+        this.dom.surveyOptionsContainer.innerHTML = options.map((opt, idx) => {
+          const isYes = opt.includes('نعم') || idx === 0;
+          const colorClasses = isYes 
+            ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-900/40' 
+            : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700';
+
+          const icon = isYes ? '👍' : (opt.includes('لا') ? '✋' : '✨');
+
+          return `
+            <button type="button" data-option="${opt}" class="survey-option-btn w-full py-2.5 px-4 rounded-2xl font-bold text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer ${colorClasses}">
+              <span>${icon}</span>
+              <span>${opt}</span>
+            </button>
+          `;
+        }).join('');
+
+        // ربط أحداث النقر على الخيارات
+        const optionBtns = this.dom.surveyOptionsContainer.querySelectorAll('.survey-option-btn');
+        optionBtns.forEach(btn => {
+          btn.addEventListener('click', async () => {
+            selectedOption = btn.getAttribute('data-option');
+            sound.vibrate([30, 40]);
+
+            // تمييز الزر المختار
+            optionBtns.forEach(b => {
+              b.classList.remove('ring-2', 'ring-amber-400', 'scale-[1.02]');
+              if (b !== btn) b.classList.add('opacity-50');
+            });
+            btn.classList.add('ring-2', 'ring-amber-400', 'scale-[1.02]');
+            btn.classList.remove('opacity-50');
+
+            // إذا كان المستخدم قد كتب تعليقاً مسبقاً، نرسلهما معاً
+            const comment = this.dom.surveyCommentInput ? this.dom.surveyCommentInput.value.trim() : '';
+
+            // إرسال مباشر إذا لم يكن هناك نص أو بعد نقر الزر
+            await this.submitSurveyAndFinish(surveyId, selectedOption, comment);
+          });
+        });
+      }
+    }
+
+    // زر إرسال الرأي المكتوب
+    if (this.dom.surveySendCommentBtn) {
+      this.dom.surveySendCommentBtn.onclick = async () => {
+        const comment = this.dom.surveyCommentInput ? this.dom.surveyCommentInput.value.trim() : '';
+        if (surveyType === 'text' && !comment) {
+          alert('يرجى كتابة رأيك قبل الإرسال');
+          return;
+        }
+        await this.submitSurveyAndFinish(surveyId, selectedOption || (comment ? 'رأي مكتوب' : 'موافق'), comment);
+      };
+    }
+
+    // إظهار النافذة بعد مهلة قصيرة لضمان جاهزية المستخدم
+    setTimeout(() => {
+      this.showSurveyModal();
+    }, 2000);
+  }
+
+  async submitSurveyAndFinish(surveyId, answer, comment) {
+    sound.vibrate([30, 40]);
+
+    // تعطيل كافة المدخلات
+    if (this.dom.surveyOptionsContainer) {
+      const optionBtns = this.dom.surveyOptionsContainer.querySelectorAll('.survey-option-btn');
+      optionBtns.forEach(b => {
+        b.disabled = true;
+        b.classList.add('pointer-events-none');
+      });
+    }
+    if (this.dom.surveyCommentInput) {
+      this.dom.surveyCommentInput.disabled = true;
+    }
+    if (this.dom.surveySendCommentBtn) {
+      this.dom.surveySendCommentBtn.disabled = true;
+      this.dom.surveySendCommentBtn.classList.add('opacity-50', 'pointer-events-none');
+    }
+
+    // إظهار رسالة الشكر بنعومة
+    if (this.dom.surveySuccessMsg) {
+      this.dom.surveySuccessMsg.classList.remove('hidden');
+    }
+
+    // حفظ التصويت محلياً وفي Firestore
+    localStorage.setItem('quran_survey_voted_' + surveyId, answer || 'تم');
+    await submitSurveyVote(surveyId, answer, comment);
+
+    // إغلاق النافذة تلقائياً بعد ثانية ونصف
+    setTimeout(() => {
+      this.hideSurveyModal();
+    }, 1500);
+  }
+
+  showSurveyModal() {
+    if (!this.dom.microSurveyModal) return;
+    this.dom.microSurveyModal.classList.remove('hidden');
+  }
+
+  hideSurveyModal() {
+    if (!this.dom.microSurveyModal) return;
+    this.dom.microSurveyModal.classList.add('hidden');
   }
 
   restoreLocalPosition() {

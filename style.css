@@ -3,6 +3,17 @@
    المصحف الصوتي الميسر - يدعم مختلف أحجام الشاشات ونتوءات الكاميرا (iPhone Notches, Island & Android Punch-holes)
    ============================================================== */
 
+/* ==============================================================
+   الخط العثماني الرسمي لمصحف المدينة النبوية (مجمع الملك فهد)
+   ============================================================== */
+@font-face {
+  font-family: 'UthmanicHafs';
+  src: url('./uthmanic-hafs.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --primary-emerald: #064e3b;
   --dark-emerald: #022c22;
@@ -408,4 +419,130 @@ body.saver-mode-active #saverModeToggleBtn {
 body.saver-mode-active #saverModeStatusDot {
   background-color: #34d399 !important;
   box-shadow: 0 0 6px #34d399;
+}
+
+/* ==============================================================
+   نافذة عرض الآية الكريمة الفاخرة (Royal Ayah Display Window)
+   مستوحاة من إطارات مصحف المدينة النبوية الذهبية
+   ============================================================== */
+.ayah-royal-window {
+  position: relative;
+  background: radial-gradient(ellipse at 50% 20%, rgba(6, 78, 59, 0.92) 0%, rgba(2, 44, 34, 0.98) 100%);
+  border: 1.5px solid rgba(245, 158, 11, 0.45);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55), inset 0 0 25px rgba(245, 158, 11, 0.08);
+  border-radius: 1.25rem;
+  padding: 1.25rem 1.2rem;
+  margin: 0.65rem 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  user-select: text;
+}
+
+.ayah-royal-window:hover {
+  border-color: rgba(245, 158, 11, 0.8);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.65), inset 0 0 35px rgba(245, 158, 11, 0.14);
+}
+
+/* إطار زخرفي داخلي رفيع مزدوج */
+.ayah-inner-frame {
+  position: absolute;
+  inset: 5px;
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  border-radius: 0.95rem;
+  pointer-events: none;
+}
+
+/* زخرفة الزوايا الإسلامية الأربعة */
+.ayah-corner {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: #f59e0b;
+  pointer-events: none;
+  opacity: 0.75;
+}
+
+.ayah-corner-tl {
+  top: 7px;
+  left: 7px;
+  border-top: 2px solid #f59e0b;
+  border-left: 2px solid #f59e0b;
+  border-top-left-radius: 3px;
+}
+
+.ayah-corner-tr {
+  top: 7px;
+  right: 7px;
+  border-top: 2px solid #f59e0b;
+  border-right: 2px solid #f59e0b;
+  border-top-right-radius: 3px;
+}
+
+.ayah-corner-bl {
+  bottom: 7px;
+  left: 7px;
+  border-bottom: 2px solid #f59e0b;
+  border-left: 2px solid #f59e0b;
+  border-bottom-left-radius: 3px;
+}
+
+.ayah-corner-br {
+  bottom: 7px;
+  right: 7px;
+  border-bottom: 2px solid #f59e0b;
+  border-right: 2px solid #f59e0b;
+  border-bottom-right-radius: 3px;
+}
+
+/* نص الآية الكريمة بالرسم العثماني الأصيل */
+.ayah-uthmanic-text {
+  font-family: 'UthmanicHafs', 'Amiri Quran', 'Amiri', serif;
+  color: #fffbeb;
+  text-align: center;
+  line-height: 2.25;
+  word-spacing: 3px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  min-height: 3.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* علامة ورقم الآية القرآنية */
+.ayah-marker {
+  font-family: 'UthmanicHafs', 'Amiri Quran', 'Amiri', serif;
+  color: #f59e0b;
+  display: inline-block;
+  margin: 0 0.35rem;
+  font-size: 1.15em;
+  text-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+  vertical-align: middle;
+}
+
+/* ترويسة البسملة */
+.ayah-basmalah-header {
+  font-family: 'UthmanicHafs', 'Amiri Quran', 'Amiri', serif;
+  color: #fcd34d;
+  font-size: 1.35rem;
+  line-height: 1.8;
+  text-align: center;
+  margin-bottom: 0.65rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px dashed rgba(245, 158, 11, 0.3);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+/* مستويات أحجام الخط المتاحة */
+.ayah-size-small { font-size: 1.2rem !important; line-height: 2.1 !important; }
+.ayah-size-normal { font-size: 1.45rem !important; line-height: 2.3 !important; }
+.ayah-size-large { font-size: 1.75rem !important; line-height: 2.4 !important; }
+.ayah-size-xlarge { font-size: 2.1rem !important; line-height: 2.5 !important; }
+
+@media (min-width: 640px) {
+  .ayah-size-small { font-size: 1.35rem !important; }
+  .ayah-size-normal { font-size: 1.65rem !important; }
+  .ayah-size-large { font-size: 2.05rem !important; }
+  .ayah-size-xlarge { font-size: 2.5rem !important; }
 }

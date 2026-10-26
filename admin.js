@@ -20,10 +20,14 @@ class AdminDashboard {
     this.isAuthenticated = false;
     this.usersData = [];
     this.voiceLogs = [];
+    this.surveyResponses = [];
+    this.currentSurvey = null;
     this.isFetching = false;
     this.unsubUsers = null;
     this.unsubLogs = null;
     this.unsubBroadcast = null;
+    this.unsubSurvey = null;
+    this.unsubSurveyResponses = null;
 
     this.dom = {
       loginOverlay: document.getElementById('loginOverlay'),
@@ -71,7 +75,26 @@ class AdminDashboard {
       adminSpeechLangSelect: document.getElementById('adminSpeechLangSelect'),
 
       // المستخدمين
-      usersTableBody: document.getElementById('usersTableBody')
+      usersTableBody: document.getElementById('usersTableBody'),
+
+      // نظام استطلاعات الرأي (Micro-Surveys)
+      surveyLiveStatusBadge: document.getElementById('surveyLiveStatusBadge'),
+      surveyTypeSelect: document.getElementById('surveyTypeSelect'),
+      surveyQuestionInput: document.getElementById('surveyQuestionInput'),
+      surveyOptionsGroup: document.getElementById('surveyOptionsGroup'),
+      surveyOptionsInput: document.getElementById('surveyOptionsInput'),
+      launchSurveyBtn: document.getElementById('launchSurveyBtn'),
+      endSurveyBtn: document.getElementById('endSurveyBtn'),
+      resetSurveyBtn: document.getElementById('resetSurveyBtn'),
+      surveyTotalVotesText: document.getElementById('surveyTotalVotesText'),
+      surveyTotalCommentsText: document.getElementById('surveyTotalCommentsText'),
+      surveyActiveQuestionText: document.getElementById('surveyActiveQuestionText'),
+      surveyResultsBarsContainer: document.getElementById('surveyResultsBarsContainer'),
+      surveyLastVoteTime: document.getElementById('surveyLastVoteTime'),
+      surveyResponsesBadge: document.getElementById('surveyResponsesBadge'),
+      surveyFilterCommentsSelect: document.getElementById('surveyFilterCommentsSelect'),
+      exportSurveyBtn: document.getElementById('exportSurveyBtn'),
+      surveyResponsesTableBody: document.getElementById('surveyResponsesTableBody')
     };
 
     this.init();
@@ -167,7 +190,8 @@ class AdminDashboard {
       await Promise.allSettled([
         this.fetchUsersData(),
         this.fetchVoiceLogsData(),
-        this.fetchBroadcastConfig()
+        this.fetchBroadcastConfig(),
+        this.fetchSurveyData()
       ]);
 
       const nowTime = new Date().toLocaleTimeString('ar-EG');
@@ -537,7 +561,266 @@ class AdminDashboard {
     }
   }
 
-  // 4. تفعيل الاشتراكات الحية اللحظية (Realtime Live Subscriptions)
+  // 4. جلب ومعالجة بيانات استطلاع الرأي السريع (Micro-Surveys)
+  async fetchSurveyData() {
+    try {
+      // جلب وثيقة الاستفتاء النشط
+      let surveyData = null;
+      try {
+        const sSnap = await getDocs(collection(db, "system_config"));
+        sSnap.forEach(d => {
+          if (d.id === 'survey') surveyData = { id: d.id, ...d.data() };
+        });
+      } catch (e) {
+        // Fallback REST
+        const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/system_config/survey`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const json = await res.json();
+          surveyData = this.parseFirestoreRestDoc(json);
+        }
+      }
+
+      this.updateSurveyUI(surveyData);
+
+      // جلب استجابات وتصويتات المستخدمين
+      let responses = [];
+      try {
+        const rSnap = await getDocs(collection(db, "survey_responses"));
+        rSnap.forEach(d => responses.push({ id: d.id, ...d.data() }));
+      } catch (e) {
+        // Fallback REST
+        const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/survey_responses?pageSize=300`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const json = await res.json();
+          const docs = json.documents || [];
+          responses = docs.map(d => this.parseFirestoreRestDoc(d));
+        }
+      }
+
+      this.processAndRenderSurveyResponses(responses);
+    } catch (err) {
+      console.warn('Survey data fetch error:', err);
+    }
+  }
+
+  updateSurveyUI(data) {
+    this.currentSurvey = data;
+    const isActive = data && data.active && data.question;
+
+    if (this.dom.surveyLiveStatusBadge) {
+      if (isActive) {
+        this.dom.surveyLiveStatusBadge.textContent = 'استطلاع نشط للمستخدمين 🟢';
+        this.dom.surveyLiveStatusBadge.className = 'text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold';
+      } else {
+        this.dom.surveyLiveStatusBadge.textContent = 'لا يوجد استطلاع نشط';
+        this.dom.surveyLiveStatusBadge.className = 'text-[11px] px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400';
+      }
+    }
+
+    if (this.dom.surveyActiveQuestionText) {
+      this.dom.surveyActiveQuestionText.textContent = isActive 
+        ? data.question 
+        : 'لا يوجد استطلاع رأي نشط حالياً (اضغط إطلاق لتفعيل استفتاء جديد)';
+    }
+
+    if (this.dom.surveyTotalVotesText) {
+      this.dom.surveyTotalVotesText.textContent = (data?.totalVotes || 0).toLocaleString('ar-EG');
+    }
+
+    if (this.dom.surveyTotalCommentsText) {
+      this.dom.surveyTotalCommentsText.textContent = (data?.totalComments || 0).toLocaleString('ar-EG');
+    }
+
+    // تعبئة الحقول إذا كان الاستفتاء نشطاً
+    if (isActive) {
+      if (this.dom.surveyQuestionInput && !this.dom.surveyQuestionInput.value) {
+        this.dom.surveyQuestionInput.value = data.question;
+      }
+      if (this.dom.surveyTypeSelect && data.type) {
+        this.dom.surveyTypeSelect.value = data.type;
+        if (this.dom.surveyOptionsGroup) {
+          this.dom.surveyOptionsGroup.classList.toggle('hidden', data.type === 'text');
+        }
+      }
+      if (this.dom.surveyOptionsInput && Array.isArray(data.options)) {
+        this.dom.surveyOptionsInput.value = data.options.join(', ');
+      }
+    }
+
+    this.renderSurveyResults();
+  }
+
+  renderSurveyResults() {
+    if (!this.dom.surveyResultsBarsContainer) return;
+
+    if (!this.currentSurvey || !this.currentSurvey.question) {
+      this.dom.surveyResultsBarsContainer.innerHTML = `
+        <div class="text-center py-6 text-slate-500 text-xs">
+          بانتظار إطلاق استطلاع رأي أو تسجيل تصويتات المستخدمين
+        </div>
+      `;
+      return;
+    }
+
+    const survey = this.currentSurvey;
+    const type = survey.type || 'choices';
+    const totalVotes = survey.totalVotes || 0;
+    const totalComments = survey.totalComments || 0;
+
+    // في حال الاستطلاع مفتوح للكتابة فقط
+    if (type === 'text') {
+      this.dom.surveyResultsBarsContainer.innerHTML = `
+        <div class="p-4 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-center space-y-2">
+          <div class="text-2xl">💬</div>
+          <h4 class="text-xs font-bold text-indigo-300">استطلاع رأي مفتوح للكتابة والاقتراحات</h4>
+          <p class="text-[11px] text-slate-400">
+            تم استلام <strong class="text-emerald-400 font-bold">${totalComments}</strong> رأياً ومقترحاً مكتوباً من المستمعين حتى الآن.
+          </p>
+          <p class="text-[10px] text-slate-500">يمكنك مطالعة كل الآراء والمقترحات في الجدول بالأسفل</p>
+        </div>
+      `;
+      return;
+    }
+
+    // في حال الاستفتاء باختيارات محددة
+    const options = Array.isArray(survey.options) && survey.options.length > 0 
+      ? survey.options 
+      : ['نعم', 'لا'];
+    const votesMap = survey.votes || {};
+
+    const barsHtml = options.map((opt, idx) => {
+      const count = votesMap[opt] || 0;
+      const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+      const isYes = opt.includes('نعم') || idx === 0;
+
+      const dotColor = isYes ? 'bg-emerald-400' : 'bg-amber-400';
+      const textColor = isYes ? 'text-emerald-400' : 'text-amber-400';
+      const gradColor = isYes ? 'from-emerald-500 to-teal-400' : 'from-amber-500 to-orange-400';
+
+      return `
+        <div class="space-y-1.5 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-bold text-white flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full ${dotColor}"></span>
+              <span>${opt}</span>
+            </span>
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-slate-400 text-[11px]">(${count.toLocaleString('ar-EG')} صوت)</span>
+              <span class="font-bold ${textColor} font-mono text-sm">${pct}%</span>
+            </div>
+          </div>
+          <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800/80 p-0.5">
+            <div class="h-full rounded-full bg-gradient-to-r ${gradColor} transition-all duration-700 shadow-sm" style="width: ${pct}%"></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    this.dom.surveyResultsBarsContainer.innerHTML = barsHtml;
+  }
+
+  processAndRenderSurveyResponses(rawResponses) {
+    // ترتيب الردود تنازلياً حسب التوقيت
+    rawResponses.sort((a, b) => {
+      const tA = this.extractTimestamp(a.timestamp);
+      const tB = this.extractTimestamp(b.timestamp);
+      return tB - tA;
+    });
+
+    this.surveyResponses = rawResponses;
+
+    if (this.dom.surveyResponsesBadge) {
+      this.dom.surveyResponsesBadge.textContent = this.surveyResponses.length.toLocaleString('ar-EG');
+    }
+
+    if (this.dom.surveyLastVoteTime && this.surveyResponses.length > 0) {
+      const last = this.surveyResponses[0];
+      const timeStr = last.timeString || 'مؤخراً';
+      this.dom.surveyLastVoteTime.textContent = `آخر مشاركة: ${timeStr}`;
+    }
+
+    this.renderSurveyResponsesTable();
+  }
+
+  renderSurveyResponsesTable() {
+    if (!this.dom.surveyResponsesTableBody) return;
+
+    const filter = this.dom.surveyFilterCommentsSelect ? this.dom.surveyFilterCommentsSelect.value : 'all';
+
+    const filtered = this.surveyResponses.filter((r) => {
+      if (filter === 'with_comment') {
+        return !!(r.comment && r.comment.trim());
+      }
+      return true;
+    });
+
+    if (!filtered.length) {
+      this.dom.surveyResponsesTableBody.innerHTML = `
+        <tr>
+          <td colspan="5" class="p-6 text-center text-slate-500">
+            ${filter === 'with_comment' ? 'لا توجد مشاركات تحتوي آراء مكتوبة حتى الآن' : 'لا توجد ردود مسجلة في الاستطلاع حتى الآن'}
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    this.dom.surveyResponsesTableBody.innerHTML = filtered.map((r) => {
+      const time = r.timeString || 'الآن';
+      const uidShort = r.deviceId 
+        ? r.deviceId.replace('dev_', 'جهاز ') 
+        : (r.uid ? r.uid.substring(0, 8) + '...' : 'مجهول');
+      
+      const answerBadge = r.answer?.includes('نعم')
+        ? `<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">👍 ${r.answer}</span>`
+        : r.answer?.includes('لا')
+        ? `<span class="px-2 py-0.5 rounded bg-red-500/20 text-red-300 font-bold">✋ ${r.answer}</span>`
+        : `<span class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold">${r.answer || 'مشاركة'}</span>`;
+
+      let commentHtml = `<span class="text-slate-600 text-[11px]">بدون ملاحظة</span>`;
+      if (r.comment && r.comment.trim()) {
+        const escapedComment = r.comment.replace(/"/g, '&quot;');
+        commentHtml = `
+          <div class="p-2 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-200 text-xs flex items-center justify-between gap-2 shadow-sm">
+            <span class="font-medium leading-relaxed">💬 "${r.comment}"</span>
+            <button type="button" class="copy-comment-btn px-2 py-1 bg-emerald-900/60 hover:bg-emerald-800 text-amber-300 hover:text-white rounded text-[10px] shrink-0 transition-colors cursor-pointer" data-text="${escapedComment}">
+              نسخ
+            </button>
+          </div>
+        `;
+      }
+
+      const device = r.platform || (r.userAgent?.includes('Mobile') ? 'هاتف' : 'حاسوب');
+      const isPwa = r.isPwa ? '<span class="text-emerald-400 text-[10px] font-bold mr-1">PWA</span>' : '';
+
+      return `
+        <tr class="hover:bg-slate-900/80 transition-colors">
+          <td class="p-3 text-slate-400 font-mono">${time}</td>
+          <td class="p-3 font-mono text-amber-400">${uidShort}</td>
+          <td class="p-3">${answerBadge}</td>
+          <td class="p-3 max-w-xs md:max-w-md">${commentHtml}</td>
+          <td class="p-3 text-slate-400">${device} ${isPwa}</td>
+        </tr>
+      `;
+    }).join('');
+
+    // تفعيل أزرار نسخ التعليق
+    this.dom.surveyResponsesTableBody.querySelectorAll('.copy-comment-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const text = btn.getAttribute('data-text');
+        if (text && navigator.clipboard) {
+          navigator.clipboard.writeText(text);
+          const orig = btn.textContent;
+          btn.textContent = 'تم النسخ ✅';
+          setTimeout(() => { btn.textContent = orig; }, 1500);
+        }
+      });
+    });
+  }
+
+  // 5. تفعيل الاشتراكات الحية اللحظية (Realtime Live Subscriptions)
   startRealtimeSubscriptions() {
     try {
       // مراقبة المستخدمين لحظياً
@@ -570,6 +853,28 @@ class AdminDashboard {
         }
       }, (err) => {
         console.warn('Broadcast live stream notice:', err.message);
+      });
+
+      // مراقبة الاستفتاء اللحظي
+      this.unsubSurvey = onSnapshot(doc(db, "system_config", "survey"), (docSnap) => {
+        if (docSnap.exists()) {
+          this.updateSurveyUI({ id: docSnap.id, ...docSnap.data() });
+        } else {
+          this.updateSurveyUI(null);
+        }
+      }, (err) => {
+        console.warn('Survey live stream notice:', err.message);
+      });
+
+      // مراقبة استجابات الاستفتاء لحظياً
+      this.unsubSurveyResponses = onSnapshot(collection(db, "survey_responses"), (snapshot) => {
+        const liveResponses = [];
+        snapshot.forEach(d => liveResponses.push({ id: d.id, ...d.data() }));
+        if (liveResponses.length > 0) {
+          this.processAndRenderSurveyResponses(liveResponses);
+        }
+      }, (err) => {
+        console.warn('Survey responses stream notice:', err.message);
       });
     } catch (e) {
       console.warn('Realtime listeners initialization:', e);
@@ -637,6 +942,112 @@ class AdminDashboard {
         const downloadAnchor = document.createElement('a');
         downloadAnchor.setAttribute("href", dataStr);
         downloadAnchor.setAttribute("download", `quran-voice-logs-${new Date().toISOString().slice(0, 10)}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+      });
+    }
+
+    // تغيير نوع الاستفتاء (خيارات vs نص حر)
+    if (this.dom.surveyTypeSelect) {
+      this.dom.surveyTypeSelect.addEventListener('change', (e) => {
+        const isText = e.target.value === 'text';
+        if (this.dom.surveyOptionsGroup) {
+          this.dom.surveyOptionsGroup.classList.toggle('hidden', isText);
+        }
+      });
+    }
+
+    // إطلاق الاستفتاء للمستخدمين
+    if (this.dom.launchSurveyBtn) {
+      this.dom.launchSurveyBtn.addEventListener('click', async () => {
+        const question = this.dom.surveyQuestionInput ? this.dom.surveyQuestionInput.value.trim() : '';
+        if (!question) {
+          alert('يرجى كتابة نص السؤال أو الاستطلاع أولاً');
+          return;
+        }
+
+        const type = this.dom.surveyTypeSelect ? this.dom.surveyTypeSelect.value : 'choices';
+        let options = [];
+        if (type === 'choices') {
+          const rawOpts = this.dom.surveyOptionsInput ? this.dom.surveyOptionsInput.value.trim() : '';
+          options = rawOpts ? rawOpts.split(',').map(s => s.trim()).filter(Boolean) : ['نعم', 'لا'];
+          if (!options.length) options = ['نعم', 'لا'];
+        }
+
+        const surveyId = 'survey_' + Date.now();
+        const surveyPayload = {
+          id: surveyId,
+          type: type,
+          question: question,
+          options: options,
+          active: true,
+          totalVotes: 0,
+          totalComments: 0,
+          votes: {},
+          createdAt: serverTimestamp()
+        };
+
+        try {
+          const surveyRef = doc(db, "system_config", "survey");
+          await setDoc(surveyRef, surveyPayload);
+          alert('🚀 تم إطلاق الاستفتاء بنجاح! سيظهر لجميع المستمعين في التطبيق فوراً.');
+        } catch (err) {
+          alert('حدث خطأ في حفظ الاستفتاء: ' + err.message);
+        }
+      });
+    }
+
+    // إيقاف الاستفتاء
+    if (this.dom.endSurveyBtn) {
+      this.dom.endSurveyBtn.addEventListener('click', async () => {
+        try {
+          const surveyRef = doc(db, "system_config", "survey");
+          await setDoc(surveyRef, { active: false }, { merge: true });
+          alert('تم إيقاف الاستفتاء بنجاح ولن يظهر للمستمعين.');
+        } catch (err) {
+          alert('حدث خطأ في إيقاف الاستفتاء: ' + err.message);
+        }
+      });
+    }
+
+    // إعادة تعيين ومسح نتائج الاستفتاء
+    if (this.dom.resetSurveyBtn) {
+      this.dom.resetSurveyBtn.addEventListener('click', async () => {
+        if (!confirm('هل أنت متأكد من رغبتك في حذف وإلغاء الاستفتاء الحالي ونتائجه؟')) return;
+        try {
+          const surveyRef = doc(db, "system_config", "survey");
+          await setDoc(surveyRef, {
+            active: false,
+            question: '',
+            options: [],
+            totalVotes: 0,
+            totalComments: 0,
+            votes: {},
+            updatedAt: serverTimestamp()
+          });
+          if (this.dom.surveyQuestionInput) this.dom.surveyQuestionInput.value = '';
+          alert('تمت تصفية الاستفتاء بنجاح.');
+        } catch (err) {
+          alert('حدث خطأ: ' + err.message);
+        }
+      });
+    }
+
+    // فلترة استجابات الاستبيان (الكل / التي تحتوي تعليق فقط)
+    if (this.dom.surveyFilterCommentsSelect) {
+      this.dom.surveyFilterCommentsSelect.addEventListener('change', () => {
+        this.renderSurveyResponsesTable();
+      });
+    }
+
+    // تصدير استجابات الاستبيان كـ JSON
+    if (this.dom.exportSurveyBtn) {
+      this.dom.exportSurveyBtn.addEventListener('click', () => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.surveyResponses, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `quran-survey-responses-${new Date().toISOString().slice(0, 10)}.json`);
         document.body.appendChild(downloadAnchor);
         downloadAnchor.click();
         downloadAnchor.remove();
