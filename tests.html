@@ -133,7 +133,8 @@
       registerDualPlayerTests,
       registerAudioUrlsTests,
       registerOfflineTafsirTests,
-      registerDataSaverTests
+      registerDataSaverTests,
+      registerQuranTextServiceTests
     } from './tests/test-suite.js';
 
     // عناصر الواجهة
@@ -172,6 +173,7 @@
       registerAudioUrlsTests(runner);
       registerOfflineTafsirTests(runner);
       registerDataSaverTests(runner);
+      registerQuranTextServiceTests(runner);
 
       let processed = 0;
       // تقدير عدد الاختبارات الكلي للتحديث السلس

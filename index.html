@@ -25,8 +25,8 @@
 </head>
 <body class="bg-emerald-950 text-white min-h-[100dvh] flex flex-col justify-between font-['Cairo'] select-none overflow-x-hidden safe-area-inset">
 
-  <!-- منطقة الإيماءات اللمسية الشاملة -->
-  <div id="gestureArea" class="fixed inset-0 z-0 opacity-0 pointer-events-auto"></div>
+  <!-- منطقة الإيماءات اللمسية الشاملة (معطلة من حجب النقرات) -->
+  <div id="gestureArea" class="fixed inset-0 z-0 opacity-0 pointer-events-none"></div>
 
   <!-- رأس الصفحة والتنبيهات المتجاوبة -->
   <header class="relative z-10 w-full px-2.5 sm:px-4 pt-1 sm:pt-2.5 pb-1 safe-top">
@@ -86,29 +86,37 @@
     </div>
   </header>
 
-  <!-- شريط التحكم أسفل الهيدر: زر إظهار/إخفاء الآية (صوت فقط) + وضع توفير البيانات -->
-  <div class="relative z-10 w-full flex flex-wrap justify-center items-center gap-2 py-1 px-3 xs:px-4 select-none">
-    <!-- زر إظهار أو إخفاء نص الآية للمصحف الشريف -->
-    <button id="toggleAyahDisplayBtn" type="button" class="group flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/85 border border-amber-400/40 hover:border-amber-400/80 text-amber-200/95 font-bold text-[11px] sm:text-xs shadow active:scale-95 cursor-pointer transition-all" title="إظهار أو إخفاء الآية الكريمة (للتبديل بين قراءة المصحف أو الاستماع بالصوت فقط)">
-      <span id="toggleAyahDisplayIcon" class="text-xs">📖</span>
-      <span id="toggleAyahDisplayText">المصحف: ظاهر</span>
-      <span id="toggleAyahDisplayDot" class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]"></span>
-    </button>
+  <!-- كونتينر شريط التحكم أسفل الهيدر المنفصل: أزرار المصحف، التفسير، توفير البيانات، ووضع القيادة -->
+  <section id="subHeaderControlsContainer" class="sub-header-controls relative z-30 w-full px-2.5 sm:px-4 py-1 select-none" aria-label="شريط التحكم السريع والتفسير">
+    <div class="max-w-md mx-auto flex flex-wrap justify-center items-center gap-1.5 xs:gap-2">
+      <!-- زر إظهار أو إخفاء نص الآية للمصحف الشريف -->
+      <button id="toggleAyahDisplayBtn" type="button" class="group flex items-center gap-1.5 px-2.5 xs:px-3 py-1 rounded-full bg-emerald-950/90 border border-amber-400/40 hover:border-amber-400/80 text-amber-200/95 font-bold text-[11px] sm:text-xs shadow-md active:scale-95 cursor-pointer transition-all" title="إظهار أو إخفاء الآية الكريمة (للتبديل بين قراءة المصحف أو الاستماع بالصوت فقط)">
+        <span id="toggleAyahDisplayIcon" class="text-xs">📖</span>
+        <span id="toggleAyahDisplayText">المصحف: ظاهر</span>
+        <span id="toggleAyahDisplayDot" class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]"></span>
+      </button>
 
-    <!-- زر وضع توفير البيانات الدائم -->
-    <button id="permanentSaverBtn" type="button" class="group flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-700/50 hover:border-emerald-500/60 text-emerald-300/90 font-bold text-[11px] sm:text-xs shadow active:scale-95 cursor-pointer transition-all" title="انقر لتشغيل أو إلغاء وضع توفير البيانات">
-      <span id="permanentSaverIcon" class="text-xs">🍃</span>
-      <span id="permanentSaverText">توفير البيانات: معطل</span>
-      <span id="permanentSaverDot" class="w-2 h-2 rounded-full bg-emerald-700"></span>
-    </button>
+      <!-- زر التفسير الميسر المباشر -->
+      <button id="subHeaderTafsirBtn" type="button" class="group flex items-center gap-1.5 px-2.5 xs:px-3 py-1 rounded-full bg-emerald-950/90 border border-amber-400/40 hover:border-amber-300 text-amber-300 font-bold text-[11px] sm:text-xs shadow-md active:scale-95 cursor-pointer transition-all" title="عرض وقراءة التفسير الميسر للآية الحالية">
+        <span class="text-xs">📜</span>
+        <span>التفسير الميسر</span>
+      </button>
 
-    <!-- زر وضع القيادة والسفر الذكي -->
-    <button id="carModeToggleBtn" type="button" class="group flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-700/50 hover:border-amber-400/60 text-emerald-300/90 font-bold text-[11px] sm:text-xs shadow active:scale-95 cursor-pointer transition-all" title="تشغيل أو إلغاء وضع القيادة والسفر (تحكم بأزرار عملاقة بدون تشتيت)">
-      <span id="carModeIcon" class="text-xs">🚗</span>
-      <span id="carModeText">وضع القيادة</span>
-      <span id="carModeDot" class="w-2 h-2 rounded-full bg-emerald-800"></span>
-    </button>
-  </div>
+      <!-- زر وضع توفير البيانات الدائم -->
+      <button id="permanentSaverBtn" type="button" class="group flex items-center gap-1.5 px-2.5 xs:px-3 py-1 rounded-full bg-emerald-950/90 border border-emerald-700/50 hover:border-emerald-500/60 text-emerald-300/90 font-bold text-[11px] sm:text-xs shadow-md active:scale-95 cursor-pointer transition-all" title="انقر لتشغيل أو إلغاء وضع توفير البيانات">
+        <span id="permanentSaverIcon" class="text-xs">🍃</span>
+        <span id="permanentSaverText">توفير البيانات: معطل</span>
+        <span id="permanentSaverDot" class="w-2 h-2 rounded-full bg-emerald-700"></span>
+      </button>
+
+      <!-- زر وضع القيادة والسفر الذكي -->
+      <button id="carModeToggleBtn" type="button" class="group flex items-center gap-1.5 px-2.5 xs:px-3 py-1 rounded-full bg-emerald-950/90 border border-emerald-700/50 hover:border-amber-400/60 text-emerald-300/90 font-bold text-[11px] sm:text-xs shadow-md active:scale-95 cursor-pointer transition-all" title="تشغيل أو إلغاء وضع القيادة والسفر (تحكم بأزرار عملاقة بدون تشتيت)">
+        <span id="carModeIcon" class="text-xs">🚗</span>
+        <span id="carModeText">وضع القيادة</span>
+        <span id="carModeDot" class="w-2 h-2 rounded-full bg-emerald-800"></span>
+      </button>
+    </div>
+  </section>
 
   <!-- شريط استهلاك باقة الإنترنت ووضع التوفير الذكي (مخفي افتراضياً، يظهر بالضغط المطول على زر الواتساب) -->
   <aside id="dataUsageBanner" class="hidden relative z-20 w-full bg-emerald-950/90 border-b border-emerald-800/50 backdrop-blur-md px-2.5 sm:px-4 py-1.5 shadow-sm select-none transition-all duration-300" aria-label="شريط استهلاك البيانات ووضع التوفير">

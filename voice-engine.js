@@ -316,16 +316,69 @@ export function parseVoiceCommand(rawTranscript) {
     return result;
   }
 
-  // وضع القيادة والسفر الذكي (Car & Travel Mode)
-  if (norm.includes('وضع القياده') || norm.includes('وضع السفر') || norm.includes('وضع العربيه') || norm.includes('وضع السياره') || norm.includes('نمط القياده')) {
-    if (norm.includes('ايقاف') || norm.includes('الغاء') || norm.includes('تعطيل') || norm.includes('خروج')) {
+  // أ. وضع القيادة والسفر الذكي (Car & Travel Mode)
+  const isCarModeContext = norm.includes('القياده') || norm.includes('قياده') || norm.includes('السفر') || norm.includes('سفر') || norm.includes('العربيه') || norm.includes('عربيه') || norm.includes('السياره') || norm.includes('سياره') || norm.includes('السواقه') || norm.includes('سواقه');
+  const isExitCommand = norm.includes('خروج') || norm.includes('اخرج') || norm.includes('ايقاف') || norm.includes('وقف') || norm.includes('الغاء') || norm.includes('الغي') || norm.includes('تعطيل') || norm.includes('عطل') || norm.includes('اقفل') || norm.includes('قفل') || norm.includes('انهاء');
+
+  if (isCarModeContext && (norm.includes('وضع') || norm.includes('نمط') || isExitCommand || norm.includes('شغل') || norm.includes('تفعيل') || norm.includes('بدء') || norm.startsWith('قياده') || norm.startsWith('سواقه') || norm.startsWith('السواقه') || norm === 'سواقه' || norm === 'القياده')) {
+    if (isExitCommand) {
       result.intent = 'DISABLE_CAR_MODE';
-      result.message = 'إيقاف وضع القيادة والسفر';
+      result.message = 'تم الخروج من وضع القيادة والسفر';
     } else {
       result.intent = 'ENABLE_CAR_MODE';
       result.message = 'تفعيل وضع القيادة والسفر الذكي';
     }
     return result;
+  }
+
+  // ب. أوامر إظهار وإخفاء نص الآية والمصحف الشريف (Show / Hide Quran & Audio-Only Mode)
+  if (
+    norm.includes('اظهار المصحف') || norm.includes('اظهر المصحف') || norm.includes('عرض المصحف') || norm.includes('افتح المصحف') || norm.includes('بين المصحف') ||
+    norm.includes('اظهار الايه') || norm.includes('اظهر الايه') || norm.includes('عرض الايه') || norm.includes('اظهار النص') || norm.includes('اظهر النص') ||
+    norm.includes('اظهار الشاشه') || norm.includes('اظهر الشاشه') || norm.includes('شغل المصحف') || norm.includes('شغل الشاشه') || norm.includes('شغل عرض الايه')
+  ) {
+    result.intent = 'SHOW_AYAH';
+    result.message = 'إظهار نص الآية والمصحف الشريف';
+    return result;
+  }
+
+  if (
+    norm.includes('اخفاء المصحف') || norm.includes('اخفي المصحف') || norm.includes('قفل المصحف') || norm.includes('اقفل المصحف') ||
+    norm.includes('اخفاء الايه') || norm.includes('اخفي الايه') || norm.includes('اخفاء النص') || norm.includes('اخفي النص') ||
+    norm.includes('اخفاء الشاشه') || norm.includes('اخفي الشاشه') || norm.includes('اقفل الشاشه') ||
+    norm.includes('صوت فقط') || norm.includes('وضع الصوت فقط') || norm.includes('استماع فقط') || norm.includes('وضع الاستماع') ||
+    norm.includes('سماع فقط') || norm.includes('بدون شاشه') || norm.includes('بدون نص')
+  ) {
+    result.intent = 'HIDE_AYAH';
+    result.message = 'تفعيل وضع الاستماع والصوت فقط بدون نص';
+    return result;
+  }
+
+  if (norm.includes('تبديل المصحف') || norm.includes('تبديل عرض الايه') || norm.includes('تبديل الشاشه')) {
+    result.intent = 'TOGGLE_AYAH_DISPLAY';
+    result.message = 'تبديل عرض المصحف الشريف';
+    return result;
+  }
+
+  // ج. أوامر وضع توفير البيانات واستهلاك باقة الإنترنت (Data Saver & Usage)
+  const isDataTarget = norm.includes('البيانات') || norm.includes('بيانات') || norm.includes('الباقه') || norm.includes('باقه') || norm.includes('النت') || norm.includes('نت');
+
+  if (isDataTarget && (norm.includes('استهلاك') || norm.includes('كام استهلكت') || norm.includes('كم استهلكت') || norm.includes('كام ميجا') || norm.includes('كم ميجا') || norm.includes('تقرير النت') || norm.includes('حجم الاستهلاك') || norm.includes('باقه النت'))) {
+    result.intent = 'DATA_STATS';
+    result.message = 'عرض وتحديث تفاصيل استهلاك الباقة';
+    return result;
+  }
+
+  if (norm.includes('توفير') || norm.includes('التوفير') || norm.includes('وفر')) {
+    if (isExitCommand) {
+      result.intent = 'DISABLE_SAVER_MODE';
+      result.message = 'تم إيقاف وضع توفير البيانات';
+      return result;
+    } else if (isDataTarget || norm.includes('وضع التوفير') || norm.includes('شغل التوفير') || norm.includes('نمط التوفير') || norm.includes('تفعيل التوفير')) {
+      result.intent = 'ENABLE_SAVER_MODE';
+      result.message = 'تم تشغيل وضع توفير البيانات';
+      return result;
+    }
   }
 
   // إكمال الآية وسماع التكملة في اختبار الذاكرة

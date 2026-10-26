@@ -577,3 +577,25 @@ body.car-mode-active #carModeDriverHud {
 #carModeDriverHud {
   display: none;
 }
+
+/* ==============================================================
+   كونتينر شريط التحكم أسفل الهيدر (Sub-Header Controls Container)
+   منطقة تفاعلية معزولة تمنع تداخل إيماءات اللمس العامة مع الأزرار
+   ============================================================== */
+.sub-header-controls {
+  position: relative;
+  z-index: 30;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.sub-header-controls button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  cursor: pointer;
+}
+
+.sub-header-controls button:active {
+  transform: scale(0.95);
+}

@@ -13,6 +13,7 @@ import { parseVoiceCommand, normalizeArabic, extractNumber } from '../voice-engi
 import { DualQuranPlayer } from '../dual-player.js';
 import { getTafsir, extractTermMeaning, seedTafsirIfNeeded } from '../tafsir-service.js';
 import { DataSaverService } from '../data-saver-service.js';
+import { quranTextService } from '../quran-text-service.js';
 
 // ============================================================================
 // أدوات توكيد وفحص الاختبارات البسيطة والمحكمة (Lightweight Assertion Framework)
@@ -635,3 +636,85 @@ export function registerDataSaverTests(runner) {
     });
   });
 }
+
+// ============================================================================
+// 6. جناح اختبارات خدمة نصوص القرآن الكريم ومزامنة الآيات (QuranTextService & Ayah Sync)
+// ============================================================================
+
+export function registerQuranTextServiceTests(runner) {
+  runner.addSuite('6. خدمة نصوص القرآن العثماني وتزامن الآيات المقروءة والمكتوبة', async (t) => {
+    
+    await t.test('تحميل بيانات المصحف الشريف العثماني (init)', async () => {
+      const verses = await quranTextService.init();
+      t.assertNotNull(verses, 'يجب أن يتم تحميل ملف المصحف بنجاح');
+      t.assert(typeof verses === 'object', 'البيانات يجب أن تكون كائناً');
+    });
+
+    await t.test('سورة الفاتحة الآية 1: البسملة كآية أولى مستقلة', () => {
+      const a1 = quranTextService.getAyah(1, 1);
+      t.assertNotNull(a1);
+      t.assertEqual(a1.ayahNumber, 1);
+      t.assertEqual(a1.arabicNum, '١');
+      t.assertEqual(a1.hasBasmalahHeader, false, 'الفاتحة لا تحتوي على ترويسة بسملة مستقلة لأنها جزء من الآية');
+      t.assert(a1.text.includes('بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ'));
+    });
+
+    await t.test('سورة الفاتحة الآية 2: تغير النص المكتوب مع الآية المقروءة (ليست بسملة)', () => {
+      const a2 = quranTextService.getAyah(1, 2);
+      t.assertNotNull(a2);
+      t.assertEqual(a2.ayahNumber, 2);
+      t.assertEqual(a2.arabicNum, '٢');
+      t.assertEqual(a2.hasBasmalahHeader, false);
+      t.assert(a2.text.includes('ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ'), 'الآية 2 يجب أن تكون الحمد لله رب العالمين');
+    });
+
+    await t.test('سورة البقرة الآية 1: استخراج ترويسة البسملة وفصل نص الآية (الم)', () => {
+      const b1 = quranTextService.getAyah(2, 1);
+      t.assertNotNull(b1);
+      t.assertEqual(b1.ayahNumber, 1);
+      t.assertEqual(b1.hasBasmalahHeader, true, 'سورة البقرة آية 1 يجب أن تحتوي على ترويسة البسملة');
+      t.assertEqual(b1.basmalahText, 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ');
+      t.assertEqual(b1.text, 'الٓمٓ', 'نص الآية بعد فصل البسملة يجب أن يكون الم فقط');
+    });
+
+    await t.test('سورة البقرة الآية 2: إخفاء ترويسة البسملة وعرض نص الآية الثانية', () => {
+      const b2 = quranTextService.getAyah(2, 2);
+      t.assertNotNull(b2);
+      t.assertEqual(b2.ayahNumber, 2);
+      t.assertEqual(b2.hasBasmalahHeader, false, 'الآية 2 لا تحتوي على ترويسة بسملة');
+      t.assert(b2.text.includes('ذَٰلِكَ ٱلْكِتَٰبُ لَا رَيْبَ'));
+    });
+
+    await t.test('دعم تمرير الأرقام كسلاسل نصية (Strings) دون أخطاء', () => {
+      const s = quranTextService.getAyah('112', '1');
+      t.assertNotNull(s);
+      t.assertEqual(s.ayahNumber, 1);
+      t.assertEqual(s.hasBasmalahHeader, true);
+      t.assertEqual(s.text, 'قُلْ هُوَ ٱللَّهُ أَحَدٌ');
+    });
+
+    await t.test('مشغل القرآن: تشغيل سورة كاملة يعمل بنمط الآيات المتتابعة المتزامنة مع النص', () => {
+      const p = new DualQuranPlayer({
+        initialSurah: SURAHS.find(s => s.id === 1),
+        initialAyah: 1,
+        initialReciter: RECITERS[0]
+      });
+      p.deckA.pause = () => {};
+      p.deckB.pause = () => {};
+      p.deckA.play = () => Promise.resolve();
+      p.deckB.play = () => Promise.resolve();
+      p.deckA.load = () => {};
+      p.deckB.load = () => {};
+
+      p.playSurahStream(SURAHS.find(s => s.id === 2), RECITERS[0]);
+      t.assertEqual(p.mode, 'ayah', 'يجب أن يكون النمط دائما ayah لضمان تحديث الآيات');
+      t.assertEqual(p.currentSurah.id, 2);
+      t.assertEqual(p.currentAyah, 1);
+
+      // زر التالي ينتقل للآية 2 ولا يقفز للسورة التالية
+      p.next();
+      t.assertEqual(p.currentAyah, 2, 'الزر التالي يجب أن ينتقل للآية 2 في نفس السورة');
+    });
+  });
+}
+

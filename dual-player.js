@@ -361,9 +361,9 @@ export class DualQuranPlayer {
     this.prefetchUpcoming(this.prefetchCount);
   }
 
-  // تشغيل سورة كاملة بتدفق متصل فائق السرعة وبث مباشر (Progressive Streaming / SoundCloud-style)
+  // تشغيل سورة كاملة بتدفق متصل متزامن مع الآيات المكتوبة (0ms Gapless Playback)
   playSurahStream(surah, reciter = null) {
-    this.mode = 'surah';
+    this.mode = 'ayah';
     this.topicPlaylist = [];
     this.topicIndex = 0;
     if (!this.loopState || this.loopState.type !== 'SURAH') {
@@ -374,38 +374,9 @@ export class DualQuranPlayer {
     this.currentSurah = surah || this.currentSurah;
     this.currentAyah = 1;
 
-    // إلغاء أي مهام تحميل للآيات الفردية في الخلفية لتركيز سرعة الشبكة والذاكرة كلياً للبث المباشر للسورة
-    this.abortLookahead();
-    this.standbyDeck.pause();
-    this.standbyDeck.src = '';
-    this.standbyTrack = null;
-
-    const url = getSurahAudioUrl(this.currentReciter, this.currentSurah.id);
-    this.activeDeck.src = url;
-    this.activeDeck.preload = 'auto';
-    this.activeDeck.volume = this.volume;
-    this.isPlaying = true;
-
-    // فك حظر الصوت في متصفحات الموبايل
-    this.unlockMobileAudio();
-
-    const playPromise = this.activeDeck.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(err => {
-        console.warn('[DualPlayer] Surah stream playback delay/error:', err);
-        this.activeDeck.play().catch(() => {});
-      });
-    }
-
-    if (this.onPlayStateChange) this.onPlayStateChange(true);
-    if (this.onSurahChange) {
-      this.onSurahChange(this.currentSurah, this.currentReciter);
-    }
-    if (this.onAyahChange) {
-      this.onAyahChange(this.currentSurah, 1, this.currentReciter, false);
-    }
-
-    this.updateMediaSession();
+    // تشغيل السورة آية بآية بالتبديل اللحظي التبادلي المستمر بين المشغلين (0ms Gapless Playback)
+    // لضمان التزامن الكامل بين الآية المقروءة والآية المكتوبة بالرسم العثماني وعرض التفسير
+    this.playAyah(this.currentSurah, 1, this.currentReciter, true);
   }
 
   // تشغيل آية محددة
@@ -754,11 +725,8 @@ export class DualQuranPlayer {
   // تشغيل أو استئناف
   play() {
     if (!this.activeDeck.src || this.activeDeck.src === window.location.href) {
-      if (this.mode === 'surah') {
-        this.playSurahStream(this.currentSurah, this.currentReciter);
-      } else {
-        this.playAyah(this.currentSurah, this.currentAyah, this.currentReciter);
-      }
+      this.mode = 'ayah';
+      this.playAyah(this.currentSurah, this.currentAyah, this.currentReciter);
     } else {
       this.activeDeck.play();
       this.isPlaying = true;
@@ -810,14 +778,9 @@ export class DualQuranPlayer {
     return this.activeDeck ? this.activeDeck.duration : 0;
   }
 
-  // الانتقال للآية السابقة أو السورة السابقة في نمط التدفق
+  // الانتقال للآية السابقة
   prev() {
-    if (this.mode === 'surah') {
-      const prevIdx = SURAHS.findIndex(s => s.id === this.currentSurah.id) - 1;
-      const prevS = prevIdx >= 0 ? SURAHS[prevIdx] : SURAHS[SURAHS.length - 1];
-      this.playSurahStream(prevS, this.currentReciter);
-      return;
-    }
+    this.mode = 'ayah';
 
     // إذا كان في حلقة حفظ (Range Loop) وضغط السابق يدوياً
     if (this.loopState && this.loopState.active && this.loopState.type === 'RANGE') {
@@ -854,14 +817,9 @@ export class DualQuranPlayer {
     this.playAyah(prevS, prevA, this.currentReciter, true);
   }
 
-  // الانتقال للآية التالية أو السورة التالية في نمط التدفق
+  // الانتقال للآية التالية
   next() {
-    if (this.mode === 'surah') {
-      const nextIdx = SURAHS.findIndex(s => s.id === this.currentSurah.id) + 1;
-      const nextS = nextIdx < SURAHS.length ? SURAHS[nextIdx] : SURAHS[0];
-      this.playSurahStream(nextS, this.currentReciter);
-      return;
-    }
+    this.mode = 'ayah';
 
     // إذا كان في حلقة حفظ (Range Loop) وضغط التالي يدوياً
     if (this.loopState && this.loopState.active && this.loopState.type === 'RANGE') {

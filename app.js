@@ -138,6 +138,8 @@ class QuranVoiceApp {
       surveySendCommentBtn: document.getElementById('surveySendCommentBtn'),
       surveySuccessMsg: document.getElementById('surveySuccessMsg'),
       surveyDismissBtn: document.getElementById('surveyDismissBtn'),
+      subHeaderControlsContainer: document.getElementById('subHeaderControlsContainer'),
+      subHeaderTafsirBtn: document.getElementById('subHeaderTafsirBtn'),
       ayahRoyalWindow: document.getElementById('ayahRoyalWindow'),
       ayahBasmalahHeader: document.getElementById('ayahBasmalahHeader'),
       ayahUthmanicText: document.getElementById('ayahUthmanicText'),
@@ -595,12 +597,12 @@ class QuranVoiceApp {
           this.currentReciter = parsed.payload.reciter;
         }
 
-        // إذا طلب السورة كاملة (الافتراضي عند طلب سورة)، يتم تشغيل النمط الهجين المتدفق السريع كملف متصل (SoundCloud-style)
+        // إذا طلب السورة كاملة (الافتراضي عند طلب سورة)، يتم تشغيل التلاوة المتدفقة المتزامنة مع الآيات المكتوبة
         if (!parsed.payload.ayahNumber || parsed.payload.ayahNumber === 1) {
           this.currentAyah = 1;
-          this.dom.voiceStatus.textContent = `${parsed.message} (تلاوة متدفقة مسترسلة)`;
+          this.dom.voiceStatus.textContent = parsed.message;
           sound.playSuccessChime();
-          this.playSurahStream(this.currentSurah, this.currentReciter);
+          this.playCurrentAyah();
         } else {
           this.currentAyah = parsed.payload.ayahNumber;
           this.dom.voiceStatus.textContent = parsed.message;
@@ -631,11 +633,7 @@ class QuranVoiceApp {
         this.updateUI();
         saveLastPosition(this.currentSurah, this.currentAyah, this.currentReciter.id);
         if (this.isPlaying) {
-          if (this.player && this.player.mode === 'surah') {
-            this.playSurahStream(this.currentSurah, this.currentReciter);
-          } else {
-            this.playCurrentAyah();
-          }
+          this.playCurrentAyah();
         } else if (parsed.payload.reciter?.id?.includes('muallim')) {
           this.playCurrentAyah();
         }
@@ -769,11 +767,76 @@ class QuranVoiceApp {
       case 'CAR_MODE':
         sound.playSuccessChime();
         this.toggleCarMode(true);
+        if (this.dom.voiceStatus) this.dom.voiceStatus.textContent = '🚗 وضع القيادة نشط';
         break;
 
       case 'DISABLE_CAR_MODE':
+      case 'EXIT_CAR_MODE':
         sound.playSuccessChime();
         this.toggleCarMode(false);
+        if (this.dom.voiceStatus) this.dom.voiceStatus.textContent = 'تم الخروج من وضع القيادة';
+        break;
+
+      case 'SHOW_AYAH':
+      case 'SHOW_QURAN':
+        sound.playSuccessChime();
+        this.showAyahCard = true;
+        try { localStorage.setItem('show_ayah_card', 'true'); } catch(e) {}
+        this.applyAyahDisplayVisibility();
+        sound.speak('عرض المصحف مفعل');
+        if (this.dom.voiceStatus) this.dom.voiceStatus.textContent = '📖 عرض المصحف مفعل';
+        break;
+
+      case 'HIDE_AYAH':
+      case 'AUDIO_ONLY':
+      case 'HIDE_QURAN':
+        sound.playSuccessChime();
+        this.showAyahCard = false;
+        try { localStorage.setItem('show_ayah_card', 'false'); } catch(e) {}
+        this.applyAyahDisplayVisibility();
+        sound.speak('وضع الصوت فقط مفعل');
+        if (this.dom.voiceStatus) this.dom.voiceStatus.textContent = '🎧 وضع الصوت فقط (المصحف مخفي)';
+        break;
+
+      case 'TOGGLE_AYAH_DISPLAY':
+        sound.playSuccessChime();
+        this.toggleAyahDisplay();
+        break;
+
+      case 'ENABLE_SAVER_MODE':
+      case 'SAVER_MODE':
+        sound.playSuccessChime();
+        dataSaver.setSaverMode(true);
+        this.applySaverMode(true);
+        sound.speak('تم تشغيل وضع توفير البيانات');
+        if (this.dom.voiceStatus) this.dom.voiceStatus.textContent = '🍃 وضع توفير البيانات مفعل';
+        break;
+
+      case 'DISABLE_SAVER_MODE':
+      case 'EXIT_SAVER_MODE':
+        sound.playSuccessChime();
+        dataSaver.setSaverMode(false);
+        this.applySaverMode(false);
+        sound.speak('تم إيقاف وضع توفير البيانات');
+        if (this.dom.voiceStatus) this.dom.voiceStatus.textContent = 'وضع توفير البيانات معطل';
+        break;
+
+      case 'TOGGLE_SAVER_MODE':
+        sound.playSuccessChime();
+        const isNowSaver = dataSaver.toggleSaverMode();
+        this.applySaverMode(isNowSaver);
+        sound.speak(isNowSaver ? 'تم تشغيل وضع توفير البيانات' : 'تم إيقاف وضع توفير البيانات');
+        break;
+
+      case 'DATA_STATS':
+      case 'DATA_USAGE':
+        sound.playSuccessChime();
+        if (this.dom.dataUsageModal) {
+          this.dom.dataUsageModal.classList.remove('hidden');
+        }
+        const dailySummary = dataSaver.getSummary();
+        sound.speak(`استهلاك اليوم ${dailySummary.todayMB} ميجابايت من أصل ${dailySummary.limitMB} ميجابايت`);
+        if (this.dom.voiceStatus) this.dom.voiceStatus.textContent = `📶 استهلاك اليوم: ${dailySummary.todayMB} MB`;
         break;
 
       case 'OPEN_ADMIN':
@@ -794,7 +857,7 @@ class QuranVoiceApp {
     logVoiceCommand(transcript, parsed, success);
   }
 
-  // تشغيل سورة كاملة بنمط التدفق السلس المتصل (SoundCloud-style Surah Streaming)
+  // تشغيل سورة كاملة بنمط متصل متزامن مع الآيات المكتوبة (0ms Gapless Playback)
   playSurahStream(surah = null, reciter = null) {
     this.isPlaying = true;
     if (surah) this.currentSurah = surah;
@@ -804,6 +867,9 @@ class QuranVoiceApp {
     this.topicIndex = 0;
 
     if (this.player) {
+      this.player.clearLoop();
+      this.player.topicPlaylist = [];
+      this.player.topicIndex = 0;
       this.player.playSurahStream(this.currentSurah, this.currentReciter);
     }
     this.updateUI();
@@ -944,9 +1010,22 @@ class QuranVoiceApp {
     let longPressTimer = null;
     let isLongPressActive = false;
 
+    // استثناء الأزرار والحاويات التفاعلية وشريط التحكم والنافذة القرآنية من إيماءات الشاشة
+    const isExemptTarget = (target) => {
+      if (!target || !target.closest) return false;
+      return !!target.closest(
+        'button, select, input, a, ' +
+        '#subHeaderControlsContainer, .sub-header-controls, ' +
+        '#ayahRoyalWindow, .ayah-royal-window, ' +
+        '#adminBanner, #dataUsageBanner, ' +
+        '#adminModalPinInput, #closeTafsirBtn, #helpGuideModal, #adminPinModal, ' +
+        '#tafsirModal, #pwaInstallModal, #journalModal, #dataUsageModal, #microSurveyModal'
+      );
+    };
+
     area.addEventListener('touchstart', (e) => {
-      // إذا كان اللمس على عنصر تحكم تفاعلي مباشر أو داخل النوافذ المنبثقة نتركه يتفاعل طبيعياً
-      if (e.target.closest('button, select, input, a, #adminModalPinInput, #closeTafsirBtn, #helpGuideModal, #adminPinModal, #tafsirModal, #pwaInstallModal, #journalModal, #dataUsageModal')) {
+      // إذا كان اللمس على عنصر تحكم تفاعلي أو شريط التحكم أسفل الهيدر أو نافذة الآية نتركه يتفاعل طبيعياً
+      if (isExemptTarget(e.target)) {
         return;
       }
 
@@ -965,7 +1044,7 @@ class QuranVoiceApp {
     }, { passive: true });
 
     area.addEventListener('touchmove', (e) => {
-      if (e.target.closest('button, select, input, a, #adminModalPinInput, #closeTafsirBtn, #helpGuideModal, #adminPinModal, #tafsirModal, #pwaInstallModal, #journalModal, #dataUsageModal')) {
+      if (isExemptTarget(e.target)) {
         return;
       }
       const touch = e.touches[0];
@@ -980,7 +1059,7 @@ class QuranVoiceApp {
       clearTimeout(longPressTimer);
 
       // إذا كان اللمس على زر أو عنصر تفاعلي نتركه يتفاعل دون مقاطعة
-      if (e.target.closest('button, select, input, a, #adminModalPinInput, #closeTafsirBtn, #helpGuideModal, #adminPinModal, #tafsirModal, #pwaInstallModal, #journalModal, #dataUsageModal')) {
+      if (isExemptTarget(e.target)) {
         return;
       }
 
@@ -1534,9 +1613,6 @@ class QuranVoiceApp {
       if (this.dom.ayahBadge) {
         this.dom.ayahBadge.textContent = `الآية ${this.currentAyah}`;
       }
-    } else if (this.player && this.player.mode === 'surah') {
-      if (this.dom.surahMeta) this.dom.surahMeta.textContent = `${this.currentSurah.type} • ${this.currentSurah.ayahs} آية • سورة كاملة`;
-      if (this.dom.ayahBadge) this.dom.ayahBadge.textContent = 'تلاوة متدفقة مسترسلة';
     } else {
       if (this.dom.surahMeta) this.dom.surahMeta.textContent = `${this.currentSurah.type} • ${this.currentSurah.ayahs} آية`;
       if (this.dom.ayahBadge) this.dom.ayahBadge.textContent = `الآية ${this.currentAyah}`;
@@ -1742,9 +1818,26 @@ class QuranVoiceApp {
     this.applyAyahDisplayVisibility();
     this.applyFontSize();
 
+    // حماية كونتينر التحكم أسفل الهيدر من تداخل إيماءات اللمس العامة
+    if (this.dom.subHeaderControlsContainer) {
+      this.dom.subHeaderControlsContainer.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+      this.dom.subHeaderControlsContainer.addEventListener('touchend', (e) => e.stopPropagation(), { passive: true });
+    }
+
+    // زر إظهار / إخفاء المصحف
     if (this.dom.toggleAyahDisplayBtn) {
-      this.dom.toggleAyahDisplayBtn.addEventListener('click', () => {
+      this.dom.toggleAyahDisplayBtn.addEventListener('click', (e) => {
+        if (e) e.stopPropagation();
         this.toggleAyahDisplay();
+      });
+    }
+
+    // زر التفسير الميسر المباشر من شريط التحكم
+    if (this.dom.subHeaderTafsirBtn) {
+      this.dom.subHeaderTafsirBtn.addEventListener('click', (e) => {
+        if (e) e.stopPropagation();
+        sound.vibrate([30]);
+        this.fetchAndShowTafsir();
       });
     }
 
@@ -1768,14 +1861,23 @@ class QuranVoiceApp {
       });
     }
 
+    // زر التفسير الميسر داخل بطاقة الآية
     if (this.dom.openTafsirFromCardBtn) {
       this.dom.openTafsirFromCardBtn.addEventListener('click', (e) => {
         e.stopPropagation();
+        sound.vibrate([30]);
         this.fetchAndShowTafsir();
       });
     }
 
+    // النقر على نافذة الآية بالكامل لفتح التفسير الميسر مع عزل اللمس
     if (this.dom.ayahRoyalWindow) {
+      this.dom.ayahRoyalWindow.addEventListener('touchstart', (e) => {
+        e.stopPropagation();
+      }, { passive: true });
+      this.dom.ayahRoyalWindow.addEventListener('touchend', (e) => {
+        e.stopPropagation();
+      }, { passive: true });
       this.dom.ayahRoyalWindow.addEventListener('click', (e) => {
         if (e.target.closest('button')) return;
         this.fetchAndShowTafsir();
@@ -1827,8 +1929,15 @@ class QuranVoiceApp {
   // تحديث نص الآية الكريمة والترويسة الحالية
   updateAyahDisplay() {
     if (!this.dom.ayahUthmanicText) return;
-    const ayahData = quranTextService.getAyah(this.currentSurah.id, this.currentAyah);
+    const surahId = this.currentSurah && this.currentSurah.id ? this.currentSurah.id : (parseInt(this.currentSurah, 10) || 1);
+    const ayahNum = parseInt(this.currentAyah, 10) || 1;
+    const ayahData = quranTextService.getAyah(surahId, ayahNum);
     if (!ayahData) {
+      if (!quranTextService.verses) {
+        quranTextService.init().then(() => {
+          this.updateAyahDisplay();
+        }).catch(() => {});
+      }
       return;
     }
 
@@ -1988,7 +2097,9 @@ class QuranVoiceApp {
           if (this.player) this.player.clearLoop();
           this.repeatCount = 1;
           this.currentRepeat = 1;
-          this.playSurahStream(selected);
+          this.currentSurah = selected;
+          this.currentAyah = 1;
+          this.playCurrentAyah();
         }
       });
     }
@@ -2000,11 +2111,7 @@ class QuranVoiceApp {
           this.currentReciter = selected;
           this.updateUI();
           if (this.isPlaying) {
-            if (this.player && this.player.mode === 'surah') {
-              this.playSurahStream(this.currentSurah, this.currentReciter);
-            } else {
-              this.playCurrentAyah();
-            }
+            this.playCurrentAyah();
           }
         }
       });
@@ -2228,13 +2335,11 @@ class QuranVoiceApp {
     // الزر الدائم في وسط أسفل الهيدر
     if (this.dom.permanentSaverBtn) {
       this.dom.permanentSaverBtn.addEventListener('click', toggleSaverHandler);
-      this.dom.permanentSaverBtn.addEventListener('touchend', toggleSaverHandler);
     }
 
     // زر تبديل وضع التوفير في الشريط المنسدل
     if (this.dom.saverModeToggleBtn) {
       this.dom.saverModeToggleBtn.addEventListener('click', toggleSaverHandler);
-      this.dom.saverModeToggleBtn.addEventListener('touchend', toggleSaverHandler);
     }
 
     // فتح نافذة تفاصيل الاستهلاك

@@ -52,7 +52,11 @@ class QuranTextService {
    */
   getAyah(surahNumber, ayahNumber) {
     if (!this.verses) return null;
-    const key = `${surahNumber}:${ayahNumber}`;
+    const sNum = parseInt(surahNumber, 10);
+    const aNum = parseInt(ayahNumber, 10);
+    if (isNaN(sNum) || isNaN(aNum)) return null;
+
+    const key = `${sNum}:${aNum}`;
     let rawText = this.verses[key] || '';
     if (!rawText) return null;
 
@@ -64,7 +68,7 @@ class QuranTextService {
     const BASMALAH_PREFIX = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ';
 
     // في السور من 2 إلى 114 (باستثناء التوبة) تكون البسملة مدمجة في بداية الآية 1
-    if (surahNumber > 1 && surahNumber !== 9 && ayahNumber === 1) {
+    if (sNum > 1 && sNum !== 9 && aNum === 1) {
       if (rawText.startsWith(BASMALAH_PREFIX)) {
         hasBasmalahHeader = true;
         basmalahText = BASMALAH_PREFIX;
@@ -72,11 +76,11 @@ class QuranTextService {
       }
     }
 
-    const arabicNum = this.toArabicDigits(ayahNumber);
+    const arabicNum = this.toArabicDigits(aNum);
 
     return {
-      surahNumber,
-      ayahNumber,
+      surahNumber: sNum,
+      ayahNumber: aNum,
       arabicNum,
       hasBasmalahHeader,
       basmalahText,
