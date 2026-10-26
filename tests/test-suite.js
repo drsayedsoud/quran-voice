@@ -296,6 +296,73 @@ export function registerVoiceEngineTests(runner) {
       const res = parseVoiceCommand('أنا فين');
       t.assertEqual(res.intent, 'STATUS_CHECK');
     });
+
+    // اختبارات الأوامر الصوتية الجديدة لشريط التحكم: وضع القيادة، المصحف، وتوفير البيانات
+    await t.test('أمر تشغيل وضع القيادة: وضع القيادة', () => {
+      const res = parseVoiceCommand('وضع القيادة');
+      t.assertEqual(res.intent, 'ENABLE_CAR_MODE');
+    });
+
+    await t.test('أمر تشغيل وضع القيادة بلهجات مختلفة: شغل وضع القيادة / سواقة', () => {
+      t.assertEqual(parseVoiceCommand('شغل وضع القيادة').intent, 'ENABLE_CAR_MODE');
+      t.assertEqual(parseVoiceCommand('وضع السواقة').intent, 'ENABLE_CAR_MODE');
+      t.assertEqual(parseVoiceCommand('وضع السيارة').intent, 'ENABLE_CAR_MODE');
+    });
+
+    await t.test('أمر الخروج من وضع القيادة: الخروج من وضع القيادة', () => {
+      const res = parseVoiceCommand('الخروج من وضع القيادة');
+      t.assertEqual(res.intent, 'DISABLE_CAR_MODE');
+    });
+
+    await t.test('أمر الخروج من القيادة بصيغ متعددة: اخرج من القيادة / وقف القيادة', () => {
+      t.assertEqual(parseVoiceCommand('اخرج من القيادة').intent, 'DISABLE_CAR_MODE');
+      t.assertEqual(parseVoiceCommand('الخروج من السواقة').intent, 'DISABLE_CAR_MODE');
+      t.assertEqual(parseVoiceCommand('إلغاء وضع القيادة').intent, 'DISABLE_CAR_MODE');
+      t.assertEqual(parseVoiceCommand('وقف وضع القيادة').intent, 'DISABLE_CAR_MODE');
+    });
+
+    await t.test('أمر إظهار المصحف الشريف: إظهار المصحف / عرض الآية', () => {
+      t.assertEqual(parseVoiceCommand('إظهار المصحف').intent, 'SHOW_AYAH');
+      t.assertEqual(parseVoiceCommand('عرض الآية').intent, 'SHOW_AYAH');
+      t.assertEqual(parseVoiceCommand('أظهر المصحف').intent, 'SHOW_AYAH');
+    });
+
+    await t.test('أمر إخفاء المصحف ووضع الصوت فقط: إخفاء المصحف / صوت فقط', () => {
+      t.assertEqual(parseVoiceCommand('إخفاء المصحف').intent, 'HIDE_AYAH');
+      t.assertEqual(parseVoiceCommand('صوت فقط').intent, 'HIDE_AYAH');
+      t.assertEqual(parseVoiceCommand('وضع الصوت فقط').intent, 'HIDE_AYAH');
+      t.assertEqual(parseVoiceCommand('اخفي الآية').intent, 'HIDE_AYAH');
+    });
+
+    await t.test('أمر تبديل عرض المصحف: تبديل المصحف', () => {
+      t.assertEqual(parseVoiceCommand('تبديل المصحف').intent, 'TOGGLE_AYAH_DISPLAY');
+    });
+
+    await t.test('أمر تشغيل وضع توفير البيانات: وضع توفير البيانات / توفير النت', () => {
+      t.assertEqual(parseVoiceCommand('وضع توفير البيانات').intent, 'ENABLE_SAVER_MODE');
+      t.assertEqual(parseVoiceCommand('توفير البيانات').intent, 'ENABLE_SAVER_MODE');
+      t.assertEqual(parseVoiceCommand('شغل توفير البيانات').intent, 'ENABLE_SAVER_MODE');
+      t.assertEqual(parseVoiceCommand('وضع التوفير').intent, 'ENABLE_SAVER_MODE');
+    });
+
+    await t.test('أمر إيقاف وضع توفير البيانات: إلغاء توفير البيانات / الخروج من توفير البيانات', () => {
+      t.assertEqual(parseVoiceCommand('إلغاء توفير البيانات').intent, 'DISABLE_SAVER_MODE');
+      t.assertEqual(parseVoiceCommand('إيقاف توفير البيانات').intent, 'DISABLE_SAVER_MODE');
+      t.assertEqual(parseVoiceCommand('الخروج من توفير البيانات').intent, 'DISABLE_SAVER_MODE');
+      t.assertEqual(parseVoiceCommand('إلغاء وضع التوفير').intent, 'DISABLE_SAVER_MODE');
+    });
+
+    await t.test('أمر فحص استهلاك البيانات: استهلاك الباقة / استهلاك النت', () => {
+      t.assertEqual(parseVoiceCommand('استهلاك الباقة').intent, 'DATA_STATS');
+      t.assertEqual(parseVoiceCommand('استهلاك النت').intent, 'DATA_STATS');
+      t.assertEqual(parseVoiceCommand('كام استهلكت نت').intent, 'DATA_STATS');
+    });
+
+    await t.test('أمر التفسير الميسر بصيغ مختلفة: التفسير الميسر / اقرأ التفسير', () => {
+      t.assertEqual(parseVoiceCommand('التفسير الميسر').intent, 'TAFSIR');
+      t.assertEqual(parseVoiceCommand('اقرأ التفسير').intent, 'TAFSIR');
+      t.assertEqual(parseVoiceCommand('اسمع التفسير').intent, 'TAFSIR');
+    });
   });
 }
 
