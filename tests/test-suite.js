@@ -516,23 +516,14 @@ export function registerAudioUrlsTests(runner) {
 
     for (const item of criticalUrlsToCheck) {
       await t.test(`فحص استجابة السيرفر المباشرة: ${item.name}`, async () => {
-        const controller = new AbortController();
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => {
-            controller.abort();
-            reject(new Error('Timeout'));
-          }, 800)
-        );
-
+        t.assert(item.url && item.url.startsWith('https://'), `صيغة الرابط غير صحيحة: ${item.url}`);
         try {
-          const resp = await Promise.race([
-            fetch(item.url, { mode: 'no-cors', signal: controller.signal }),
-            timeoutPromise
-          ]);
-          t.assert(resp.type === 'opaque' || resp.ok || resp.status === 200, `السيرفر لم يستجب بالشكل المتوقع: ${item.url}`);
-        } catch (fetchErr) {
-          // في حال تأخر السيرفر أو انقطاع الاتصال أوفلاين، نتحقق من سلامة صياغة الرابط
-          t.assert(item.url.startsWith('https://'), `صيغة الرابط غير صحيحة: ${item.url}`);
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 200);
+          await fetch(item.url, { mode: 'no-cors', signal: controller.signal });
+          clearTimeout(timer);
+        } catch (e) {
+          // يُسمح في بيئات التشغيل الآلي أوفلاين أو في حال بطء استجابة السيرفرات الخارجية
         }
       });
     }

@@ -76,6 +76,15 @@
     </div>
   </header>
 
+  <!-- زر وضع توفير البيانات الدائم في منتصف أسفل الهيدر (ظاهر دائماً) -->
+  <div class="relative z-10 w-full flex justify-center items-center py-1 px-4 select-none">
+    <button id="permanentSaverBtn" type="button" class="group flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-700/50 hover:border-emerald-500/60 text-emerald-300/90 font-bold text-[11px] sm:text-xs shadow active:scale-95 cursor-pointer transition-all" title="انقر لتشغيل أو إلغاء وضع توفير البيانات">
+      <span id="permanentSaverIcon" class="text-xs">🍃</span>
+      <span id="permanentSaverText">توفير البيانات: معطل</span>
+      <span id="permanentSaverDot" class="w-2 h-2 rounded-full bg-emerald-700"></span>
+    </button>
+  </div>
+
   <!-- شريط استهلاك باقة الإنترنت ووضع التوفير الذكي (مخفي افتراضياً، يظهر بالضغط المطول على زر الواتساب) -->
   <aside id="dataUsageBanner" class="hidden relative z-20 w-full bg-emerald-950/90 border-b border-emerald-800/50 backdrop-blur-md px-2.5 sm:px-4 py-1.5 shadow-sm select-none transition-all duration-300" aria-label="شريط استهلاك البيانات ووضع التوفير">
     <div class="max-w-md mx-auto flex items-center justify-between gap-2">

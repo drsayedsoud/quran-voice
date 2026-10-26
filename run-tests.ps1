@@ -42,7 +42,7 @@ $cmdArgs = @(
     "--allow-file-access-from-files",
     "--disable-web-security",
     "--user-data-dir=`"$tempUserData`"",
-    "--virtual-time-budget=60000",
+    "--virtual-time-budget=25000",
     "--run-all-compositor-stages-before-draw",
     "--dump-dom",
     "`"$testFileUrl`""

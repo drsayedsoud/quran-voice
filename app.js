@@ -103,6 +103,10 @@ class QuranVoiceApp {
       saverModeToggleBtn: document.getElementById('saverModeToggleBtn'),
       saverIcon: document.getElementById('saverIcon'),
       saverModeLabel: document.getElementById('saverModeLabel'),
+      permanentSaverBtn: document.getElementById('permanentSaverBtn'),
+      permanentSaverIcon: document.getElementById('permanentSaverIcon'),
+      permanentSaverText: document.getElementById('permanentSaverText'),
+      permanentSaverDot: document.getElementById('permanentSaverDot'),
       dataDetailsBtn: document.getElementById('dataDetailsBtn'),
       dataUsageModal: document.getElementById('dataUsageModal'),
       closeDataUsageBtn: document.getElementById('closeDataUsageBtn'),
@@ -1698,20 +1702,28 @@ class QuranVoiceApp {
       this.updateDataTrackerUI(summary);
     });
 
-    // زر تبديل وضع التوفير الذكي
+    // دالة تبديل وضع توفير البيانات
+    const toggleSaverHandler = (e) => {
+      if (e) e.stopPropagation();
+      sound.play('click');
+      sound.vibrate([40]);
+      const isNowActive = dataSaver.toggleSaverMode();
+      this.applySaverMode(isNowActive);
+      if (isNowActive) {
+        sound.speak('تم تشغيل وضع توفير البيانات');
+      } else {
+        sound.speak('تم إيقاف وضع توفير البيانات');
+      }
+    };
+
+    // الزر الدائم في وسط أسفل الهيدر
+    if (this.dom.permanentSaverBtn) {
+      this.dom.permanentSaverBtn.addEventListener('click', toggleSaverHandler);
+    }
+
+    // زر تبديل وضع التوفير في الشريط المنسدل
     if (this.dom.saverModeToggleBtn) {
-      this.dom.saverModeToggleBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        sound.play('click');
-        sound.vibrate([40]);
-        const isNowActive = dataSaver.toggleSaverMode();
-        this.applySaverMode(isNowActive);
-        if (isNowActive) {
-          sound.speak('تم تشغيل وضع التوفير الذكي');
-        } else {
-          sound.speak('تم إيقاف وضع التوفير الذكي');
-        }
-      });
+      this.dom.saverModeToggleBtn.addEventListener('click', toggleSaverHandler);
     }
 
     // فتح نافذة تفاصيل الاستهلاك
@@ -1788,6 +1800,18 @@ class QuranVoiceApp {
     if (isSaver) {
       document.body.classList.add('saver-mode-active');
       if (this.player) this.player.prefetchCount = 1;
+
+      // تحديث الزر الدائم في منتصف أسفل الهيدر
+      if (this.dom.permanentSaverText) this.dom.permanentSaverText.textContent = 'توفير البيانات: نشط';
+      if (this.dom.permanentSaverIcon) this.dom.permanentSaverIcon.textContent = '⚡';
+      if (this.dom.permanentSaverBtn) {
+        this.dom.permanentSaverBtn.className = 'group flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 border border-emerald-300 text-white font-black text-[11px] sm:text-xs shadow-lg shadow-emerald-900/60 active:scale-95 cursor-pointer transition-all';
+        this.dom.permanentSaverBtn.title = 'وضع توفير البيانات نشط (انقر للتعطيل)';
+      }
+      if (this.dom.permanentSaverDot) {
+        this.dom.permanentSaverDot.className = 'w-2 h-2 rounded-full bg-emerald-200 shadow-sm shadow-white animate-pulse';
+      }
+
       if (this.dom.saverModeLabel) this.dom.saverModeLabel.textContent = 'توفير: نشط';
       if (this.dom.saverIcon) this.dom.saverIcon.textContent = '⚡';
       if (this.dom.saverModeToggleBtn) {
@@ -1796,6 +1820,18 @@ class QuranVoiceApp {
     } else {
       document.body.classList.remove('saver-mode-active');
       if (this.player) this.player.prefetchCount = 5;
+
+      // تحديث الزر الدائم في منتصف أسفل الهيدر
+      if (this.dom.permanentSaverText) this.dom.permanentSaverText.textContent = 'توفير البيانات: معطل';
+      if (this.dom.permanentSaverIcon) this.dom.permanentSaverIcon.textContent = '🍃';
+      if (this.dom.permanentSaverBtn) {
+        this.dom.permanentSaverBtn.className = 'group flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-700/50 hover:border-emerald-500/60 text-emerald-300/90 font-bold text-[11px] sm:text-xs shadow active:scale-95 cursor-pointer transition-all';
+        this.dom.permanentSaverBtn.title = 'وضع توفير البيانات معطل (انقر للتشغيل)';
+      }
+      if (this.dom.permanentSaverDot) {
+        this.dom.permanentSaverDot.className = 'w-2 h-2 rounded-full bg-emerald-700';
+      }
+
       if (this.dom.saverModeLabel) this.dom.saverModeLabel.textContent = 'توفير';
       if (this.dom.saverIcon) this.dom.saverIcon.textContent = '🍃';
       if (this.dom.saverModeToggleBtn) {
