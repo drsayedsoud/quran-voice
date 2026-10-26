@@ -27,6 +27,7 @@ import {
   listenForActiveSurvey,
   submitSurveyVote 
 } from './firebase-config.js';
+import { quranTextService } from './quran-text-service.js';
 
 class QuranVoiceApp {
   constructor() {
@@ -136,8 +137,39 @@ class QuranVoiceApp {
       surveyCommentInput: document.getElementById('surveyCommentInput'),
       surveySendCommentBtn: document.getElementById('surveySendCommentBtn'),
       surveySuccessMsg: document.getElementById('surveySuccessMsg'),
-      surveyDismissBtn: document.getElementById('surveyDismissBtn')
+      surveyDismissBtn: document.getElementById('surveyDismissBtn'),
+      ayahRoyalWindow: document.getElementById('ayahRoyalWindow'),
+      ayahBasmalahHeader: document.getElementById('ayahBasmalahHeader'),
+      ayahUthmanicText: document.getElementById('ayahUthmanicText'),
+      openTafsirFromCardBtn: document.getElementById('openTafsirFromCardBtn'),
+      decreaseFontSizeBtn: document.getElementById('decreaseFontSizeBtn'),
+      increaseFontSizeBtn: document.getElementById('increaseFontSizeBtn'),
+      toggleAyahDisplayBtn: document.getElementById('toggleAyahDisplayBtn'),
+      toggleAyahDisplayIcon: document.getElementById('toggleAyahDisplayIcon'),
+      toggleAyahDisplayText: document.getElementById('toggleAyahDisplayText'),
+      toggleAyahDisplayDot: document.getElementById('toggleAyahDisplayDot'),
+      carModeToggleBtn: document.getElementById('carModeToggleBtn'),
+      carModeIcon: document.getElementById('carModeIcon'),
+      carModeText: document.getElementById('carModeText'),
+      carModeDot: document.getElementById('carModeDot'),
+      carModeDriverHud: document.getElementById('carModeDriverHud'),
+      exitCarModeBtn: document.getElementById('exitCarModeBtn'),
+      carSurahName: document.getElementById('carSurahName'),
+      carAyahBadge: document.getElementById('carAyahBadge'),
+      carReciterName: document.getElementById('carReciterName'),
+      carPrevBtn: document.getElementById('carPrevBtn'),
+      carPlayBtn: document.getElementById('carPlayBtn'),
+      carPlayIcon: document.getElementById('carPlayIcon'),
+      carNextBtn: document.getElementById('carNextBtn'),
+      carMicBtn: document.getElementById('carMicBtn'),
+      carMicText: document.getElementById('carMicText')
     };
+
+    this.isCarMode = localStorage.getItem('quran_car_mode') === 'true';
+    this.showAyahCard = localStorage.getItem('show_ayah_card') !== 'false';
+    this.fontSizeClasses = ['ayah-size-small', 'ayah-size-normal', 'ayah-size-large', 'ayah-size-xlarge'];
+    const savedSize = localStorage.getItem('quran_font_size_idx');
+    this.currentFontSizeIdx = savedSize !== null ? parseInt(savedSize, 10) : 1;
 
     this.deferredInstallPrompt = null;
 
@@ -152,6 +184,10 @@ class QuranVoiceApp {
     this.populateSelectors();
     this.bindEvents();
     this.initDataTracker();
+    this.initAyahDisplay();
+    quranTextService.init().then(() => {
+      this.updateAyahDisplay();
+    });
 
     // استعادة آخر جلسة محلية
     this.restoreLocalPosition();
@@ -1531,6 +1567,115 @@ class QuranVoiceApp {
 
     if (this.dom.surahSelect) this.dom.surahSelect.value = this.currentSurah.id;
     if (this.dom.reciterSelect) this.dom.reciterSelect.value = this.currentReciter.id;
+
+    this.updateAyahDisplay();
+  }
+
+  // تهيئة نافذة عرض الآية بالرسم العثماني وأزرار التحكم
+  initAyahDisplay() {
+    this.applyAyahDisplayVisibility();
+    this.applyFontSize();
+
+    if (this.dom.toggleAyahDisplayBtn) {
+      this.dom.toggleAyahDisplayBtn.addEventListener('click', () => {
+        this.toggleAyahDisplay();
+      });
+    }
+
+    if (this.dom.increaseFontSizeBtn) {
+      this.dom.increaseFontSizeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this.currentFontSizeIdx < this.fontSizeClasses.length - 1) {
+          this.currentFontSizeIdx++;
+          this.applyFontSize();
+        }
+      });
+    }
+
+    if (this.dom.decreaseFontSizeBtn) {
+      this.dom.decreaseFontSizeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this.currentFontSizeIdx > 0) {
+          this.currentFontSizeIdx--;
+          this.applyFontSize();
+        }
+      });
+    }
+
+    if (this.dom.openTafsirFromCardBtn) {
+      this.dom.openTafsirFromCardBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.fetchAndShowTafsir();
+      });
+    }
+
+    if (this.dom.ayahRoyalWindow) {
+      this.dom.ayahRoyalWindow.addEventListener('click', (e) => {
+        if (e.target.closest('button')) return;
+        this.fetchAndShowTafsir();
+      });
+    }
+  }
+
+  // التبديل بين إظهار الآية الشريفة أو وضع الصوت فقط
+  toggleAyahDisplay() {
+    this.showAyahCard = !this.showAyahCard;
+    localStorage.setItem('show_ayah_card', this.showAyahCard ? 'true' : 'false');
+    this.applyAyahDisplayVisibility();
+    if (this.showAyahCard) {
+      sound.speak('عرض الآية مفعل');
+    } else {
+      sound.speak('وضع الصوت فقط مفعل');
+    }
+  }
+
+  // تطبيق حالة الإظهار أو الإخفاء على النافذة والشريط العلوي
+  applyAyahDisplayVisibility() {
+    if (!this.dom.ayahRoyalWindow) return;
+    if (this.showAyahCard) {
+      this.dom.ayahRoyalWindow.classList.remove('hidden');
+      if (this.dom.toggleAyahDisplayText) this.dom.toggleAyahDisplayText.textContent = 'المصحف: ظاهر';
+      if (this.dom.toggleAyahDisplayIcon) this.dom.toggleAyahDisplayIcon.textContent = '📖';
+      if (this.dom.toggleAyahDisplayDot) {
+        this.dom.toggleAyahDisplayDot.className = 'w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]';
+      }
+    } else {
+      this.dom.ayahRoyalWindow.classList.add('hidden');
+      if (this.dom.toggleAyahDisplayText) this.dom.toggleAyahDisplayText.textContent = 'المصحف: مخفي (صوت فقط)';
+      if (this.dom.toggleAyahDisplayIcon) this.dom.toggleAyahDisplayIcon.textContent = '🎧';
+      if (this.dom.toggleAyahDisplayDot) {
+        this.dom.toggleAyahDisplayDot.className = 'w-2 h-2 rounded-full bg-emerald-700';
+      }
+    }
+  }
+
+  // تطبيق حجم الخط المختار وحفظه
+  applyFontSize() {
+    if (!this.dom.ayahUthmanicText) return;
+    this.fontSizeClasses.forEach(c => this.dom.ayahUthmanicText.classList.remove(c));
+    const activeClass = this.fontSizeClasses[this.currentFontSizeIdx] || 'ayah-size-normal';
+    this.dom.ayahUthmanicText.classList.add(activeClass);
+    localStorage.setItem('quran_font_size_idx', String(this.currentFontSizeIdx));
+  }
+
+  // تحديث نص الآية الكريمة والترويسة الحالية
+  updateAyahDisplay() {
+    if (!this.dom.ayahUthmanicText) return;
+    const ayahData = quranTextService.getAyah(this.currentSurah.id, this.currentAyah);
+    if (!ayahData) {
+      return;
+    }
+
+    if (this.dom.ayahBasmalahHeader) {
+      if (ayahData.hasBasmalahHeader && ayahData.basmalahText) {
+        this.dom.ayahBasmalahHeader.textContent = ayahData.basmalahText;
+        this.dom.ayahBasmalahHeader.classList.remove('hidden');
+      } else {
+        this.dom.ayahBasmalahHeader.classList.add('hidden');
+      }
+    }
+
+    this.dom.ayahUthmanicText.innerHTML = `${ayahData.text} <span class="ayah-marker">﴿${ayahData.arabicNum}﴾</span>`;
   }
 
   bindEvents() {

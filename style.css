@@ -546,3 +546,34 @@ body.saver-mode-active #saverModeStatusDot {
   .ayah-size-large { font-size: 2.05rem !important; }
   .ayah-size-xlarge { font-size: 2.5rem !important; }
 }
+
+/* ==============================================================
+   وضع القيادة والسفر الذكي (Car & Travel Mode)
+   واجهة آمنة خالية من التشتيت بأزرار ضخمة وبدون نصوص أو صور الآيات
+   ============================================================== */
+body.car-mode-active #ayahRoyalWindow,
+body.car-mode-active #manualSelectorsContainer,
+body.car-mode-active .guide-grid,
+body.car-mode-active .surah-meta,
+body.car-mode-active #interactiveRepeatBanner,
+body.car-mode-active #ayahBadge,
+body.car-mode-active #repeatBadge,
+body.car-mode-active .controls-row,
+body.car-mode-active .mic-container {
+  display: none !important;
+}
+
+body.car-mode-active .main-card {
+  padding: 1.25rem 0.85rem !important;
+  background: radial-gradient(circle at 50% 10%, rgba(6, 78, 59, 0.98), rgba(2, 44, 34, 0.99)) !important;
+  border-color: rgba(245, 158, 11, 0.6) !important;
+  box-shadow: 0 0 35px rgba(245, 158, 11, 0.25) !important;
+}
+
+body.car-mode-active #carModeDriverHud {
+  display: flex !important;
+}
+
+#carModeDriverHud {
+  display: none;
+}

@@ -1,10 +1,6 @@
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-
-$resp = Invoke-WebRequest -Uri 'https://everyayah.com/data/' -UseBasicParsing
-$lines = $resp.Content -split "`n"
-foreach ($line in $lines) {
-    if ($line -match 'href="([^"/]+)/"') {
-        Write-Host $matches[1]
-    }
+$data = Invoke-RestMethod -Uri 'https://api.quran.com/api/v4/resources/recitations'
+foreach ($r in $data.recitations) {
+    Write-Host "$($r.id): $($r.reciter_name) ($($r.style))"
 }
