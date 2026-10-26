@@ -14,6 +14,8 @@ import {
 } from './voice-engine.js';
 import { parseWithGemini } from './gemini-service.js';
 import { sound } from './sound-effects.js';
+import { journalService } from './journal-service.js';
+import { dataSaver } from './data-saver-service.js';
 import { getTafsir, extractTermMeaning, seedTafsirIfNeeded } from './tafsir-service.js';
 import { 
   initUserSession, 
@@ -95,7 +97,34 @@ class QuranVoiceApp {
       confirmPwaInstallBtn: document.getElementById('confirmPwaInstallBtn'),
       dismissPwaInstallBtn: document.getElementById('dismissPwaInstallBtn'),
       iosInstallInstructions: document.getElementById('iosInstallInstructions'),
-      confirmPwaInstallText: document.getElementById('confirmPwaInstallText')
+      confirmPwaInstallText: document.getElementById('confirmPwaInstallText'),
+      dataUsageTodayText: document.getElementById('dataUsageTodayText'),
+      dataUsageLimitText: document.getElementById('dataUsageLimitText'),
+      dataProgressBar: document.getElementById('dataProgressBar'),
+      dataProgressTrack: document.getElementById('dataProgressTrack'),
+      saverModeToggleBtn: document.getElementById('saverModeToggleBtn'),
+      saverIcon: document.getElementById('saverIcon'),
+      saverModeLabel: document.getElementById('saverModeLabel'),
+      dataDetailsBtn: document.getElementById('dataDetailsBtn'),
+      dataUsageModal: document.getElementById('dataUsageModal'),
+      closeDataUsageBtn: document.getElementById('closeDataUsageBtn'),
+      modalCloseActionBtn: document.getElementById('modalCloseActionBtn'),
+      modalTodayMB: document.getElementById('modalTodayMB'),
+      modalLimitMB: document.getElementById('modalLimitMB'),
+      modalProgressBar: document.getElementById('modalProgressBar'),
+      modalAudioMB: document.getElementById('modalAudioMB'),
+      modalApiMB: document.getElementById('modalApiMB'),
+      resetTodayDataBtn: document.getElementById('resetTodayDataBtn'),
+      journalBtn: document.getElementById('journalBtn'),
+      journalModal: document.getElementById('journalModal'),
+      closeJournalBtn: document.getElementById('closeJournalBtn'),
+      closeJournalBottomBtn: document.getElementById('closeJournalBottomBtn'),
+      journalSpeakBtn: document.getElementById('journalSpeakBtn'),
+      journalStreakCount: document.getElementById('journalStreakCount'),
+      journalTodayCount: document.getElementById('journalTodayCount'),
+      journalWeekCount: document.getElementById('journalWeekCount'),
+      journalTotalCount: document.getElementById('journalTotalCount'),
+      journalMemorizedCount: document.getElementById('journalMemorizedCount')
     };
 
     this.deferredInstallPrompt = null;
@@ -111,6 +140,7 @@ class QuranVoiceApp {
     this.initAdminLongPress();
     this.populateSelectors();
     this.bindEvents();
+    this.initDataTracker();
 
     // استعادة آخر جلسة محلية
     this.restoreLocalPosition();
@@ -181,6 +211,7 @@ class QuranVoiceApp {
       }
 
       recordAyahListened();
+      journalService.recordAyah(this.currentSurah.id, this.currentAyah, false);
       this.flushListeningTime();
       saveLastPosition(this.currentSurah, this.currentAyah, this.currentReciter.id);
 
@@ -222,6 +253,7 @@ class QuranVoiceApp {
 
     // عند تكرار الآية أو دورة حفظ جديدة
     this.player.onRepeat = (currentRepeat, repeatCount, loopState) => {
+      journalService.recordAyah(this.currentSurah.id, this.currentAyah, true);
       if (loopState && loopState.type === 'RANGE') {
         const msg = `🔁 دورة الحفظ (${currentRepeat}/${repeatCount}): سورة ${loopState.surah.name} (الآيات ${loopState.fromAyah} - ${loopState.toAyah})`;
         this.dom.voiceStatus.textContent = msg;
@@ -298,6 +330,7 @@ class QuranVoiceApp {
     this.listeningTimer = setInterval(() => {
       if (this.isPlaying && this.player && this.player.isPlaying) {
         this.accumulatedSeconds += 5;
+        dataSaver.recordAudioSeconds(5);
         if (this.accumulatedSeconds >= 25) {
           this.flushListeningTime();
         }
@@ -666,6 +699,11 @@ class QuranVoiceApp {
         this.dom.voiceStatus.textContent = 'الصوت صامت';
         break;
 
+      case 'JOURNAL_STATS':
+        sound.playSuccessChime();
+        this.openJournalModal(true);
+        break;
+
       case 'OPEN_ADMIN':
         sound.playErrorChime();
         sound.speak('صفحة الإدارة محمية برمز مرور سري، يمكن الوصول إليها فقط بالضغط المطول على الترس');
@@ -910,7 +948,7 @@ class QuranVoiceApp {
 
     area.addEventListener('touchstart', (e) => {
       // إذا كان اللمس على عنصر تحكم تفاعلي مباشر أو داخل النوافذ المنبثقة نتركه يتفاعل طبيعياً
-      if (e.target.closest('button, select, input, a, #adminModalPinInput, #closeTafsirBtn, #helpGuideModal, #adminPinModal, #tafsirModal, #pwaInstallModal')) {
+      if (e.target.closest('button, select, input, a, #adminModalPinInput, #closeTafsirBtn, #helpGuideModal, #adminPinModal, #tafsirModal, #pwaInstallModal, #journalModal, #dataUsageModal')) {
         return;
       }
 
@@ -929,7 +967,7 @@ class QuranVoiceApp {
     }, { passive: true });
 
     area.addEventListener('touchmove', (e) => {
-      if (e.target.closest('button, select, input, a, #adminModalPinInput, #closeTafsirBtn, #helpGuideModal, #adminPinModal, #tafsirModal, #pwaInstallModal')) {
+      if (e.target.closest('button, select, input, a, #adminModalPinInput, #closeTafsirBtn, #helpGuideModal, #adminPinModal, #tafsirModal, #pwaInstallModal, #journalModal, #dataUsageModal')) {
         return;
       }
       const touch = e.touches[0];
@@ -944,7 +982,7 @@ class QuranVoiceApp {
       clearTimeout(longPressTimer);
 
       // إذا كان اللمس على زر أو عنصر تفاعلي نتركه يتفاعل دون مقاطعة
-      if (e.target.closest('button, select, input, a, #adminModalPinInput, #closeTafsirBtn, #helpGuideModal, #adminPinModal, #tafsirModal, #pwaInstallModal')) {
+      if (e.target.closest('button, select, input, a, #adminModalPinInput, #closeTafsirBtn, #helpGuideModal, #adminPinModal, #tafsirModal, #pwaInstallModal, #journalModal, #dataUsageModal')) {
         return;
       }
 
@@ -1377,6 +1415,33 @@ class QuranVoiceApp {
       });
     }
 
+    // زر سجل الورد القرآني والـ Streak التراكمي
+    if (this.dom.journalBtn) {
+      this.dom.journalBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.openJournalModal(true);
+      });
+    }
+    if (this.dom.closeJournalBtn) {
+      this.dom.closeJournalBtn.addEventListener('click', () => this.closeJournalModal());
+    }
+    if (this.dom.closeJournalBottomBtn) {
+      this.dom.closeJournalBottomBtn.addEventListener('click', () => this.closeJournalModal());
+    }
+    if (this.dom.journalSpeakBtn) {
+      this.dom.journalSpeakBtn.addEventListener('click', () => {
+        const summary = journalService.getSummary();
+        sound.speak(summary.speechMessage);
+      });
+    }
+    if (this.dom.journalModal) {
+      this.dom.journalModal.addEventListener('click', (e) => {
+        if (e.target === this.dom.journalModal) {
+          this.closeJournalModal();
+        }
+      });
+    }
+
     if (this.dom.surahSelect) {
       this.dom.surahSelect.addEventListener('change', (e) => {
         const selected = SURAHS.find(s => s.id === parseInt(e.target.value, 10));
@@ -1524,6 +1589,46 @@ class QuranVoiceApp {
     }
   }
 
+  // فتح وعرض نافذة سجل الورد القرآني والـ Streak
+  openJournalModal(speak = true) {
+    sound.vibrate([40]);
+    const summary = journalService.getSummary();
+
+    if (this.dom.journalStreakCount) {
+      this.dom.journalStreakCount.textContent = `${summary.currentStreak} يوم`;
+    }
+    if (this.dom.journalTodayCount) {
+      this.dom.journalTodayCount.textContent = `${summary.todayAyahs} آية`;
+    }
+    if (this.dom.journalWeekCount) {
+      this.dom.journalWeekCount.textContent = `${summary.weekAyahs} آية`;
+    }
+    if (this.dom.journalTotalCount) {
+      this.dom.journalTotalCount.textContent = `${summary.totalAyahs} آية`;
+    }
+    if (this.dom.journalMemorizedCount) {
+      this.dom.journalMemorizedCount.textContent = `${summary.totalMemorizedAyahs} آية`;
+    }
+
+    if (this.dom.journalModal) {
+      this.dom.journalModal.classList.remove('hidden');
+    }
+
+    if (speak && summary.speechMessage) {
+      sound.speak(summary.speechMessage);
+    }
+  }
+
+  // إغلاق نافذة سجل الورد القرآني
+  closeJournalModal() {
+    if (this.dom.journalModal) {
+      this.dom.journalModal.classList.add('hidden');
+    }
+    if (sound.speechSynth) {
+      sound.speechSynth.cancel();
+    }
+  }
+
   toggleSpeechLang() {
     this.speechLang = (this.speechLang === 'ar-EG') ? 'ar-SA' : 'ar-EG';
     localStorage.setItem('speech_lang', this.speechLang);
@@ -1549,6 +1654,145 @@ class QuranVoiceApp {
         ? 'التعرف الصوتي: اللهجة المصرية (انقر للتحويل إلى الفصحى)' 
         : 'التعرف الصوتي: العربية الفصحى (انقر للتحويل للمصرية)';
     }
+  }
+
+  // تهيئة مراقب استهلاك البيانات ووضع التوفير الذكي
+  initDataTracker() {
+    this.applySaverMode(dataSaver.isSaverModeActive());
+
+    // الاشتراك في التحديثات الفورية للاستهلاك
+    dataSaver.subscribe((summary) => {
+      this.updateDataTrackerUI(summary);
+    });
+
+    // زر تبديل وضع التوفير الذكي
+    if (this.dom.saverModeToggleBtn) {
+      this.dom.saverModeToggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sound.play('click');
+        sound.vibrate([40]);
+        const isNowActive = dataSaver.toggleSaverMode();
+        this.applySaverMode(isNowActive);
+        if (isNowActive) {
+          sound.speak('تم تشغيل وضع التوفير الذكي');
+        } else {
+          sound.speak('تم إيقاف وضع التوفير الذكي');
+        }
+      });
+    }
+
+    // فتح نافذة تفاصيل الاستهلاك
+    const openDataModal = () => {
+      sound.play('click');
+      sound.vibrate([30]);
+      if (this.dom.dataUsageModal) {
+        this.dom.dataUsageModal.classList.remove('hidden');
+      }
+    };
+
+    if (this.dom.dataDetailsBtn) {
+      this.dom.dataDetailsBtn.addEventListener('click', openDataModal);
+    }
+    if (this.dom.dataProgressTrack) {
+      this.dom.dataProgressTrack.addEventListener('click', openDataModal);
+    }
+
+    // إغلاق نافذة التفاصيل
+    const closeDataModal = () => {
+      if (this.dom.dataUsageModal) {
+        this.dom.dataUsageModal.classList.add('hidden');
+      }
+    };
+
+    if (this.dom.closeDataUsageBtn) {
+      this.dom.closeDataUsageBtn.addEventListener('click', closeDataModal);
+    }
+    if (this.dom.modalCloseActionBtn) {
+      this.dom.modalCloseActionBtn.addEventListener('click', closeDataModal);
+    }
+    if (this.dom.dataUsageModal) {
+      this.dom.dataUsageModal.addEventListener('click', (e) => {
+        if (e.target === this.dom.dataUsageModal) closeDataModal();
+      });
+    }
+
+    // اختيار الحد اليومي للشريط (100, 250, 500 MB)
+    document.querySelectorAll('.quota-btn').forEach((btn) => {
+      const quota = parseInt(btn.dataset.quota, 10);
+      if (quota === dataSaver.getDailyLimitMB()) {
+        btn.classList.add('border-amber-500/60', 'bg-amber-500/20', 'text-amber-300');
+        btn.classList.remove('border-emerald-700/50', 'bg-emerald-900/50', 'text-emerald-200');
+      }
+      btn.addEventListener('click', () => {
+        sound.play('click');
+        sound.vibrate([30]);
+        const newQuota = parseInt(btn.dataset.quota, 10);
+        if (newQuota) {
+          dataSaver.setDailyLimitMB(newQuota);
+          document.querySelectorAll('.quota-btn').forEach((b) => {
+            b.classList.remove('border-amber-500/60', 'bg-amber-500/20', 'text-amber-300');
+            b.classList.add('border-emerald-700/50', 'bg-emerald-900/50', 'text-emerald-200');
+          });
+          btn.classList.remove('border-emerald-700/50', 'bg-emerald-900/50', 'text-emerald-200');
+          btn.classList.add('border-amber-500/60', 'bg-amber-500/20', 'text-amber-300');
+        }
+      });
+    });
+
+    // تصفير عداد اليوم
+    if (this.dom.resetTodayDataBtn) {
+      this.dom.resetTodayDataBtn.addEventListener('click', () => {
+        sound.play('click');
+        sound.vibrate([60, 40]);
+        dataSaver.resetTodayUsage();
+        sound.speak('تم تصفير عداد استهلاك اليوم');
+      });
+    }
+  }
+
+  // تطبيق وضع التوفير وتحديث السلوك الداخلي
+  applySaverMode(isSaver) {
+    if (isSaver) {
+      document.body.classList.add('saver-mode-active');
+      if (this.player) this.player.prefetchCount = 1;
+      if (this.dom.saverModeLabel) this.dom.saverModeLabel.textContent = 'توفير: نشط';
+      if (this.dom.saverIcon) this.dom.saverIcon.textContent = '⚡';
+      if (this.dom.saverModeToggleBtn) {
+        this.dom.saverModeToggleBtn.title = 'وضع التوفير الذكي نشط (انقر للتعطيل)';
+      }
+    } else {
+      document.body.classList.remove('saver-mode-active');
+      if (this.player) this.player.prefetchCount = 5;
+      if (this.dom.saverModeLabel) this.dom.saverModeLabel.textContent = 'توفير';
+      if (this.dom.saverIcon) this.dom.saverIcon.textContent = '🍃';
+      if (this.dom.saverModeToggleBtn) {
+        this.dom.saverModeToggleBtn.title = 'انقر لتشغيل وضع التوفير الذكي (بيانات + بطارية)';
+      }
+    }
+  }
+
+  // تحديث عناصر الواجهة للاستهلاك وشريط التقدم
+  updateDataTrackerUI(summary) {
+    if (this.dom.dataUsageTodayText) {
+      this.dom.dataUsageTodayText.textContent = `${summary.todayMB} MB`;
+    }
+    if (this.dom.dataUsageLimitText) {
+      this.dom.dataUsageLimitText.textContent = `/ ${summary.limitMB} MB`;
+    }
+    if (this.dom.dataProgressBar) {
+      this.dom.dataProgressBar.style.width = `${summary.percentage}%`;
+      this.dom.dataProgressBar.className = `h-full rounded-full transition-all duration-500 ease-out ${summary.colorClass.bar}`;
+    }
+
+    // تحديث النافذة المنبثقة
+    if (this.dom.modalTodayMB) this.dom.modalTodayMB.textContent = summary.todayMB;
+    if (this.dom.modalLimitMB) this.dom.modalLimitMB.textContent = `من ${summary.limitMB} MB`;
+    if (this.dom.modalProgressBar) {
+      this.dom.modalProgressBar.style.width = `${summary.percentage}%`;
+      this.dom.modalProgressBar.className = `h-full rounded-full transition-all duration-300 ${summary.colorClass.bar}`;
+    }
+    if (this.dom.modalAudioMB) this.dom.modalAudioMB.textContent = `${summary.audioMB} MB`;
+    if (this.dom.modalApiMB) this.dom.modalApiMB.textContent = `${summary.apiMB} MB`;
   }
 }
 

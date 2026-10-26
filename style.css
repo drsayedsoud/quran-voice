@@ -380,3 +380,32 @@ select {
     max-width: 32rem !important;
   }
 }
+
+
+/* ==============================================================
+   شريط استهلاك باقة الإنترنت ووضع التوفير الذكي (Data & Battery Saver)
+   ============================================================== */
+#dataUsageBanner {
+  transition: all 0.25s ease-in-out;
+}
+
+#dataProgressBar {
+  transition: width 0.4s ease-out;
+}
+
+/* عندما يكون وضع التوفير الذكي فعالاً */
+body.saver-mode-active .animate-pulse {
+  animation-duration: 3s !important;
+}
+
+body.saver-mode-active #saverModeToggleBtn {
+  background: linear-gradient(135deg, #059669, #047857) !important;
+  border-color: #34d399 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.45);
+}
+
+body.saver-mode-active #saverModeStatusDot {
+  background-color: #34d399 !important;
+  box-shadow: 0 0 6px #34d399;
+}

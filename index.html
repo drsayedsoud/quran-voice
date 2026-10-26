@@ -76,6 +76,30 @@
     </div>
   </header>
 
+  <!-- شريط استهلاك باقة الإنترنت ووضع التوفير الذكي -->
+  <aside id="dataUsageBanner" class="relative z-20 w-full bg-emerald-950/90 border-b border-emerald-800/50 backdrop-blur-md px-2.5 sm:px-4 py-1.5 shadow-sm select-none" aria-label="شريط استهلاك البيانات ووضع التوفير">
+    <div class="max-w-md mx-auto flex items-center justify-between gap-2">
+      <!-- أقصى اليمين: رقم استهلاك اليوم -->
+      <button id="dataDetailsBtn" type="button" class="flex items-center gap-1.5 text-right hover:opacity-85 active:scale-95 transition-all cursor-pointer group shrink-0" title="اضغط لعرض تفاصيل استهلاك الباقة">
+        <span class="text-[11px] sm:text-xs">📶</span>
+        <span id="dataUsageTodayText" class="font-extrabold text-[11px] sm:text-xs text-amber-300 tracking-tight">0.0 MB</span>
+        <span id="dataUsageLimitText" class="text-[10px] text-emerald-400/60 font-medium hidden xs:inline">/ 250 MB</span>
+      </button>
+
+      <!-- المنتصف: البروجرس بار حتى 250 ميجا -->
+      <div id="dataProgressTrack" class="flex-1 h-2 bg-emerald-900/70 rounded-full overflow-hidden border border-emerald-700/40 cursor-pointer shadow-inner relative" title="نسبة استهلاك الحصة اليومية (اضغط للتفاصيل)">
+        <div id="dataProgressBar" class="h-full bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full transition-all duration-500 ease-out" style="width: 0%;"></div>
+      </div>
+
+      <!-- أقصى اليسار: زر وضع توفير الطاقة والبيانات -->
+      <button id="saverModeToggleBtn" type="button" class="flex items-center gap-1 px-2 py-0.5 sm:py-1 rounded-lg bg-emerald-900/60 border border-emerald-700/40 hover:bg-emerald-800/80 text-emerald-300 transition-all text-[10.5px] sm:text-xs font-bold active:scale-95 cursor-pointer shrink-0" title="تفعيل/تعطيل وضع التوفير الذكي (توفير البيانات والبطارية)">
+        <span id="saverIcon">🍃</span>
+        <span id="saverModeLabel" class="hidden xs:inline">توفير</span>
+        <span id="saverModeStatusDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500/40"></span>
+      </button>
+    </div>
+  </aside>
+
   <!-- المحتوى الرئيسي: بطاقة السورة والآية الحالية -->
   <main class="relative z-10 flex-1 flex flex-col justify-center items-center px-2.5 sm:px-4 py-1 max-w-md mx-auto w-full">
     
@@ -178,7 +202,7 @@
           👆 نقرة مطولة<br><strong class="text-amber-300">للتحدث</strong>
         </div>
         <div class="bg-emerald-900/40 p-1.5 rounded-xl border border-emerald-800/40">
-          ✌️ نقرتان<br><strong class="text-amber-300">تشغيل/إيقاف</strong>
+          👆 نقرة<br><strong class="text-amber-300">تشغيل/إيقاف</strong>
         </div>
         <div class="bg-emerald-900/40 p-1.5 rounded-xl border border-emerald-800/40">
           👉 سحب أفقي<br><strong class="text-amber-300">تغيير الآية</strong>
@@ -206,6 +230,132 @@
       </div>
     </div>
   </footer>
+
+  <!-- نافذة تفاصيل استهلاك البيانات وإعدادات التوفير -->
+  <div id="dataUsageModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md">
+    <div class="bg-gradient-to-b from-emerald-900 to-emerald-950 border border-amber-500/50 rounded-3xl p-4 sm:p-6 max-w-sm w-full shadow-2xl relative text-right">
+      <div class="flex items-center justify-between pb-3 border-b border-emerald-700/50 mb-3.5">
+        <div class="flex items-center gap-2">
+          <div class="w-9 h-9 rounded-2xl bg-amber-500/20 border border-amber-400/40 text-amber-300 text-lg flex items-center justify-center shadow-inner">
+            📶
+          </div>
+          <div>
+            <h3 class="text-base sm:text-lg font-black text-amber-300">استهلاك باقة الإنترنت</h3>
+            <p class="text-[11px] text-emerald-300/80">مراقبة الاستهلاك ووضع التوفير</p>
+          </div>
+        </div>
+        <button id="closeDataUsageBtn" type="button" class="w-8 h-8 rounded-full bg-emerald-950/80 hover:bg-amber-500 hover:text-emerald-950 border border-emerald-700/50 text-emerald-200 text-lg font-bold flex items-center justify-center transition-all cursor-pointer">✕</button>
+      </div>
+
+      <!-- إحصائية اليوم الكبرى -->
+      <div class="bg-emerald-950/70 border border-emerald-800/60 rounded-2xl p-3.5 mb-3 text-center">
+        <span class="text-xs text-emerald-300/80 block mb-1">إجمالي استهلاك اليوم</span>
+        <div class="flex items-baseline justify-center gap-1.5">
+          <span id="modalTodayMB" class="text-3xl font-black text-amber-300">0.0</span>
+          <span class="text-xs text-emerald-300 font-bold">ميجابايت</span>
+          <span class="text-xs text-emerald-400/60 font-semibold" id="modalLimitMB">من 250 MB</span>
+        </div>
+        <div class="w-full h-2.5 bg-emerald-900/80 rounded-full overflow-hidden border border-emerald-700/40 mt-2.5">
+          <div id="modalProgressBar" class="h-full bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full transition-all duration-300" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <!-- توزيع الاستهلاك -->
+      <div class="grid grid-cols-2 gap-2 mb-3">
+        <div class="bg-emerald-900/40 border border-emerald-800/40 rounded-xl p-2.5 text-center">
+          <span class="text-[10.5px] text-emerald-300 block mb-0.5">🎧 التلاوة والاستماع</span>
+          <strong id="modalAudioMB" class="text-sm font-black text-amber-200">0.0 MB</strong>
+        </div>
+        <div class="bg-emerald-900/40 border border-emerald-800/40 rounded-xl p-2.5 text-center">
+          <span class="text-[10.5px] text-emerald-300 block mb-0.5">🧠 الذكاء والتفسير</span>
+          <strong id="modalApiMB" class="text-sm font-black text-emerald-200">0.0 MB</strong>
+        </div>
+      </div>
+
+      <!-- خيارات سريعة للحد اليومي -->
+      <div class="mb-3.5">
+        <label class="block text-[11px] text-emerald-300 font-bold mb-1.5">الحد اليومي المستهدف للشريط:</label>
+        <div class="grid grid-cols-3 gap-1.5 text-xs">
+          <button type="button" class="quota-btn py-1.5 px-2 rounded-xl border border-emerald-700/50 bg-emerald-900/50 hover:bg-emerald-800 text-emerald-200 font-bold transition-all cursor-pointer" data-quota="100">100 MB</button>
+          <button type="button" class="quota-btn py-1.5 px-2 rounded-xl border border-amber-500/60 bg-amber-500/20 text-amber-300 font-bold transition-all cursor-pointer" data-quota="250">250 MB</button>
+          <button type="button" class="quota-btn py-1.5 px-2 rounded-xl border border-emerald-700/50 bg-emerald-900/50 hover:bg-emerald-800 text-emerald-200 font-bold transition-all cursor-pointer" data-quota="500">500 MB</button>
+        </div>
+      </div>
+
+      <!-- تلميح وضع التوفير -->
+      <div class="p-2.5 rounded-xl bg-emerald-900/30 border border-emerald-800/50 mb-3.5 text-[11px] text-emerald-200/90 leading-relaxed flex items-start gap-2">
+        <span class="text-base leading-none">🍃</span>
+        <span>وضع التوفير الذكي يقلل التحميل المسبق للسور ويوقف الحركات الثقيلة لتوفير باقة الهاتف وبطارية الجهاز.</span>
+      </div>
+
+      <!-- زر تصفير الاستهلاك وزر تم -->
+      <div class="flex items-center gap-2">
+        <button id="resetTodayDataBtn" type="button" class="flex-1 py-2 px-3 rounded-xl bg-emerald-950/80 border border-emerald-800 hover:border-rose-500/50 hover:text-rose-300 text-emerald-300 text-xs font-bold transition-all cursor-pointer active:scale-95">
+          🔄 تصفير عداد اليوم
+        </button>
+        <button id="modalCloseActionBtn" type="button" class="py-2 px-5 rounded-xl bg-amber-500 hover:bg-amber-400 text-emerald-950 text-xs font-black transition-all cursor-pointer shadow-md active:scale-95">
+          إغلاق
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- نافذة سجل الورد القرآني والـ Streak التراكمي المنبثقة -->
+  <div id="journalModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md transition-all duration-300">
+    <div class="bg-gradient-to-b from-emerald-900 to-emerald-950 border border-amber-500/50 rounded-3xl p-5 sm:p-6 max-w-sm w-full shadow-2xl relative text-center">
+      
+      <button id="closeJournalBtn" type="button" class="absolute top-3 left-3 w-8 h-8 rounded-full bg-emerald-950/80 hover:bg-emerald-800 text-emerald-300 flex items-center justify-center text-sm transition-all cursor-pointer" aria-label="إغلاق">
+        ✕
+      </button>
+
+      <div class="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-400/40 text-amber-300 text-2xl flex items-center justify-center mx-auto mb-3 shadow-inner">
+        📊
+      </div>
+
+      <h3 class="text-lg font-black text-amber-300 mb-1">سجل الورد القرآني</h3>
+      <p class="text-xs text-emerald-300/80 mb-4">إحصائيات استماعك وحفظك اليومي والتراكمي</p>
+
+      <!-- بطاقة سلسلة الورد اليومي (Streak) -->
+      <div class="bg-gradient-to-r from-amber-500/20 to-emerald-800/40 border border-amber-400/40 rounded-2xl p-3.5 mb-3.5 text-center shadow">
+        <span class="text-2xl block mb-0.5">🔥</span>
+        <div class="text-2xl font-black text-amber-300" id="journalStreakCount">0 يوم</div>
+        <p class="text-[11px] text-amber-200/90 font-medium">سلسلة الورد المتتالي (Streak)</p>
+      </div>
+
+      <!-- شبكة الإحصائيات الأربعة -->
+      <div class="grid grid-cols-2 gap-2 mb-4 text-right">
+        <div class="bg-emerald-950/70 p-2.5 rounded-xl border border-emerald-800/60">
+          <span class="text-[10px] text-emerald-300/80 block">📖 آيات اليوم</span>
+          <span id="journalTodayCount" class="text-base font-bold text-white">0 آية</span>
+        </div>
+        <div class="bg-emerald-950/70 p-2.5 rounded-xl border border-emerald-800/60">
+          <span class="text-[10px] text-emerald-300/80 block">🗓️ آيات الأسبوع</span>
+          <span id="journalWeekCount" class="text-base font-bold text-white">0 آية</span>
+        </div>
+        <div class="bg-emerald-950/70 p-2.5 rounded-xl border border-emerald-800/60">
+          <span class="text-[10px] text-emerald-300/80 block">🌟 رصيدك الكلي</span>
+          <span id="journalTotalCount" class="text-base font-bold text-amber-300">0 آية</span>
+        </div>
+        <div class="bg-emerald-950/70 p-2.5 rounded-xl border border-emerald-800/60">
+          <span class="text-[10px] text-emerald-300/80 block">🔁 آيات التحفيظ</span>
+          <span id="journalMemorizedCount" class="text-base font-bold text-emerald-300">0 آية</span>
+        </div>
+      </div>
+
+      <!-- أزرار التفاعل: قراءة صوتية وإغلاق -->
+      <div class="flex flex-col gap-2">
+        <button id="journalSpeakBtn" type="button" class="w-full py-2.5 px-3 bg-amber-500 hover:bg-amber-400 text-emerald-950 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow transition-all cursor-pointer active:scale-95">
+          <span>🔊</span>
+          <span>استمع لتقرير وردك الصوتي</span>
+        </button>
+
+        <button id="closeJournalBottomBtn" type="button" class="w-full py-2 px-3 bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 text-xs font-semibold rounded-xl border border-emerald-700/40 transition-all cursor-pointer">
+          إغلاق
+        </button>
+      </div>
+
+    </div>
+  </div>
 
   <!-- نافذة التفسير الميسر المنبثقة -->
   <div id="tafsirModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
