@@ -88,8 +88,17 @@ class QuranVoiceApp {
       helpGuideBtn: document.getElementById('helpGuideBtn'),
       helpGuideModal: document.getElementById('helpGuideModal'),
       closeHelpGuideBtn: document.getElementById('closeHelpGuideBtn'),
-      closeHelpGuideBottomBtn: document.getElementById('closeHelpGuideBottomBtn')
+      closeHelpGuideBottomBtn: document.getElementById('closeHelpGuideBottomBtn'),
+      whatsappShareBtn: document.getElementById('whatsappShareBtn'),
+      pwaInstallModal: document.getElementById('pwaInstallModal'),
+      closePwaInstallBtn: document.getElementById('closePwaInstallBtn'),
+      confirmPwaInstallBtn: document.getElementById('confirmPwaInstallBtn'),
+      dismissPwaInstallBtn: document.getElementById('dismissPwaInstallBtn'),
+      iosInstallInstructions: document.getElementById('iosInstallInstructions'),
+      confirmPwaInstallText: document.getElementById('confirmPwaInstallText')
     };
+
+    this.deferredInstallPrompt = null;
 
     this.init();
   }
@@ -119,6 +128,18 @@ class QuranVoiceApp {
     listenForAdminBroadcast((broadcast) => {
       this.handleAdminBroadcast(broadcast);
     });
+
+    // الاستماع لحدث تثبيت التطبيق PWA
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      this.deferredInstallPrompt = e;
+      this.checkAndPromptPwaInstall();
+    });
+
+    // اقتراح تثبيت التطبيق تلقائياً عند فتح البرنامج بعد تحميل الواجهة
+    setTimeout(() => {
+      this.checkAndPromptPwaInstall();
+    }, 1200);
 
     this.updateUI();
   }
@@ -766,8 +787,12 @@ class QuranVoiceApp {
       return;
     }
 
-    // إذا كانت التلاوة جارية، نحفظ موضعها الحالي وإمكانية استئنافها بعد التفسير ونوقف التلاوة مؤقتاً
-    const wasPlaying = (this.isPlaying && this.player && this.player.isPlaying);
+    // فحص ما إذا كانت التلاوة جارية لحفظ موضعها وإيقافها فوراً
+    const wasPlaying = Boolean(
+      this.isPlaying ||
+      (this.player && (this.player.isPlaying || (this.player.activeDeck && !this.player.activeDeck.paused)))
+    );
+
     if (wasPlaying) {
       this.resumePlaybackAfterTafsir = true;
       this.savedResumeState = {
@@ -776,10 +801,16 @@ class QuranVoiceApp {
         topicPlaylist: this.topicPlaylist,
         topicIndex: this.topicIndex
       };
-      this.player.pause();
     } else {
       this.resumePlaybackAfterTafsir = false;
     }
+
+    // إيقاف التلاوة فوراً وبشكل قاطع عند تفعيل الاستماع بالميكروفون (سواء بالضغط المطول أو بالنقر على الميكروفون)
+    if (this.player) {
+      this.player.pause();
+    }
+    this.isPlaying = false;
+    this.updateUI();
 
     // حفظ الموضع الحالي أيضاً احتياطاً
     saveLastPosition(this.currentSurah, this.currentAyah, this.currentReciter.id);
@@ -879,7 +910,7 @@ class QuranVoiceApp {
 
     area.addEventListener('touchstart', (e) => {
       // إذا كان اللمس على عنصر تحكم تفاعلي مباشر أو داخل النوافذ المنبثقة نتركه يتفاعل طبيعياً
-      if (e.target.closest('button, select, input, a, #adminModalPinInput, #closeTafsirBtn, #helpGuideModal, #adminPinModal, #tafsirModal')) {
+      if (e.target.closest('button, select, input, a, #adminModalPinInput, #closeTafsirBtn, #helpGuideModal, #adminPinModal, #tafsirModal, #pwaInstallModal')) {
         return;
       }
 
@@ -898,6 +929,9 @@ class QuranVoiceApp {
     }, { passive: true });
 
     area.addEventListener('touchmove', (e) => {
+      if (e.target.closest('button, select, input, a, #adminModalPinInput, #closeTafsirBtn, #helpGuideModal, #adminPinModal, #tafsirModal, #pwaInstallModal')) {
+        return;
+      }
       const touch = e.touches[0];
       const dx = Math.abs(touch.clientX - touchStartX);
       const dy = Math.abs(touch.clientY - touchStartY);
@@ -908,6 +942,12 @@ class QuranVoiceApp {
 
     area.addEventListener('touchend', (e) => {
       clearTimeout(longPressTimer);
+
+      // إذا كان اللمس على زر أو عنصر تفاعلي نتركه يتفاعل دون مقاطعة
+      if (e.target.closest('button, select, input, a, #adminModalPinInput, #closeTafsirBtn, #helpGuideModal, #adminPinModal, #tafsirModal, #pwaInstallModal')) {
+        return;
+      }
+
       const touchEndTime = Date.now();
       const duration = touchEndTime - touchStartTime;
 
@@ -1302,10 +1342,39 @@ class QuranVoiceApp {
     this.dom.playBtn.addEventListener('click', () => this.togglePlayPause());
     this.dom.prevBtn.addEventListener('click', () => this.prevAyah(true));
     this.dom.nextBtn.addEventListener('click', () => this.nextAyah(true));
-    this.dom.micBtn.addEventListener('click', () => this.startListening());
+    this.dom.micBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.startListening();
+    });
 
     if (this.dom.repeatBadge) {
       this.dom.repeatBadge.addEventListener('click', () => this.cancelRepeat());
+    }
+
+    // زر مشاركة التطبيق عبر واتساب
+    if (this.dom.whatsappShareBtn) {
+      this.dom.whatsappShareBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.shareOnWhatsApp();
+      });
+    }
+
+    // أزرار نافذة تثبيت التطبيق PWA
+    if (this.dom.confirmPwaInstallBtn) {
+      this.dom.confirmPwaInstallBtn.addEventListener('click', () => this.confirmPwaInstall());
+    }
+    if (this.dom.closePwaInstallBtn) {
+      this.dom.closePwaInstallBtn.addEventListener('click', () => this.closePwaInstallModal(true));
+    }
+    if (this.dom.dismissPwaInstallBtn) {
+      this.dom.dismissPwaInstallBtn.addEventListener('click', () => this.closePwaInstallModal(true));
+    }
+    if (this.dom.pwaInstallModal) {
+      this.dom.pwaInstallModal.addEventListener('click', (e) => {
+        if (e.target === this.dom.pwaInstallModal) {
+          this.closePwaInstallModal(true);
+        }
+      });
     }
 
     if (this.dom.surahSelect) {
@@ -1379,6 +1448,79 @@ class QuranVoiceApp {
           closeGuide();
         }
       });
+    }
+  }
+
+  // مشاركة رابط التطبيق عبر واتساب
+  shareOnWhatsApp() {
+    sound.vibrate([40]);
+    const cleanUrl = window.location.href.split('#')[0].split('?')[0];
+    const message = `📖 *تطبيق المصحف الصوتي الميسر*\nالقرآن الكريم بالأوامر الصوتية، مخصص وميسر لكبار السن وفاقدي البصر وجميع المسلمين:\n${cleanUrl}`;
+    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
+  }
+
+  // اقتراح تثبيت التطبيق (PWA) عند فتح البرنامج
+  checkAndPromptPwaInstall() {
+    // التحقق إذا كان التطبيق مثبتاً ويعمل بالفعل كـ Standalone
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                         window.navigator.standalone === true || 
+                         (document.referrer && document.referrer.includes('android-app://'));
+    if (isStandalone) return;
+
+    // عدم إزعاج المستخدم إذا اختار "لاحقاً" خلال آخر 24 ساعة
+    const lastDismissed = localStorage.getItem('pwa_prompt_dismissed_time');
+    if (lastDismissed && (Date.now() - parseInt(lastDismissed, 10) < 24 * 60 * 60 * 1000)) {
+      return;
+    }
+
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+    if (isIOS) {
+      if (this.dom.iosInstallInstructions) this.dom.iosInstallInstructions.classList.remove('hidden');
+      if (this.dom.confirmPwaInstallBtn) this.dom.confirmPwaInstallBtn.classList.add('hidden');
+    } else {
+      if (this.dom.iosInstallInstructions) this.dom.iosInstallInstructions.classList.add('hidden');
+      if (this.dom.confirmPwaInstallBtn) this.dom.confirmPwaInstallBtn.classList.remove('hidden');
+    }
+
+    if (this.dom.pwaInstallModal) {
+      this.dom.pwaInstallModal.classList.remove('hidden');
+    }
+  }
+
+  closePwaInstallModal(dismissed = true) {
+    if (this.dom.pwaInstallModal) {
+      this.dom.pwaInstallModal.classList.add('hidden');
+    }
+    if (dismissed) {
+      localStorage.setItem('pwa_prompt_dismissed_time', Date.now().toString());
+    }
+  }
+
+  async confirmPwaInstall() {
+    if (this.deferredInstallPrompt) {
+      try {
+        this.deferredInstallPrompt.prompt();
+        const { outcome } = await this.deferredInstallPrompt.userChoice;
+        if (outcome === 'accepted') {
+          sound.speak('جاري تثبيت المصحف الصوتي، شكراً لك');
+          this.closePwaInstallModal(false);
+        } else {
+          this.closePwaInstallModal(true);
+        }
+      } catch (err) {
+        console.warn('Install prompt error:', err);
+        this.closePwaInstallModal(true);
+      }
+      this.deferredInstallPrompt = null;
+    } else {
+      // إرشاد صوتي ومرئي في المتصفحات التي تتطلب التثبيت من القائمة
+      sound.speak('اضغط على خيارات المتصفح ثم اختر تثبيت التطبيق');
+      if (this.dom.voiceStatus) {
+        this.dom.voiceStatus.textContent = 'يمكنك التثبيت من قائمة المتصفح (⋮) ثم «تثبيت التطبيق»';
+      }
+      this.closePwaInstallModal(true);
     }
   }
 

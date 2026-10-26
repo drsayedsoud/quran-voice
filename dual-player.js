@@ -43,6 +43,26 @@ export class DualQuranPlayer {
     // النمط الهجين: 'ayah' للآيات والمواضع والقصص، أو 'surah' للتدفق المتصل لسورة كاملة (SoundCloud-style)
     this.mode = 'ayah';
 
+    // وضع المصحف المعلم التفاعلي (Listen & Repeat Mode)
+    this.interactiveRepeat = {
+      active: false,
+      multiplier: 1.0,
+      isWaiting: false,
+      timerId: null,
+      surah: null,
+      fromAyah: 1,
+      toAyah: 1
+    };
+
+    // وضع اختبار الذاكرة (Blind Memory Prompt Mode)
+    this.memoryPrompt = {
+      active: false,
+      triggered: false,
+      surah: null,
+      ayah: null,
+      pauseTime: 0
+    };
+
     // قوائم التشغيل الموضوعية
     this.topicPlaylist = [];
     this.topicIndex = 0;
@@ -65,6 +85,10 @@ export class DualQuranPlayer {
     this.onQuranFinished = null;    // ()
     this.onError = null;            // (error, track)
     this.onTopicTransition = null;  // (passage, index, total)
+    this.onInteractiveRepeatPause = null;    // (pauseDurationSec, surah, ayah)
+    this.onInteractiveRepeatResume = null;   // (surah, ayah)
+    this.onMemoryPromptPaused = null;        // (surah, ayah, pauseTime)
+    this.onMemoryPromptRevealed = null;      // (surah, ayah)
 
     this.initListeners();
   }
@@ -84,6 +108,25 @@ export class DualQuranPlayer {
   // معالجة تحديث شريط التقدم والوقت
   handleTimeUpdate(deck) {
     if (deck !== this.activeDeck) return;
+
+    // فحص اختبار الذاكرة (Blind Memory Prompt Cutoff): إيقاف مفاجئ في أول ثوانٍ للتحقق من حفظ المستخدم
+    if (this.memoryPrompt && this.memoryPrompt.active && !this.memoryPrompt.triggered) {
+      if (deck.duration && deck.duration > 2.5) {
+        const cutoffTime = Math.min(5.5, Math.max(2.8, deck.duration * 0.35));
+        if (deck.currentTime >= cutoffTime) {
+          this.memoryPrompt.triggered = true;
+          this.memoryPrompt.pauseTime = deck.currentTime;
+          deck.pause();
+          this.isPlaying = false;
+          if (this.onPlayStateChange) this.onPlayStateChange(false);
+          if (this.onMemoryPromptPaused) {
+            this.onMemoryPromptPaused(this.currentSurah, this.currentAyah, deck.currentTime);
+          }
+          return;
+        }
+      }
+    }
+
     if (this.onTimeUpdate && deck.duration) {
       const percent = (deck.currentTime / deck.duration) * 100;
       this.onTimeUpdate(deck.currentTime, deck.duration, percent);
@@ -106,6 +149,35 @@ export class DualQuranPlayer {
   // معالجة نهاية الآية الحالية (التبديل الفوري بدون فواصل)
   handleTrackEnded(deck) {
     if (deck !== this.activeDeck) return;
+
+    // فحص وضع المصحف المعلم التفاعلي (Listen & Repeat): إتاحة وقت سكون يعادل مدة الآية لترديد المستخدم
+    if (this.interactiveRepeat && this.interactiveRepeat.active) {
+      const ayahDuration = deck.duration || 4.0;
+      const pauseDuration = Math.max(3.0, ayahDuration * (this.interactiveRepeat.multiplier || 1.0));
+
+      this.interactiveRepeat.isWaiting = true;
+      if (this.onInteractiveRepeatPause) {
+        this.onInteractiveRepeatPause(pauseDuration, this.currentSurah, this.currentAyah);
+      }
+
+      this.interactiveRepeat.timerId = setTimeout(() => {
+        this.interactiveRepeat.isWaiting = false;
+        this.interactiveRepeat.timerId = null;
+        if (this.onInteractiveRepeatResume) {
+          this.onInteractiveRepeatResume(this.currentSurah, this.currentAyah);
+        }
+
+        const r = this.interactiveRepeat;
+        if (this.currentAyah < r.toAyah) {
+          this.playAyah(this.currentSurah, this.currentAyah + 1, this.currentReciter, false);
+        } else {
+          // انتهاء النطاق المحدد: معاودة التلاوة من آية البداية لتثبيت الحفظ
+          this.playAyah(this.currentSurah, r.fromAyah, this.currentReciter, false);
+        }
+      }, pauseDuration * 1000);
+
+      return;
+    }
 
     // 0. معالجة ختام السورة الكاملة في نمط التدفق المستمر (Surah Streaming Mode)
     if (this.mode === 'surah') {
@@ -696,7 +768,16 @@ export class DualQuranPlayer {
 
   // إيقاف مؤقت
   pause() {
-    this.activeDeck.pause();
+    this.clearInteractiveRepeatTimer();
+    if (this.deckA) {
+      try { this.deckA.pause(); } catch (e) {}
+    }
+    if (this.deckB) {
+      try { this.deckB.pause(); } catch (e) {}
+    }
+    if (this.activeDeck) {
+      try { this.activeDeck.pause(); } catch (e) {}
+    }
     this.isPlaying = false;
     if (this.onPlayStateChange) this.onPlayStateChange(false);
   }
@@ -916,6 +997,8 @@ export class DualQuranPlayer {
 
   // إلغاء أي تكرار نشط ومتابعة التلاوة الطبيعية
   clearLoop() {
+    this.clearInteractiveRepeatTimer();
+    this.cancelMemoryPrompt();
     this.loopState = {
       active: false,
       type: null,
@@ -927,5 +1010,85 @@ export class DualQuranPlayer {
     };
     this.repeatCount = 1;
     this.currentRepeat = 1;
+  }
+
+  // تفعيل أو تعطيل وضع المصحف المعلم التفاعلي (Listen & Repeat Mode)
+  setInteractiveRepeat(active, options = {}) {
+    this.clearInteractiveRepeatTimer();
+    this.cancelMemoryPrompt();
+    this.interactiveRepeat = {
+      active: !!active,
+      multiplier: options.multiplier || 1.0,
+      isWaiting: false,
+      timerId: null,
+      surah: options.surah || this.currentSurah,
+      fromAyah: options.fromAyah || 1,
+      toAyah: options.toAyah || (options.surah ? options.surah.ayahs : this.currentSurah.ayahs)
+    };
+    if (active) {
+      this.playAyah(this.interactiveRepeat.surah, this.interactiveRepeat.fromAyah, options.reciter || this.currentReciter, true);
+    }
+  }
+
+  clearInteractiveRepeatTimer() {
+    if (this.interactiveRepeat && this.interactiveRepeat.timerId) {
+      clearTimeout(this.interactiveRepeat.timerId);
+      this.interactiveRepeat.timerId = null;
+      this.interactiveRepeat.isWaiting = false;
+    }
+  }
+
+  skipInteractiveRepeatPause() {
+    if (this.interactiveRepeat && this.interactiveRepeat.isWaiting) {
+      this.clearInteractiveRepeatTimer();
+      if (this.onInteractiveRepeatResume) {
+        this.onInteractiveRepeatResume(this.currentSurah, this.currentAyah);
+      }
+      const r = this.interactiveRepeat;
+      if (this.currentAyah < r.toAyah) {
+        this.playAyah(this.currentSurah, this.currentAyah + 1, this.currentReciter, false);
+      } else {
+        this.playAyah(this.currentSurah, r.fromAyah, this.currentReciter, false);
+      }
+    }
+  }
+
+  // بدء اختبار الذاكرة واسترجاع الحفظ (Blind Memory Prompt)
+  startMemoryPrompt(surah = null, ayah = null, reciter = null) {
+    this.clearInteractiveRepeatTimer();
+    this.clearLoop();
+    const targetSurah = surah || this.currentSurah;
+    const targetAyah = ayah || (surah ? 1 : this.currentAyah);
+
+    this.memoryPrompt = {
+      active: true,
+      triggered: false,
+      surah: targetSurah,
+      ayah: targetAyah,
+      pauseTime: 0
+    };
+
+    this.playAyah(targetSurah, targetAyah, reciter || this.currentReciter, true);
+  }
+
+  // إكمال الآية وسماع باقي التلاوة للتأكد من صحة الحفظ
+  revealMemoryPrompt() {
+    if (this.memoryPrompt && this.memoryPrompt.active && this.memoryPrompt.triggered) {
+      this.memoryPrompt.active = false;
+      this.memoryPrompt.triggered = false;
+      this.activeDeck.play().catch(e => console.warn('[DualPlayer] Resume memory prompt error:', e));
+      this.isPlaying = true;
+      if (this.onPlayStateChange) this.onPlayStateChange(true);
+      if (this.onMemoryPromptRevealed) {
+        this.onMemoryPromptRevealed(this.currentSurah, this.currentAyah);
+      }
+    }
+  }
+
+  cancelMemoryPrompt() {
+    if (this.memoryPrompt) {
+      this.memoryPrompt.active = false;
+      this.memoryPrompt.triggered = false;
+    }
   }
 }

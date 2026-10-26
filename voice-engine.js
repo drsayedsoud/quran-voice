@@ -303,9 +303,102 @@ export function parseVoiceCommand(rawTranscript) {
   }
 
   // 8. أوامر التكرار والحفظ وإلغاء التكرار
-  if (norm.includes('الغاء التكرار') || norm.includes('وقف التكرار') || norm.includes('بطل تكرار') || norm.includes('بدون تكرار') || norm.includes('كمل عادي') || norm.includes('الغي التكرار')) {
+  if (norm.includes('الغاء التكرار') || norm.includes('وقف التكرار') || norm.includes('بطل تكرار') || norm.includes('بدون تكرار') || norm.includes('كمل عادي') || norm.includes('الغي التكرار') || norm.includes('وقف التحفيظ') || norm.includes('الغاء التحفيظ')) {
     result.intent = 'CANCEL_REPEAT';
     result.message = 'تم إلغاء وضع التكرار ومتابعة التلاوة الطبيعية';
+    return result;
+  }
+
+  // تتبع الورد والحفظ التراكمي (Streak & Audio Journal)
+  if (norm.includes('انجازاتي') || norm.includes('إنجازاتي') || norm.includes('وردي') || norm.includes('احصائياتي') || norm.includes('إحصائياتي') || norm.includes('تتبع الحفظ') || norm.includes('تقرير الحفظ') || norm.includes('سجل الحفظ') || norm.includes('الورد اليومي') || norm.includes('كام ايه سمعت') || norm.includes('كم ايه سمعت') || norm.includes('كم حفظت') || norm.includes('كام حفظت')) {
+    result.intent = 'JOURNAL_STATS';
+    result.message = 'عرض وقراءة سجل الورد والحفظ التراكمي';
+    return result;
+  }
+
+  // إكمال الآية وسماع التكملة في اختبار الذاكرة
+  if (norm.includes('التكمله') || norm.includes('التكملة') || norm.includes('سمعني الباقي') || norm.includes('سمعني التكمله') || norm.includes('كمل الايه') || norm.includes('اكمل الايه') || norm.includes('صح كده') || norm === 'التكمله') {
+    result.intent = 'REVEAL_MEMORY_TEST';
+    result.message = 'إكمال الآية للتحقق من صحة الحفظ';
+    return result;
+  }
+
+  // اختبار الذاكرة واسترجاع الحفظ (Blind Memory Prompt)
+  if (norm.includes('سمعلي') || norm.includes('سمع لي') || norm.includes('اختبرني') || norm.includes('اختبر حفظي') || norm.includes('امتحني') || norm.includes('سؤال حفظ') || norm.includes('تسميع')) {
+    let testSurah = null;
+    for (const surah of SURAHS) {
+      if (matchesSurahWord(norm, normalizeArabic(surah.name))) {
+        testSurah = surah;
+        break;
+      }
+    }
+    result.intent = 'MEMORY_TEST';
+    result.payload = {
+      surah: testSurah,
+      reciter: matchedReciter
+    };
+    result.message = testSurah ? `بدء اختبار الذاكرة في سورة ${testSurah.name}` : 'بدء اختبار الذاكرة للآية الحالية';
+    return result;
+  }
+
+  // وضع المصحف المعلم التفاعلي والتحفيظ (Listen & Repeat Mode)
+  // أوامر مثل: "حفظني سورة البقرة" أو "حفظني من 1 الى 5 من سورة الكهف" أو "نظام التحفيظ" أو "عاوز احفظ سورة يس" أو "اسمع واردد"
+  const isInteractiveMemorization = (
+    norm.includes('حفظني') ||
+    norm.includes('عاوز احفظ') ||
+    norm.includes('عايز احفظ') ||
+    norm.includes('اريد حفظ') ||
+    norm.includes('نظام التحفيظ') ||
+    norm.includes('وضع التحفيظ') ||
+    norm.includes('وضع الحفظ') ||
+    norm.includes('اسمع واردد') ||
+    norm.includes('استمع واردد') ||
+    norm.includes('ردد ورايا') ||
+    norm.includes('ردد خلفي') ||
+    norm.includes('ترديد تفاعلي') ||
+    norm.includes('المعلم التفاعلي')
+  );
+
+  if (isInteractiveMemorization) {
+    let targetSurah = null;
+    for (const surah of SURAHS) {
+      if (matchesSurahWord(norm, normalizeArabic(surah.name))) {
+        targetSurah = surah;
+        break;
+      }
+    }
+
+    // فحص إذا كان هناك نطاق من آية كذا لآية كذا
+    const rangeMatch = norm.match(/(?:من\s+(?:ايه\s+)?)(\d+|[^\s]+)\s+(?:الي|إلى|لـ|ل|حتي|حتى)\s+(?:(?:ايه\s+)?)(\d+|[^\s]+)/);
+    let fromAyah = 1;
+    let toAyah = targetSurah ? targetSurah.ayahs : 1;
+
+    if (rangeMatch) {
+      let fromA = extractNumber(rangeMatch[1]);
+      let toA = extractNumber(rangeMatch[2]);
+      if (fromA && toA) {
+        if (fromA > toA) { const tmp = fromA; fromA = toA; toA = tmp; }
+        if (targetSurah) {
+          fromA = Math.max(1, Math.min(fromA, targetSurah.ayahs));
+          toA = Math.max(1, Math.min(toA, targetSurah.ayahs));
+        }
+        fromAyah = fromA;
+        toAyah = toA;
+      }
+    }
+
+    result.intent = 'LISTEN_AND_REPEAT';
+    result.payload = {
+      surah: targetSurah,
+      fromAyah: fromAyah,
+      toAyah: toAyah,
+      reciter: matchedReciter,
+      multiplier: 1.0 // مدة سكون تعادل مدة تلاوة الآية بالضبط لترديد المستخدم
+    };
+
+    const surahText = targetSurah ? `سورة ${targetSurah.name}` : 'الموضع الحالي';
+    const rangeText = rangeMatch ? ` (من الآية ${fromAyah} إلى ${toAyah})` : '';
+    result.message = `تفعيل وضع المصحف المعلم التفاعلي: ${surahText}${rangeText} - استمع وردد خلف الشيخ`;
     return result;
   }
 

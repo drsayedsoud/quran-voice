@@ -247,6 +247,80 @@ class SoundFeedback {
     osc.stop(ctx.currentTime + 0.12);
   }
 
+  // نغمة رنين خفيفة مخصصة لاختبار الذاكرة (Blind Memory Prompt Chime)
+  playPromptChime() {
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+    this.vibrate([60, 40, 60]);
+
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(523.25, now);
+    osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.15);
+
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.exponentialRampToValueAtTime(0.2, now + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.35);
+  }
+
+  // نغمة رنين ناعمة لبدء/انتهاء وقت الترديد خلف الشيخ في المصحف المعلم التفاعلي
+  playRepeatBeep() {
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+    this.vibrate([40]);
+
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(659.25, now);
+    osc.frequency.exponentialRampToValueAtTime(880, now + 0.1);
+
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.18);
+  }
+
+  // نغمة الاحتفال بالإنجاز والـ Streak
+  playCelebrationChime() {
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+    this.vibrate([80, 50, 80, 50, 120]);
+
+    const freqs = [523.25, 659.25, 783.99, 1046.5];
+    freqs.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const t = ctx.currentTime + idx * 0.08;
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t);
+
+      gain.gain.setValueAtTime(0.001, t);
+      gain.gain.exponentialRampToValueAtTime(0.18, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.25);
+    });
+  }
+
   // القراءة الصوتية باللغة العربية للرد على المستخدم مع دعم استدعاء دالة عند الانتهاء (onEnd)
   speak(text, onEnd = null) {
     if (!this.speechSynth) {
