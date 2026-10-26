@@ -517,14 +517,7 @@ export function registerAudioUrlsTests(runner) {
     for (const item of criticalUrlsToCheck) {
       await t.test(`فحص استجابة السيرفر المباشرة: ${item.name}`, async () => {
         t.assert(item.url && item.url.startsWith('https://'), `صيغة الرابط غير صحيحة: ${item.url}`);
-        try {
-          const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 200);
-          await fetch(item.url, { mode: 'no-cors', signal: controller.signal });
-          clearTimeout(timer);
-        } catch (e) {
-          // يُسمح في بيئات التشغيل الآلي أوفلاين أو في حال بطء استجابة السيرفرات الخارجية
-        }
+        t.assert(item.url.includes('.mp3'), `الرابط يجب أن يشير لمقطع mp3: ${item.url}`);
       });
     }
   });

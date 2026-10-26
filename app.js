@@ -1314,24 +1314,31 @@ class QuranVoiceApp {
 
     // زر مشاركة التطبيق عبر واتساب مع ميزة الضغط المطول الحصرية لإظهار/إخفاء شريط استهلاك البيانات
     if (this.dom.whatsappShareBtn) {
+      const wpBtn = this.dom.whatsappShareBtn;
       let wpPressTimer = null;
-      let wpLongPressTriggered = false;
-      const WP_LONG_PRESS_MS = 600;
+      let lastLongPressTime = 0;
+      const WP_LONG_PRESS_MS = 550;
+
+      const toggleDataBanner = () => {
+        lastLongPressTime = Date.now();
+        sound.vibrate([80, 50]);
+        const banner = document.getElementById('dataUsageBanner');
+        if (banner) {
+          const isNowHidden = banner.classList.toggle('hidden');
+          if (isNowHidden) {
+            sound.speak('تم إخفاء شريط البيانات');
+          } else {
+            sound.speak('تم إظهار شريط استهلاك البيانات');
+          }
+        }
+      };
 
       const startWpPress = () => {
-        wpLongPressTriggered = false;
+        if (wpPressTimer) clearTimeout(wpPressTimer);
+        wpBtn.classList.add('scale-110', 'ring-2', 'ring-[#25D366]');
         wpPressTimer = setTimeout(() => {
-          wpLongPressTriggered = true;
-          sound.vibrate([70, 40]);
-          const banner = this.dom.dataUsageBanner || document.getElementById('dataUsageBanner');
-          if (banner) {
-            const isNowHidden = banner.classList.toggle('hidden');
-            if (isNowHidden) {
-              sound.speak('تم إخفاء شريط البيانات');
-            } else {
-              sound.speak('تم إظهار شريط استهلاك البيانات');
-            }
-          }
+          wpBtn.classList.remove('scale-110', 'ring-2', 'ring-[#25D366]');
+          toggleDataBanner();
         }, WP_LONG_PRESS_MS);
       };
 
@@ -1340,28 +1347,36 @@ class QuranVoiceApp {
           clearTimeout(wpPressTimer);
           wpPressTimer = null;
         }
+        wpBtn.classList.remove('scale-110', 'ring-2', 'ring-[#25D366]');
       };
 
-      this.dom.whatsappShareBtn.addEventListener('mousedown', startWpPress);
-      this.dom.whatsappShareBtn.addEventListener('mouseup', cancelWpPress);
-      this.dom.whatsappShareBtn.addEventListener('mouseleave', cancelWpPress);
+      // منع ظهور القائمة المنبثقة الافتراضية للمتصفح عند الضغط المطول
+      wpBtn.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
 
-      this.dom.whatsappShareBtn.addEventListener('touchstart', () => {
+      wpBtn.addEventListener('touchstart', (e) => {
         startWpPress();
       }, { passive: true });
 
-      this.dom.whatsappShareBtn.addEventListener('touchend', (e) => {
+      wpBtn.addEventListener('touchend', (e) => {
         cancelWpPress();
-        if (wpLongPressTriggered) {
-          e.preventDefault();
-        }
       });
-      this.dom.whatsappShareBtn.addEventListener('touchcancel', cancelWpPress);
 
-      this.dom.whatsappShareBtn.addEventListener('click', (e) => {
+      wpBtn.addEventListener('touchcancel', cancelWpPress);
+
+      wpBtn.addEventListener('mousedown', (e) => {
+        if (e.button === 0) startWpPress();
+      });
+
+      wpBtn.addEventListener('mouseup', cancelWpPress);
+      wpBtn.addEventListener('mouseleave', cancelWpPress);
+
+      wpBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (wpLongPressTriggered) {
-          wpLongPressTriggered = false;
+        // إذا كان النقر ناتجاً عن إفلات ضغطة مطولة، نتجاهل فتح الواتساب فوراً
+        if (Date.now() - lastLongPressTime < 1000) {
           return;
         }
         this.shareOnWhatsApp();
@@ -1636,11 +1651,18 @@ class QuranVoiceApp {
       this.updateDataTrackerUI(summary);
     });
 
-    // دالة تبديل وضع توفير البيانات
+    // دالة تبديل وضع توفير البيانات مع حماية من النقر المزدوج
+    let lastSaverToggleTime = 0;
     const toggleSaverHandler = (e) => {
-      if (e) e.stopPropagation();
-      sound.play('click');
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      if (Date.now() - lastSaverToggleTime < 400) return;
+      lastSaverToggleTime = Date.now();
+
       sound.vibrate([40]);
+      if (typeof sound.play === 'function') sound.play('click');
       const isNowActive = dataSaver.toggleSaverMode();
       this.applySaverMode(isNowActive);
       if (isNowActive) {
@@ -1653,17 +1675,19 @@ class QuranVoiceApp {
     // الزر الدائم في وسط أسفل الهيدر
     if (this.dom.permanentSaverBtn) {
       this.dom.permanentSaverBtn.addEventListener('click', toggleSaverHandler);
+      this.dom.permanentSaverBtn.addEventListener('touchend', toggleSaverHandler);
     }
 
     // زر تبديل وضع التوفير في الشريط المنسدل
     if (this.dom.saverModeToggleBtn) {
       this.dom.saverModeToggleBtn.addEventListener('click', toggleSaverHandler);
+      this.dom.saverModeToggleBtn.addEventListener('touchend', toggleSaverHandler);
     }
 
     // فتح نافذة تفاصيل الاستهلاك
     const openDataModal = () => {
-      sound.play('click');
       sound.vibrate([30]);
+      if (typeof sound.play === 'function') sound.play('click');
       if (this.dom.dataUsageModal) {
         this.dom.dataUsageModal.classList.remove('hidden');
       }
@@ -1703,8 +1727,8 @@ class QuranVoiceApp {
         btn.classList.remove('border-emerald-700/50', 'bg-emerald-900/50', 'text-emerald-200');
       }
       btn.addEventListener('click', () => {
-        sound.play('click');
         sound.vibrate([30]);
+        if (typeof sound.play === 'function') sound.play('click');
         const newQuota = parseInt(btn.dataset.quota, 10);
         if (newQuota) {
           dataSaver.setDailyLimitMB(newQuota);
@@ -1721,8 +1745,8 @@ class QuranVoiceApp {
     // تصفير عداد اليوم
     if (this.dom.resetTodayDataBtn) {
       this.dom.resetTodayDataBtn.addEventListener('click', () => {
-        sound.play('click');
         sound.vibrate([60, 40]);
+        if (typeof sound.play === 'function') sound.play('click');
         dataSaver.resetTodayUsage();
         sound.speak('تم تصفير عداد استهلاك اليوم');
       });
