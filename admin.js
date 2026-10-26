@@ -132,31 +132,69 @@ class AdminDashboard {
     this.bindDashboardEvents();
   }
 
-  // 1. مراقبة المستخدمين لحظياً من Firestore
+  // 1. مراقبة المستخدمين والأجهزة الفعلية لحظياً من Firestore
   subscribeToUsers() {
     try {
       const usersCol = collection(db, "users");
       onSnapshot(usersCol, (snapshot) => {
-        this.usersData = [];
+        // تجميع السجلات حسب الأجهزة الفعلية الفريدة لاستبعاد التكرارات الناتجة عن تكرار الدخول
+        const deviceMap = new Map();
         let totalAyahs = 0;
         let totalMinutes = 0;
         const reciterCounts = {};
 
         snapshot.forEach((docSnap) => {
           const user = docSnap.data();
-          this.usersData.push(user);
+          const visits = user.visitCount || 1;
 
-          const ayahs = user.stats?.totalAyahsListened || 0;
+          // بصمة تمييز الجهاز الفعلي الفريد:
+          // إما معرف الجهاز المباشر (deviceId)، أو بصمة المتصفح والشاشة
+          const deviceKey = user.deviceId || 
+            (user.deviceInfo?.userAgent ? `${user.deviceInfo.userAgent}_${user.deviceInfo.screen}` : user.uid);
+
+          if (!deviceMap.has(deviceKey)) {
+            deviceMap.set(deviceKey, {
+              ...user,
+              deviceKey,
+              visitCount: visits
+            });
+          } else {
+            // دمج الجلسات المتكررة من نفس الجهاز الفعلي
+            const existing = deviceMap.get(deviceKey);
+            existing.visitCount = (existing.visitCount || 1) + visits;
+
+            const existingAyahs = existing.stats?.totalAyahsListened || 0;
+            const newAyahs = user.stats?.totalAyahsListened || 0;
+            if (!existing.stats) existing.stats = {};
+            existing.stats.totalAyahsListened = Math.max(existingAyahs, newAyahs);
+
+            const existingSecs = existing.stats?.totalSeconds || 0;
+            const newSecs = user.stats?.totalSeconds || 0;
+            existing.stats.totalSeconds = Math.max(existingSecs, newSecs);
+
+            if (user.lastActiveAt && (!existing.lastActiveAt || user.lastActiveAt > existing.lastActiveAt)) {
+              existing.lastActiveAt = user.lastActiveAt;
+              if (user.lastPosition) existing.lastPosition = user.lastPosition;
+              if (user.preferences) existing.preferences = user.preferences;
+            }
+          }
+        });
+
+        this.usersData = Array.from(deviceMap.values());
+
+        // حساب الإحصائيات التراكمية على مستوى الأجهزة الفعلية
+        this.usersData.forEach((device) => {
+          const ayahs = device.stats?.totalAyahsListened || 0;
           totalAyahs += ayahs;
 
-          const secs = user.stats?.totalSeconds || ((user.stats?.totalMinutes || 0) * 60);
+          const secs = device.stats?.totalSeconds || ((device.stats?.totalMinutes || 0) * 60);
           totalMinutes += Math.round(secs / 60);
 
-          const reciter = user.preferences?.reciterId || 'husary';
+          const reciter = device.preferences?.reciterId || 'husary';
           reciterCounts[reciter] = (reciterCounts[reciter] || 0) + 1;
         });
 
-        // تحديث كروت المؤشرات
+        // تحديث كروت المؤشرات: عدد الأجهزة الفعلية الحقيقية فقط
         this.dom.statTotalUsers.textContent = this.usersData.length.toLocaleString('ar-EG');
         this.dom.statTotalAyahs.textContent = totalAyahs.toLocaleString('ar-EG');
 
@@ -185,7 +223,7 @@ class AdminDashboard {
         this.renderUsersTable();
       }, (err) => {
         console.warn('Firestore users subscribe error:', err.message);
-        this.dom.usersTableBody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-amber-400">تأكد من تطبيق قواعد Firestore Security Rules للمعاينة الحية</td></tr>`;
+        this.dom.usersTableBody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-amber-400">تأكد من تطبيق قواعد Firestore Security Rules للمعاينة الحية</td></tr>`;
       });
     } catch (e) {
       console.error(e);
@@ -194,14 +232,15 @@ class AdminDashboard {
 
   renderUsersTable() {
     if (!this.usersData.length) {
-      this.dom.usersTableBody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-500">لا يوجد مستخدمون مسجلون حتى الآن</td></tr>`;
+      this.dom.usersTableBody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-500">لا توجد أجهزة مسجلة حتى الآن</td></tr>`;
       return;
     }
 
     this.dom.usersTableBody.innerHTML = this.usersData.map((u) => {
-      const uidShort = u.uid ? u.uid.substring(0, 10) + '...' : 'مجهول';
-      const device = u.deviceInfo?.userAgent ? u.deviceInfo.userAgent.substring(0, 35) + '...' : 'غير معروف';
+      const uidShort = u.deviceId ? u.deviceId.replace('dev_', 'جهاز ') : (u.uid ? u.uid.substring(0, 10) + '...' : 'مجهول');
+      const device = u.deviceInfo?.userAgent ? u.deviceInfo.userAgent.substring(0, 32) + '...' : 'غير معروف';
       const isPwa = u.deviceInfo?.isPwa ? '<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">نعم PWA</span>' : '<span class="text-slate-500">متصفح</span>';
+      const visits = `<span class="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 font-bold">${u.visitCount || 1} زيارة</span>`;
       const lastPos = u.lastPosition ? `سورة ${u.lastPosition.surahName || u.lastPosition.surahId} (آية ${u.lastPosition.ayahNumber})` : 'لم يبدأ';
       const reciter = RECITERS.find(r => r.id === u.preferences?.reciterId)?.name || u.preferences?.reciterId || 'الحصري';
       const ayahs = u.stats?.totalAyahsListened || 0;
@@ -235,6 +274,7 @@ class AdminDashboard {
           <td class="p-3 font-mono text-amber-400">${uidShort}</td>
           <td class="p-3 text-slate-300" title="${u.deviceInfo?.userAgent || ''}">${device}</td>
           <td class="p-3">${isPwa}</td>
+          <td class="p-3">${visits}</td>
           <td class="p-3 text-emerald-300 font-semibold">${lastPos}</td>
           <td class="p-3 text-slate-200">الشيخ ${reciter}</td>
           <td class="p-3 font-bold text-amber-300">${ayahs}</td>

@@ -37,19 +37,74 @@ export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-// إدارة هوية المستخدم وحفظ تقدمه تلقائياً
+// إدارة هوية الجهاز الفريد وحفظ تقدم المستخدم تلقائياً
 let currentUser = null;
 
-export async function initUserSession(onUserReady) {
-  // توليد أو استرجاع معرف المستخدم الدائم لضمان ظهوره في لوحة الأدمن
-  let localUid = localStorage.getItem('local_quran_uid');
-  if (!localUid) {
-    localUid = 'user_' + Math.random().toString(36).substring(2, 10);
-    localStorage.setItem('local_quran_uid', localUid);
-  }
-  currentUser = { uid: localUid };
+/**
+ * توليد أو استرجاع البصمة العتادية الفريدة للجهاز (Hardware Device Fingerprint)
+ * يضمن عد الأجهزة الفعلية الحقيقية واستبعاد تكرار الزيارات أو مرات الدخول
+ */
+export function getUniqueDeviceId() {
+  let deviceId = '';
+  try {
+    deviceId = localStorage.getItem('quran_device_id') || localStorage.getItem('local_quran_uid') || '';
+  } catch (e) {}
 
-  // تسجيل ومزامنة بيانات المستخدم مباشرة في Firestore
+  if (deviceId && deviceId.startsWith('dev_')) {
+    return deviceId;
+  }
+
+  // توليد بصمة عتادية مدمجة من مواصفات الجهاز والشاشة والمعالج
+  const components = [
+    navigator.userAgent || '',
+    navigator.platform || '',
+    navigator.language || '',
+    screen.width + 'x' + screen.height + 'x' + (screen.colorDepth || 24),
+    window.devicePixelRatio || 1,
+    navigator.hardwareConcurrency || 1,
+    navigator.maxTouchPoints || 0,
+    Intl.DateTimeFormat().resolvedOptions().timeZone || ''
+  ];
+
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 160;
+    canvas.height = 40;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.textBaseline = 'top';
+      ctx.font = '14px Arial';
+      ctx.fillText('QuranVoiceDevice', 2, 2);
+      components.push(canvas.toDataURL().slice(-50));
+    }
+  } catch (e) {}
+
+  const raw = components.join('###');
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  const hash = (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16);
+
+  deviceId = 'dev_' + hash;
+  try {
+    localStorage.setItem('quran_device_id', deviceId);
+    localStorage.setItem('local_quran_uid', deviceId);
+  } catch (e) {}
+
+  return deviceId;
+}
+
+export async function initUserSession(onUserReady) {
+  // تحديد الجهاز الفعلي الفريد بدلاً من تكرار الحساب في كل زيارة
+  const deviceId = getUniqueDeviceId();
+  currentUser = { uid: deviceId, deviceId: deviceId };
+
+  // تسجيل ومزامنة بيانات الجهاز الفعلي في Firestore
   await syncUserMetadata(currentUser);
   if (onUserReady) onUserReady(currentUser);
 
@@ -57,9 +112,9 @@ export async function initUserSession(onUserReady) {
   try {
     onAuthStateChanged(auth, async (user) => {
       if (user) {
-        currentUser = user;
-        await syncUserMetadata(user);
-        if (onUserReady) onUserReady(user);
+        currentUser = { ...user, deviceId: deviceId };
+        await syncUserMetadata(currentUser);
+        if (onUserReady) onUserReady(currentUser);
       }
     });
   } catch (err) {
@@ -73,10 +128,14 @@ async function syncUserMetadata(user) {
   const userRef = doc(db, "users", user.uid);
   
   const deviceInfo = {
-    userAgent: navigator.userAgent.slice(0, 150),
+    userAgent: (navigator.userAgent || '').slice(0, 150),
     isPwa: window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true,
     screen: `${window.innerWidth}x${window.innerHeight}`,
-    language: navigator.language || 'ar'
+    screenResolution: `${screen.width}x${screen.height}`,
+    language: navigator.language || 'ar',
+    platform: navigator.platform || '',
+    cores: navigator.hardwareConcurrency || 1,
+    pixelRatio: window.devicePixelRatio || 1
   };
 
   try {
@@ -84,8 +143,10 @@ async function syncUserMetadata(user) {
     if (!snap.exists()) {
       await setDoc(userRef, {
         uid: user.uid,
+        deviceId: user.uid,
         createdAt: serverTimestamp(),
         lastActiveAt: serverTimestamp(),
+        visitCount: 1,
         deviceInfo: deviceInfo,
         preferences: {
           reciterId: 'husary',
@@ -104,8 +165,12 @@ async function syncUserMetadata(user) {
         }
       });
     } else {
+      // الجهاز موجود مسبقاً: نحدث فقط وقت آخر نشاط وعدد الزيارات لنفس الجهاز دون إنشاء مستخدم جديد
+      const existingData = snap.data() || {};
+      const prevVisits = existingData.visitCount || 1;
       await updateDoc(userRef, {
         lastActiveAt: serverTimestamp(),
+        visitCount: prevVisits + 1,
         deviceInfo: deviceInfo
       });
     }
