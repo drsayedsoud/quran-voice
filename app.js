@@ -185,6 +185,7 @@ class QuranVoiceApp {
     this.bindEvents();
     this.initDataTracker();
     this.initAyahDisplay();
+    this.initCarMode();
     quranTextService.init().then(() => {
       this.updateAyahDisplay();
     });
@@ -762,6 +763,17 @@ class QuranVoiceApp {
       case 'JOURNAL_STATS':
         sound.playSuccessChime();
         this.openJournalModal(true);
+        break;
+
+      case 'ENABLE_CAR_MODE':
+      case 'CAR_MODE':
+        sound.playSuccessChime();
+        this.toggleCarMode(true);
+        break;
+
+      case 'DISABLE_CAR_MODE':
+        sound.playSuccessChime();
+        this.toggleCarMode(false);
         break;
 
       case 'OPEN_ADMIN':
@@ -1568,7 +1580,161 @@ class QuranVoiceApp {
     if (this.dom.surahSelect) this.dom.surahSelect.value = this.currentSurah.id;
     if (this.dom.reciterSelect) this.dom.reciterSelect.value = this.currentReciter.id;
 
+    // تحديث شاشة وضع القيادة (Car Mode HUD)
+    if (this.dom.carSurahName) {
+      this.dom.carSurahName.textContent = `سورة ${this.currentSurah.name}`;
+    }
+    if (this.dom.carAyahBadge) {
+      this.dom.carAyahBadge.textContent = `الآية ${this.currentAyah}`;
+    }
+    if (this.dom.carReciterName) {
+      this.dom.carReciterName.textContent = `الشيخ ${this.currentReciter.name}`;
+    }
+    if (this.dom.carPlayBtn) {
+      this.dom.carPlayBtn.innerHTML = this.isPlaying 
+        ? `<svg class="w-10 h-10 sm:w-12 sm:h-12" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`
+        : `<svg class="w-10 h-10 sm:w-12 sm:h-12" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+      this.dom.carPlayBtn.setAttribute('aria-label', this.isPlaying ? 'إيقاف مؤقت' : 'تشغيل');
+    }
+
     this.updateAyahDisplay();
+  }
+
+  // تهيئة وضع القيادة والسفر الذكي
+  initCarMode() {
+    this.applyCarMode(this.isCarMode);
+
+    const toggleCarHandler = (e) => {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      this.toggleCarMode();
+    };
+
+    if (this.dom.carModeToggleBtn) {
+      this.dom.carModeToggleBtn.addEventListener('click', toggleCarHandler);
+    }
+
+    if (this.dom.exitCarModeBtn) {
+      this.dom.exitCarModeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.toggleCarMode(false);
+      });
+    }
+
+    if (this.dom.carPrevBtn) {
+      this.dom.carPrevBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        sound.vibrate([30]);
+        this.prevAyah();
+      });
+    }
+
+    if (this.dom.carPlayBtn) {
+      this.dom.carPlayBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        sound.vibrate([30]);
+        this.togglePlayPause();
+      });
+    }
+
+    if (this.dom.carNextBtn) {
+      this.dom.carNextBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        sound.vibrate([30]);
+        this.nextAyah();
+      });
+    }
+
+    if (this.dom.carMicBtn) {
+      this.dom.carMicBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        sound.vibrate([40]);
+        if (this.isPlaying) {
+          this.pauseAudioImmediately();
+        }
+        this.startVoiceRecognition();
+      });
+    }
+
+    document.querySelectorAll('.car-quick-surah-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const sId = parseInt(btn.getAttribute('data-surah'), 10);
+        const found = SURAHS.find(s => s.id === sId);
+        if (found) {
+          sound.vibrate([30]);
+          if (this.player) this.player.clearLoop();
+          this.currentSurah = found;
+          this.currentAyah = 1;
+          this.topicPlaylist = [];
+          this.updateUI();
+          this.playCurrentAyah();
+        }
+      });
+    });
+  }
+
+  toggleCarMode(forceState = null) {
+    this.isCarMode = forceState !== null ? forceState : !this.isCarMode;
+    try {
+      localStorage.setItem('quran_car_mode', this.isCarMode ? 'true' : 'false');
+    } catch(e) {}
+
+    this.applyCarMode(this.isCarMode);
+    sound.vibrate([40, 60]);
+
+    if (this.isCarMode) {
+      sound.speak('تم تفعيل وضع القيادة والسفر. استماع آمن بدون تشتيت.');
+    } else {
+      sound.speak('تم إيقاف وضع القيادة');
+    }
+  }
+
+  applyCarMode(isActive) {
+    if (isActive) {
+      document.body.classList.add('car-mode-active');
+      if (this.dom.carModeToggleBtn) {
+        this.dom.carModeToggleBtn.className = 'group flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-black text-[11px] sm:text-xs shadow-lg shadow-amber-500/30 active:scale-95 cursor-pointer transition-all';
+        this.dom.carModeToggleBtn.title = 'وضع القيادة والسفر نشط (انقر للإلغاء)';
+      }
+      if (this.dom.carModeDot) {
+        this.dom.carModeDot.className = 'w-2 h-2 rounded-full bg-emerald-950 animate-pulse';
+      }
+      if (this.dom.carModeText) {
+        this.dom.carModeText.textContent = 'القيادة: نشط';
+      }
+      if (this.dom.carModeDriverHud) {
+        this.dom.carModeDriverHud.classList.remove('hidden');
+        this.dom.carModeDriverHud.classList.add('flex');
+      }
+      // إخفاء نافذة الآية تماماً في وضع القيادة لمنع تشتيت السائق
+      if (this.dom.ayahRoyalWindow) {
+        this.dom.ayahRoyalWindow.classList.add('hidden');
+      }
+    } else {
+      document.body.classList.remove('car-mode-active');
+      if (this.dom.carModeToggleBtn) {
+        this.dom.carModeToggleBtn.className = 'group flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-700/50 hover:border-amber-400/60 text-emerald-300/90 font-bold text-[11px] sm:text-xs shadow active:scale-95 cursor-pointer transition-all';
+        this.dom.carModeToggleBtn.title = 'تشغيل وضع القيادة والسفر (تحكم بأزرار عملاقة بدون تشتيت)';
+      }
+      if (this.dom.carModeDot) {
+        this.dom.carModeDot.className = 'w-2 h-2 rounded-full bg-emerald-800';
+      }
+      if (this.dom.carModeText) {
+        this.dom.carModeText.textContent = 'وضع القيادة';
+      }
+      if (this.dom.carModeDriverHud) {
+        this.dom.carModeDriverHud.classList.add('hidden');
+        this.dom.carModeDriverHud.classList.remove('flex');
+      }
+      // إعادة إظهار نافذة الآية إذا كانت مفعلة للمستخدم
+      if (this.dom.ayahRoyalWindow && this.showAyahCard) {
+        this.dom.ayahRoyalWindow.classList.remove('hidden');
+      }
+    }
   }
 
   // تهيئة نافذة عرض الآية بالرسم العثماني وأزرار التحكم

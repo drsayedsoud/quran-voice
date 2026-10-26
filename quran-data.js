@@ -247,6 +247,42 @@ export const RECITERS = [
     surahServer: "server10.mp3quran.net/ajm",
     sampleText: "نبرة قوية مؤثرة وحضور صوتي عالٍ",
     aliases: ["العجمي", "عجمي", "احمد العجمي"]
+  },
+  {
+    id: "sudais",
+    name: "عبد الرحمن السديس",
+    subname: "إمام المسجد الحرام",
+    folder: "Abdurrahmaan_As-Sudais_192kbps",
+    surahServer: "cdn.mp3quran.net/audio/abdulrahman-sudais/r1",
+    sampleText: "نبرة جليلة خاشعة مؤثرة ارتبطت بوجدان المسلمين في الحرم المكي الشريف",
+    aliases: ["السديس", "سديس", "عبد الرحمن السديس", "عبدالرحمن السديس", "الشيخ السديس", "السديس والشريم", "السديس و الشريم"]
+  },
+  {
+    id: "shuraym",
+    name: "سعود الشريم",
+    subname: "إمام المسجد الحرام",
+    folder: "Saood_ash-Shuraym_128kbps",
+    surahServer: "cdn.mp3quran.net/audio/saud-shuraim/r1",
+    sampleText: "تلاوة رصينة سريعة متقنة وبصمة خالدة في محراب الكعبة المشرفة",
+    aliases: ["الشريم", "شريم", "سعود الشريم", "الشيخ الشريم", "سعود بن ابراهيم الشريم", "سعود بن إبراهيم الشريم", "الشريم والسديس", "الشريم و السديس"]
+  },
+  {
+    id: "baleela",
+    name: "بندر بليلة",
+    subname: "إمام المسجد الحرام",
+    folder: "Bandar_Baleela_64kbps",
+    surahServer: "cdn.mp3quran.net/audio/bandar-baleela/r1",
+    sampleText: "تلاوة ندية عذبة تجري بالسكينة والخشوع من جنبات الحرم المكي",
+    aliases: ["بندر بليلة", "بندر بليله", "بليلة", "بليله", "الشيخ بندر بليلة", "الشيخ بندر بليله", "بندر"]
+  },
+  {
+    id: "turki",
+    name: "بدر التركي",
+    subname: "إمام المسجد الحرام",
+    folder: "Badr_Al_Turki_64kbps",
+    surahServer: "cdn.mp3quran.net/audio/badr-turki/r1",
+    sampleText: "تلاوة حجازية شجية خاشعة تأسر الألباب من أئمة الحرم المكي",
+    aliases: ["بدر التركي", "التركي", "الشيخ بدر التركي", "بدر تركي"]
   }
 ];
 

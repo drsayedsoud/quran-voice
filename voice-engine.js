@@ -316,6 +316,18 @@ export function parseVoiceCommand(rawTranscript) {
     return result;
   }
 
+  // وضع القيادة والسفر الذكي (Car & Travel Mode)
+  if (norm.includes('وضع القياده') || norm.includes('وضع السفر') || norm.includes('وضع العربيه') || norm.includes('وضع السياره') || norm.includes('نمط القياده')) {
+    if (norm.includes('ايقاف') || norm.includes('الغاء') || norm.includes('تعطيل') || norm.includes('خروج')) {
+      result.intent = 'DISABLE_CAR_MODE';
+      result.message = 'إيقاف وضع القيادة والسفر';
+    } else {
+      result.intent = 'ENABLE_CAR_MODE';
+      result.message = 'تفعيل وضع القيادة والسفر الذكي';
+    }
+    return result;
+  }
+
   // إكمال الآية وسماع التكملة في اختبار الذاكرة
   if (norm.includes('التكمله') || norm.includes('التكملة') || norm.includes('سمعني الباقي') || norm.includes('سمعني التكمله') || norm.includes('كمل الايه') || norm.includes('اكمل الايه') || norm.includes('صح كده') || norm === 'التكمله') {
     result.intent = 'REVEAL_MEMORY_TEST';
