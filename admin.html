@@ -142,13 +142,13 @@
 
       <!-- 1. بطاقات المؤشرات الرئيسية (KPI Cards) -->
       <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-        <!-- إجمالي المستخدمين المسجلين -->
+        <!-- إجمالي الأجهزة الفعلية الفريدة -->
         <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg relative overflow-hidden">
-          <div class="text-xs font-bold text-slate-400 mb-1">إجمالي المستخدمين</div>
+          <div class="text-xs font-bold text-slate-400 mb-1">الأجهزة الفعلية الفريدة</div>
           <div id="statTotalUsers" class="text-2xl sm:text-3xl font-black text-white">--</div>
           <div class="text-[11px] text-emerald-400 mt-2 flex items-center">
             <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 ml-1.5 animate-ping"></span>
-            مزامنة حية من Firestore
+            أجهزة حقيقية (مستبعد تكرار الزيارات)
           </div>
         </div>
 
@@ -334,9 +334,10 @@
           <table class="w-full text-right text-xs">
             <thead class="bg-slate-950 text-slate-400 sticky top-0">
               <tr>
-                <th class="p-3">معرف المستخدم (UID)</th>
+                <th class="p-3">معرف الجهاز (Device ID)</th>
                 <th class="p-3">نوع الجهاز / المتصفح</th>
                 <th class="p-3">تطبيق مثبت (PWA)؟</th>
+                <th class="p-3">عدد الزيارات</th>
                 <th class="p-3">آخر سورة وآية</th>
                 <th class="p-3">القارئ المفضل</th>
                 <th class="p-3">الآيات المستمعة</th>

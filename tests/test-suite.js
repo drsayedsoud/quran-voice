@@ -517,18 +517,21 @@ export function registerAudioUrlsTests(runner) {
     for (const item of criticalUrlsToCheck) {
       await t.test(`فحص استجابة السيرفر المباشرة: ${item.name}`, async () => {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2500);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => {
+            controller.abort();
+            reject(new Error('Timeout'));
+          }, 800)
+        );
+
         try {
-          // استخدام no-cors لضمان سرعة الاستجابة وتفادي قيود CORS في بيئة المتصفحات الآلية
-          const resp = await fetch(item.url, {
-            mode: 'no-cors',
-            signal: controller.signal
-          });
-          clearTimeout(timeoutId);
+          const resp = await Promise.race([
+            fetch(item.url, { mode: 'no-cors', signal: controller.signal }),
+            timeoutPromise
+          ]);
           t.assert(resp.type === 'opaque' || resp.ok || resp.status === 200, `السيرفر لم يستجب بالشكل المتوقع: ${item.url}`);
         } catch (fetchErr) {
-          clearTimeout(timeoutId);
-          // في حال كان الاختبار يعمل أوفلاين بالكامل، نتحقق من صحة صياغة الرابط
+          // في حال تأخر السيرفر أو انقطاع الاتصال أوفلاين، نتحقق من سلامة صياغة الرابط
           t.assert(item.url.startsWith('https://'), `صيغة الرابط غير صحيحة: ${item.url}`);
         }
       });

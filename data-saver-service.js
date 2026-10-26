@@ -162,9 +162,12 @@ export class DataSaverService {
     this.saveState();
   }
 
-  // التحويل للميجابايت
-  bytesToMB(bytes) {
-    return (bytes / (1024 * 1024)).toFixed(1);
+  // التحويل للميجابايت بدقة خانتين عشريتين لتوضيح الحجم الحقيقي بدقة ومنع القفزات الوهمية
+  bytesToMB(bytes, precision = 2) {
+    if (!bytes || bytes <= 0) return '0.0';
+    const mb = bytes / (1024 * 1024);
+    if (mb >= 10) return mb.toFixed(1);
+    return mb.toFixed(precision);
   }
 
   getTodayUsageMB() {

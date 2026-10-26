@@ -45,8 +45,8 @@
       </div>
 
       <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
-        <!-- زر مشاركة رابط التطبيق عبر واتساب -->
-        <button id="whatsappShareBtn" type="button" class="w-8 h-8 xs:w-9 xs:h-9 sm:w-10 sm:h-10 rounded-full bg-emerald-900/70 border border-emerald-600/50 text-[#25D366] hover:text-white hover:bg-[#25D366] hover:border-[#25D366] transition-all flex items-center justify-center font-bold text-sm xs:text-base sm:text-lg shadow cursor-pointer active:scale-95 shrink-0" title="مشاركة رابط التطبيق عبر واتساب" aria-label="مشاركة عبر واتساب">
+        <!-- زر مشاركة رابط التطبيق عبر واتساب (نقرة عادية للمشاركة، ضغط مطول لإظهار شريط البيانات) -->
+        <button id="whatsappShareBtn" type="button" class="w-8 h-8 xs:w-9 xs:h-9 sm:w-10 sm:h-10 rounded-full bg-emerald-900/70 border border-emerald-600/50 text-[#25D366] hover:text-white hover:bg-[#25D366] hover:border-[#25D366] transition-all flex items-center justify-center font-bold text-sm xs:text-base sm:text-lg shadow cursor-pointer active:scale-95 shrink-0" title="مشاركة عبر واتساب (اضغط مطولاً لإظهار/إخفاء شريط باقة البيانات)" aria-label="مشاركة عبر واتساب">
           <svg class="w-4 h-4 xs:w-4.5 xs:h-4.5 sm:w-5 sm:h-5 fill-current" viewBox="0 0 24 24">
             <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2M12.05 3.67C14.25 3.67 16.31 4.53 17.87 6.09C19.42 7.65 20.28 9.72 20.28 11.92C20.28 16.46 16.58 20.15 12.04 20.15C10.56 20.15 9.11 19.76 7.85 19L7.55 18.83L4.43 19.65L5.26 16.61L5.06 16.29C4.24 15 3.8 13.47 3.8 11.91C3.81 7.37 7.5 3.67 12.05 3.67M9.06 7.42C8.88 7.42 8.59 7.49 8.35 7.75C8.11 8.01 7.42 8.65 7.42 9.96C7.42 11.27 8.37 12.54 8.5 12.72C8.63 12.9 10.35 15.55 12.98 16.69C13.61 16.96 14.1 17.12 14.48 17.24C15.11 17.44 15.69 17.41 16.15 17.34C16.66 17.27 17.72 16.7 17.94 16.07C18.16 15.44 18.16 14.9 18.1 14.79C18.03 14.67 17.85 14.61 17.58 14.48C17.32 14.34 16.02 13.7 15.78 13.61C15.54 13.52 15.37 13.48 15.2 13.74C15.03 14 14.54 14.61 14.39 14.79C14.24 14.96 14.09 14.98 13.83 14.85C13.57 14.72 12.72 14.44 11.72 13.55C10.94 12.85 10.41 12 10.26 11.74C10.11 11.48 10.24 11.34 10.37 11.21C10.49 11.09 10.64 10.9 10.77 10.75C10.9 10.6 10.94 10.49 11.03 10.31C11.12 10.14 11.07 9.99 11.01 9.86C10.94 9.73 10.42 8.45 10.2 7.93C10 7.43 9.79 7.5 9.63 7.5C9.48 7.5 9.3 7.42 9.06 7.42Z"/>
           </svg>
@@ -76,8 +76,8 @@
     </div>
   </header>
 
-  <!-- شريط استهلاك باقة الإنترنت ووضع التوفير الذكي -->
-  <aside id="dataUsageBanner" class="relative z-20 w-full bg-emerald-950/90 border-b border-emerald-800/50 backdrop-blur-md px-2.5 sm:px-4 py-1.5 shadow-sm select-none" aria-label="شريط استهلاك البيانات ووضع التوفير">
+  <!-- شريط استهلاك باقة الإنترنت ووضع التوفير الذكي (مخفي افتراضياً، يظهر بالضغط المطول على زر الواتساب) -->
+  <aside id="dataUsageBanner" class="hidden relative z-20 w-full bg-emerald-950/90 border-b border-emerald-800/50 backdrop-blur-md px-2.5 sm:px-4 py-1.5 shadow-sm select-none transition-all duration-300" aria-label="شريط استهلاك البيانات ووضع التوفير">
     <div class="max-w-md mx-auto flex items-center justify-between gap-2">
       <!-- أقصى اليمين: رقم استهلاك اليوم -->
       <button id="dataDetailsBtn" type="button" class="flex items-center gap-1.5 text-right hover:opacity-85 active:scale-95 transition-all cursor-pointer group shrink-0" title="اضغط لعرض تفاصيل استهلاك الباقة">

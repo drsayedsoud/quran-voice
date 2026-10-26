@@ -42,11 +42,8 @@ class QuranVoiceApp {
     this.listeningTimer = null;
     this.speechLang = localStorage.getItem('speech_lang') || 'ar-EG'; // الافتراضي اللهجة المصرية
 
-    // خاصية إبقاء الشاشة نشطة (Screen Wake Lock) لمدة ربع ساعة (15 دقيقة = 900,000 مللي ثانية)
+    // خاصية إبقاء الشاشة نشطة ومضاءة دائماً (Always-On Display) دون إغلاق
     this.wakeLock = null;
-    this.wakeLockTimer = null;
-    this.wakeLockExpiresAt = 0;
-    this.wakeLockDurationMs = 15 * 60 * 1000;
 
     // تتبع حالة استئناف القراءة بعد التفسير وحفظ الموضع
     this.resumePlaybackAfterTafsir = false;
@@ -98,6 +95,7 @@ class QuranVoiceApp {
       dismissPwaInstallBtn: document.getElementById('dismissPwaInstallBtn'),
       iosInstallInstructions: document.getElementById('iosInstallInstructions'),
       confirmPwaInstallText: document.getElementById('confirmPwaInstallText'),
+      dataUsageBanner: document.getElementById('dataUsageBanner'),
       dataUsageTodayText: document.getElementById('dataUsageTodayText'),
       dataUsageLimitText: document.getElementById('dataUsageLimitText'),
       dataProgressBar: document.getElementById('dataProgressBar'),
@@ -425,7 +423,7 @@ class QuranVoiceApp {
 
   // معالجة وتنفيذ الأمر الصوتي
   async executeVoiceCommand(transcript) {
-    this.requestWakeLock(this.wakeLockDurationMs);
+    this.requestWakeLock();
     const cleaned = cleanQuranicTranscript(transcript);
     console.log('Voice Command Input:', cleaned);
 
@@ -724,7 +722,7 @@ class QuranVoiceApp {
 
   // تشغيل سورة كاملة بنمط التدفق السلس المتصل (SoundCloud-style Surah Streaming)
   playSurahStream(surah = null, reciter = null) {
-    this.requestWakeLock(this.wakeLockDurationMs);
+    this.requestWakeLock();
     this.isPlaying = true;
     if (surah) this.currentSurah = surah;
     if (reciter) this.currentReciter = reciter;
@@ -741,7 +739,7 @@ class QuranVoiceApp {
 
   // تشغيل الآية الحالية بالصوت عبر المشغل المزدوج بدون فواصل (Gapless Playback)
   playCurrentAyah() {
-    this.requestWakeLock(this.wakeLockDurationMs);
+    this.requestWakeLock();
     this.isPlaying = true;
     if (this.player) {
       this.player.topicPlaylist = this.topicPlaylist || [];
@@ -768,7 +766,7 @@ class QuranVoiceApp {
   }
 
   play() {
-    this.requestWakeLock(this.wakeLockDurationMs);
+    this.requestWakeLock();
     if (this.player) {
       this.player.play();
     }
@@ -866,69 +864,56 @@ class QuranVoiceApp {
     }, 220);
   }
 
-  // تفعيل وإدارة بقاء الشاشة نشطة (Screen Wake Lock) لمدة ربع ساعة (15 دقيقة)
+  // تفعيل وإدارة بقاء الشاشة مضاءة دائماً (Always-On Display) دون إغلاق أو انتهاء وقت
   initWakeLock() {
-    // مراقبة عودة التطبيق للواجهة (عند التبديل بين التطبيقات أو تشغيل الشاشة)
+    const acquireLock = () => {
+      this.requestWakeLock();
+    };
+
+    // إعادة القفل فور عودة التطبيق للواجهة (عند التبديل بين التطبيقات أو فتح الهاتف)
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
-        const remaining = this.wakeLockExpiresAt - Date.now();
-        if (remaining > 0) {
-          this.requestWakeLock(remaining);
-        }
+        acquireLock();
       }
     });
 
-    // تفعيل قفل الـ 15 دقيقة فور أول تفاعل للمستخدم مع التطبيق
-    const onFirstUserAction = () => {
-      this.requestWakeLock(this.wakeLockDurationMs);
-      ['click', 'touchstart', 'keydown'].forEach(evt => {
-        window.removeEventListener(evt, onFirstUserAction);
-      });
-    };
+    // إعادة القفل فور استعادة التركيز للنافذة
+    window.addEventListener('focus', acquireLock);
+
+    // تفعيل القفل التلقائي فور أي تفاعل من المستخدم
     ['click', 'touchstart', 'keydown'].forEach(evt => {
-      window.addEventListener(evt, onFirstUserAction, { passive: true, once: true });
+      window.addEventListener(evt, acquireLock, { passive: true });
     });
+
+    // طلب القفل فوراً عند تشغيل التطبيق
+    acquireLock();
   }
 
-  // طلب إبقاء الشاشة مضاءة للمدة المحددة (افتراضياً 15 دقيقة = ربع ساعة)
-  async requestWakeLock(durationMs = 15 * 60 * 1000) {
-    this.wakeLockExpiresAt = Date.now() + durationMs;
-
-    if (this.wakeLockTimer) {
-      clearTimeout(this.wakeLockTimer);
-      this.wakeLockTimer = null;
-    }
-
-    // جدولة إغلاق القفل تلقائياً بعد ربع ساعة
-    this.wakeLockTimer = setTimeout(() => {
-      this.releaseWakeLock();
-      console.log('[WakeLock] انتهت مدة ربع الساعة (15 دقيقة)، تم إيقاف Always-On للشاشة.');
-    }, durationMs);
-
+  // طلب إبقاء الشاشة مضاءة دائماً (Always-On Display) دون حد زمني
+  async requestWakeLock() {
     if (!('wakeLock' in navigator)) {
       return;
     }
 
     try {
-      if (!this.wakeLock) {
+      if (!this.wakeLock || this.wakeLock.released) {
         this.wakeLock = await navigator.wakeLock.request('screen');
         this.wakeLock.addEventListener('release', () => {
           this.wakeLock = null;
+          // إعادة التفعيل التلقائي إذا كان التطبيق لا يزال معروضاً على الشاشة
+          if (document.visibilityState === 'visible') {
+            setTimeout(() => this.requestWakeLock(), 1200);
+          }
         });
-        console.log('[WakeLock] تم تفعيل إبقاء الشاشة نشطة (Always-On) لمدة 15 دقيقة بنجاح.');
+        console.log('[Always-On Display] تم تفعيل إبقاء الشاشة مضاءة دائماً بنجاح.');
       }
     } catch (err) {
-      console.warn('[WakeLock] تعذر تفعيل قفل الشاشة:', err);
+      console.warn('[Always-On Display] تعذر قفل الشاشة:', err);
     }
   }
 
-  // تحرير قفل الشاشة
+  // تحرير قفل الشاشة (عند الخروج التام)
   releaseWakeLock() {
-    if (this.wakeLockTimer) {
-      clearTimeout(this.wakeLockTimer);
-      this.wakeLockTimer = null;
-    }
-    this.wakeLockExpiresAt = 0;
     if (this.wakeLock) {
       try {
         this.wakeLock.release();
@@ -1389,10 +1374,58 @@ class QuranVoiceApp {
       this.dom.repeatBadge.addEventListener('click', () => this.cancelRepeat());
     }
 
-    // زر مشاركة التطبيق عبر واتساب
+    // زر مشاركة التطبيق عبر واتساب مع ميزة الضغط المطول الحصرية لإظهار/إخفاء شريط استهلاك البيانات
     if (this.dom.whatsappShareBtn) {
+      let wpPressTimer = null;
+      let wpLongPressTriggered = false;
+      const WP_LONG_PRESS_MS = 600;
+
+      const startWpPress = () => {
+        wpLongPressTriggered = false;
+        wpPressTimer = setTimeout(() => {
+          wpLongPressTriggered = true;
+          sound.vibrate([70, 40]);
+          const banner = this.dom.dataUsageBanner || document.getElementById('dataUsageBanner');
+          if (banner) {
+            const isNowHidden = banner.classList.toggle('hidden');
+            if (isNowHidden) {
+              sound.speak('تم إخفاء شريط البيانات');
+            } else {
+              sound.speak('تم إظهار شريط استهلاك البيانات');
+            }
+          }
+        }, WP_LONG_PRESS_MS);
+      };
+
+      const cancelWpPress = () => {
+        if (wpPressTimer) {
+          clearTimeout(wpPressTimer);
+          wpPressTimer = null;
+        }
+      };
+
+      this.dom.whatsappShareBtn.addEventListener('mousedown', startWpPress);
+      this.dom.whatsappShareBtn.addEventListener('mouseup', cancelWpPress);
+      this.dom.whatsappShareBtn.addEventListener('mouseleave', cancelWpPress);
+
+      this.dom.whatsappShareBtn.addEventListener('touchstart', () => {
+        startWpPress();
+      }, { passive: true });
+
+      this.dom.whatsappShareBtn.addEventListener('touchend', (e) => {
+        cancelWpPress();
+        if (wpLongPressTriggered) {
+          e.preventDefault();
+        }
+      });
+      this.dom.whatsappShareBtn.addEventListener('touchcancel', cancelWpPress);
+
       this.dom.whatsappShareBtn.addEventListener('click', (e) => {
         e.stopPropagation();
+        if (wpLongPressTriggered) {
+          wpLongPressTriggered = false;
+          return;
+        }
         this.shareOnWhatsApp();
       });
     }
