@@ -1,17 +1,15 @@
 /**
  * وحدة التحكم والتحليلات الخاصة بالمشرف (Admin Dashboard Controller)
- * تتيح مراقبة كل تفاصيل المستخدمين والأوامر الصوتية في الوقت الفعلي
+ * تتيح مراقبة كل تفاصيل المستخدمين والأجهزة الفعلية والأوامر الصوتية فورياً ولحظياً
  */
 
-import { db } from './firebase-config.js';
+import { db, firebaseConfig } from './firebase-config.js';
 import { 
   collection, 
   doc, 
   setDoc, 
+  getDocs,
   onSnapshot, 
-  query, 
-  orderBy, 
-  limit, 
   serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { RECITERS } from './quran-data.js';
@@ -22,6 +20,10 @@ class AdminDashboard {
     this.isAuthenticated = false;
     this.usersData = [];
     this.voiceLogs = [];
+    this.isFetching = false;
+    this.unsubUsers = null;
+    this.unsubLogs = null;
+    this.unsubBroadcast = null;
 
     this.dom = {
       loginOverlay: document.getElementById('loginOverlay'),
@@ -30,6 +32,12 @@ class AdminDashboard {
       pinError: document.getElementById('pinError'),
       dashboardContent: document.getElementById('dashboardContent'),
       logoutBtn: document.getElementById('logoutBtn'),
+      refreshDataBtn: document.getElementById('refreshDataBtn'),
+      refreshBtnIcon: document.getElementById('refreshBtnIcon'),
+      adminDataStatusBar: document.getElementById('adminDataStatusBar'),
+      adminDataStatusDot: document.getElementById('adminDataStatusDot'),
+      adminDataStatusText: document.getElementById('adminDataStatusText'),
+      adminDataLastUpdated: document.getElementById('adminDataLastUpdated'),
 
       // إحصائيات
       statTotalUsers: document.getElementById('statTotalUsers'),
@@ -71,7 +79,6 @@ class AdminDashboard {
 
   init() {
     this.bindAuthEvents();
-    // التحقق من جلسة الأدمن المخزنة محلياً
     if (sessionStorage.getItem('quran_admin_auth') === 'true' || localStorage.getItem('quran_admin_auth') === 'true') {
       this.unlockDashboard();
     }
@@ -80,7 +87,6 @@ class AdminDashboard {
   bindAuthEvents() {
     const handleLogin = () => {
       const pin = this.dom.pinInput ? this.dom.pinInput.value.trim() : '';
-      // يقبل فقط الرمز 1153 لا غير ذلك
       if (pin === '1153') {
         sessionStorage.setItem('quran_admin_auth', 'true');
         localStorage.setItem('quran_admin_auth', 'true');
@@ -126,124 +132,225 @@ class AdminDashboard {
     if (this.initializedSubscribers) return;
     this.initializedSubscribers = true;
 
-    this.subscribeToUsers();
-    this.subscribeToVoiceLogs();
-    this.subscribeToBroadcastConfig();
     this.bindDashboardEvents();
+    this.fetchAllData(false);
+    this.startRealtimeSubscriptions();
   }
 
-  // 1. مراقبة المستخدمين والأجهزة الفعلية لحظياً من Firestore
-  subscribeToUsers() {
-    try {
-      const usersCol = collection(db, "users");
-      onSnapshot(usersCol, (snapshot) => {
-        // تجميع السجلات حسب الأجهزة الفعلية الفريدة لاستبعاد التكرارات الناتجة عن تكرار الدخول
-        const deviceMap = new Map();
-        let totalAyahs = 0;
-        let totalMinutes = 0;
-        const reciterCounts = {};
-
-        snapshot.forEach((docSnap) => {
-          const user = docSnap.data();
-          const visits = user.visitCount || 1;
-
-          // بصمة تمييز الجهاز الفعلي الفريد:
-          // إما معرف الجهاز المباشر (deviceId)، أو بصمة المتصفح والشاشة
-          const deviceKey = user.deviceId || 
-            (user.deviceInfo?.userAgent ? `${user.deviceInfo.userAgent}_${user.deviceInfo.screen}` : user.uid);
-
-          if (!deviceMap.has(deviceKey)) {
-            deviceMap.set(deviceKey, {
-              ...user,
-              deviceKey,
-              visitCount: visits
-            });
-          } else {
-            // دمج الجلسات المتكررة من نفس الجهاز الفعلي
-            const existing = deviceMap.get(deviceKey);
-            existing.visitCount = (existing.visitCount || 1) + visits;
-
-            const existingAyahs = existing.stats?.totalAyahsListened || 0;
-            const newAyahs = user.stats?.totalAyahsListened || 0;
-            if (!existing.stats) existing.stats = {};
-            existing.stats.totalAyahsListened = Math.max(existingAyahs, newAyahs);
-
-            const existingSecs = existing.stats?.totalSeconds || 0;
-            const newSecs = user.stats?.totalSeconds || 0;
-            existing.stats.totalSeconds = Math.max(existingSecs, newSecs);
-
-            if (user.lastActiveAt && (!existing.lastActiveAt || user.lastActiveAt > existing.lastActiveAt)) {
-              existing.lastActiveAt = user.lastActiveAt;
-              if (user.lastPosition) existing.lastPosition = user.lastPosition;
-              if (user.preferences) existing.preferences = user.preferences;
-            }
-          }
-        });
-
-        this.usersData = Array.from(deviceMap.values());
-
-        // حساب الإحصائيات التراكمية على مستوى الأجهزة الفعلية
-        this.usersData.forEach((device) => {
-          const ayahs = device.stats?.totalAyahsListened || 0;
-          totalAyahs += ayahs;
-
-          const secs = device.stats?.totalSeconds || ((device.stats?.totalMinutes || 0) * 60);
-          totalMinutes += Math.round(secs / 60);
-
-          const reciter = device.preferences?.reciterId || 'husary';
-          reciterCounts[reciter] = (reciterCounts[reciter] || 0) + 1;
-        });
-
-        // تحديث كروت المؤشرات: عدد الأجهزة الفعلية الحقيقية فقط
-        this.dom.statTotalUsers.textContent = this.usersData.length.toLocaleString('ar-EG');
-        this.dom.statTotalAyahs.textContent = totalAyahs.toLocaleString('ar-EG');
-
-        if (this.dom.statTotalMinutes) {
-          if (totalMinutes < 60) {
-            this.dom.statTotalMinutes.textContent = `${totalMinutes.toLocaleString('ar-EG')} دقيقة`;
-          } else {
-            const h = Math.floor(totalMinutes / 60);
-            const m = totalMinutes % 60;
-            this.dom.statTotalMinutes.textContent = `${h.toLocaleString('ar-EG')} س و ${m.toLocaleString('ar-EG')} د`;
-          }
-        }
-
-        // استخراج القارئ الأكثر اختياراً
-        let topReciterId = 'husary';
-        let maxCount = 0;
-        for (const [rId, count] of Object.entries(reciterCounts)) {
-          if (count > maxCount) {
-            maxCount = count;
-            topReciterId = rId;
-          }
-        }
-        const foundReciter = RECITERS.find(r => r.id === topReciterId);
-        this.dom.statTopReciter.textContent = foundReciter ? foundReciter.name : topReciterId;
-
-        this.renderUsersTable();
-      }, (err) => {
-        console.warn('Firestore users subscribe error:', err.message);
-        this.dom.usersTableBody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-amber-400">تأكد من تطبيق قواعد Firestore Security Rules للمعاينة الحية</td></tr>`;
-      });
-    } catch (e) {
-      console.error(e);
+  updateStatus(status, text, lastUpdated) {
+    if (this.dom.adminDataStatusText) {
+      this.dom.adminDataStatusText.textContent = text;
+    }
+    if (this.dom.adminDataStatusDot) {
+      this.dom.adminDataStatusDot.className = 'w-2.5 h-2.5 rounded-full ' + (
+        status === 'loading' ? 'bg-amber-400 animate-pulse' :
+        status === 'error' ? 'bg-red-400' :
+        'bg-emerald-400 animate-pulse'
+      );
+    }
+    if (this.dom.adminDataLastUpdated && lastUpdated) {
+      this.dom.adminDataLastUpdated.textContent = `آخر تحديث: ${lastUpdated}`;
     }
   }
 
+  // جلب شامل وفوري لكافة البيانات (Direct Fetch + REST API Fallback)
+  async fetchAllData(isManual = false) {
+    if (this.isFetching) return;
+    this.isFetching = true;
+
+    if (this.dom.refreshBtnIcon) {
+      this.dom.refreshBtnIcon.classList.add('animate-spin');
+    }
+    this.updateStatus('loading', 'جاري جلب أحدث البيانات من Firestore...');
+
+    try {
+      await Promise.allSettled([
+        this.fetchUsersData(),
+        this.fetchVoiceLogsData(),
+        this.fetchBroadcastConfig()
+      ]);
+
+      const nowTime = new Date().toLocaleTimeString('ar-EG');
+      this.updateStatus(
+        'success', 
+        `🟢 متصل بنجاح: تم مزامنة ${this.usersData.length} جهازاً و ${this.voiceLogs.length} أمراً صوتياً`,
+        nowTime
+      );
+    } catch (err) {
+      console.error('Data fetch error:', err);
+      this.updateStatus('error', `⚠️ تعذر إكمال المزامنة: ${err.message}`);
+    } finally {
+      this.isFetching = false;
+      if (this.dom.refreshBtnIcon) {
+        this.dom.refreshBtnIcon.classList.remove('animate-spin');
+      }
+    }
+  }
+
+  // 1. جلب ومعالجة بيانات المستخدمين والأجهزة الفعلية
+  async fetchUsersData() {
+    let rawUsers = [];
+
+    // محاولة 1: عبر Firestore SDK المباشر
+    try {
+      const snap = await getDocs(collection(db, "users"));
+      snap.forEach(docSnap => {
+        rawUsers.push({ id: docSnap.id, ...docSnap.data() });
+      });
+    } catch (sdkErr) {
+      console.warn('Firestore SDK getDocs(users) failed, attempting REST API fallback:', sdkErr.message);
+      // محاولة 2: عبر Firestore REST API المباشر (تتجاوز أي حظر لحزم WebChannel)
+      rawUsers = await this.fetchUsersViaRestApi();
+    }
+
+    if (rawUsers && rawUsers.length > 0) {
+      this.processAndRenderUsers(rawUsers);
+    } else {
+      if (this.dom.usersTableBody && this.usersData.length === 0) {
+        this.dom.usersTableBody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-500">لا توجد أجهزة مسجلة في قاعدة البيانات حتى الآن</td></tr>`;
+      }
+    }
+  }
+
+  // جلب المستخدمين عبر REST API في حال حظر حزم الويب سوكيت
+  async fetchUsersViaRestApi() {
+    try {
+      const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/users?pageSize=300`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const docs = json.documents || [];
+      return docs.map(d => this.parseFirestoreRestDoc(d));
+    } catch (err) {
+      console.warn('REST API users fetch error:', err);
+      return [];
+    }
+  }
+
+  // معالجة بيانات الأجهزة وحساب المؤشرات
+  processAndRenderUsers(rawUsers) {
+    const deviceMap = new Map();
+    let totalAyahs = 0;
+    let totalMinutes = 0;
+    const reciterCounts = {};
+
+    rawUsers.forEach((user) => {
+      // معرف الجهاز الفعلي الفريد:
+      // استخدام deviceId العتادي، أو uid للمستخدم، أو id الوثيقة
+      const deviceKey = user.deviceId || user.uid || user.id || 'dev_unknown';
+      const visits = user.visitCount || 1;
+
+      if (!deviceMap.has(deviceKey)) {
+        deviceMap.set(deviceKey, {
+          ...user,
+          deviceKey,
+          visitCount: visits
+        });
+      } else {
+        // دمج الجلسات المتكررة لنفس الجهاز الفعلي بدقة
+        const existing = deviceMap.get(deviceKey);
+        existing.visitCount = (existing.visitCount || 1) + visits;
+
+        const existingAyahs = existing.stats?.totalAyahsListened || 0;
+        const newAyahs = user.stats?.totalAyahsListened || 0;
+        if (!existing.stats) existing.stats = {};
+        existing.stats.totalAyahsListened = Math.max(existingAyahs, newAyahs);
+
+        const existingSecs = existing.stats?.totalSeconds || 0;
+        const newSecs = user.stats?.totalSeconds || 0;
+        existing.stats.totalSeconds = Math.max(existingSecs, newSecs);
+
+        if (user.lastActiveAt) {
+          existing.lastActiveAt = user.lastActiveAt;
+          if (user.lastPosition) existing.lastPosition = user.lastPosition;
+          if (user.preferences) existing.preferences = user.preferences;
+        }
+      }
+    });
+
+    this.usersData = Array.from(deviceMap.values());
+
+    // ترتيب الأجهزة حسب آخر نشاط
+    this.usersData.sort((a, b) => {
+      const tA = this.extractTimestamp(a.lastActiveAt);
+      const tB = this.extractTimestamp(b.lastActiveAt);
+      return tB - tA;
+    });
+
+    // حساب الإحصائيات التراكمية على مستوى الأجهزة الفعلية
+    this.usersData.forEach((device) => {
+      const ayahs = device.stats?.totalAyahsListened || 0;
+      totalAyahs += ayahs;
+
+      const secs = device.stats?.totalSeconds || ((device.stats?.totalMinutes || 0) * 60);
+      totalMinutes += Math.round(secs / 60);
+
+      const reciter = device.preferences?.reciterId || 'husary';
+      reciterCounts[reciter] = (reciterCounts[reciter] || 0) + 1;
+    });
+
+    // تحديث بطاقات المؤشرات بأرقام حقيقية ودقيقة
+    if (this.dom.statTotalUsers) {
+      this.dom.statTotalUsers.textContent = this.usersData.length.toLocaleString('ar-EG');
+    }
+    if (this.dom.statTotalAyahs) {
+      this.dom.statTotalAyahs.textContent = totalAyahs.toLocaleString('ar-EG');
+    }
+    if (this.dom.statTotalMinutes) {
+      if (totalMinutes < 60) {
+        this.dom.statTotalMinutes.textContent = `${totalMinutes.toLocaleString('ar-EG')} دقيقة`;
+      } else {
+        const h = Math.floor(totalMinutes / 60);
+        const m = totalMinutes % 60;
+        this.dom.statTotalMinutes.textContent = `${h.toLocaleString('ar-EG')} س و ${m.toLocaleString('ar-EG')} د`;
+      }
+    }
+
+    // استخراج القارئ الأكثر اختياراً
+    let topReciterId = 'husary';
+    let maxCount = 0;
+    for (const [rId, count] of Object.entries(reciterCounts)) {
+      if (count > maxCount) {
+        maxCount = count;
+        topReciterId = rId;
+      }
+    }
+    const foundReciter = RECITERS.find(r => r.id === topReciterId);
+    if (this.dom.statTopReciter) {
+      this.dom.statTopReciter.textContent = foundReciter ? foundReciter.name : topReciterId;
+    }
+
+    this.renderUsersTable();
+  }
+
   renderUsersTable() {
+    if (!this.dom.usersTableBody) return;
+
     if (!this.usersData.length) {
       this.dom.usersTableBody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-500">لا توجد أجهزة مسجلة حتى الآن</td></tr>`;
       return;
     }
 
     this.dom.usersTableBody.innerHTML = this.usersData.map((u) => {
-      const uidShort = u.deviceId ? u.deviceId.replace('dev_', 'جهاز ') : (u.uid ? u.uid.substring(0, 10) + '...' : 'مجهول');
-      const device = u.deviceInfo?.userAgent ? u.deviceInfo.userAgent.substring(0, 32) + '...' : 'غير معروف';
-      const isPwa = u.deviceInfo?.isPwa ? '<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">نعم PWA</span>' : '<span class="text-slate-500">متصفح</span>';
+      const uidShort = u.deviceId 
+        ? u.deviceId.replace('dev_', 'جهاز ') 
+        : (u.uid ? u.uid.substring(0, 10) + '...' : 'جهاز غير معرف');
+      
+      const device = u.deviceInfo?.userAgent 
+        ? (u.deviceInfo.userAgent.length > 35 ? u.deviceInfo.userAgent.substring(0, 35) + '...' : u.deviceInfo.userAgent) 
+        : (u.deviceInfo?.platform || 'متصفح');
+      
+      const isPwa = u.deviceInfo?.isPwa 
+        ? '<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">نعم PWA</span>' 
+        : '<span class="text-slate-500">متصفح</span>';
+      
       const visits = `<span class="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 font-bold">${u.visitCount || 1} زيارة</span>`;
-      const lastPos = u.lastPosition ? `سورة ${u.lastPosition.surahName || u.lastPosition.surahId} (آية ${u.lastPosition.ayahNumber})` : 'لم يبدأ';
+      const lastPos = u.lastPosition 
+        ? `سورة ${u.lastPosition.surahName || u.lastPosition.surahId} (آية ${u.lastPosition.ayahNumber})` 
+        : 'لم يبدأ';
+      
       const reciter = RECITERS.find(r => r.id === u.preferences?.reciterId)?.name || u.preferences?.reciterId || 'الحصري';
-      const ayahs = u.stats?.totalAyahsListened || 0;
+      const ayahs = (u.stats?.totalAyahsListened || 0).toLocaleString('ar-EG');
       
       // حساب وقت الاستماع التراكمي للمستخدم بدقة
       const totalSecs = u.stats?.totalSeconds || ((u.stats?.totalMinutes || 0) * 60);
@@ -265,13 +372,21 @@ class AdminDashboard {
       }
 
       let lastActive = 'الآن';
-      if (u.lastActiveAt && u.lastActiveAt.toDate) {
-        lastActive = u.lastActiveAt.toDate().toLocaleTimeString('ar-EG');
+      if (u.lastActiveAt) {
+        if (typeof u.lastActiveAt.toDate === 'function') {
+          lastActive = u.lastActiveAt.toDate().toLocaleTimeString('ar-EG');
+        } else if (u.lastActiveAt.seconds) {
+          lastActive = new Date(u.lastActiveAt.seconds * 1000).toLocaleTimeString('ar-EG');
+        } else if (typeof u.lastActiveAt === 'string') {
+          try {
+            lastActive = new Date(u.lastActiveAt).toLocaleTimeString('ar-EG');
+          } catch(e) {}
+        }
       }
 
       return `
         <tr class="hover:bg-slate-900/60 transition-colors">
-          <td class="p-3 font-mono text-amber-400">${uidShort}</td>
+          <td class="p-3 font-mono text-amber-400 font-bold">${uidShort}</td>
           <td class="p-3 text-slate-300" title="${u.deviceInfo?.userAgent || ''}">${device}</td>
           <td class="p-3">${isPwa}</td>
           <td class="p-3">${visits}</td>
@@ -285,44 +400,73 @@ class AdminDashboard {
     }).join('');
   }
 
-  // 2. مراقبة سجلات الأوامر الصوتية لحظياً
-  subscribeToVoiceLogs() {
+  // 2. جلب ومعالجة سجلات الأوامر الصوتية
+  async fetchVoiceLogsData() {
+    let rawLogs = [];
+
+    // محاولة 1: عبر Firestore SDK
     try {
-      const logsQuery = query(
-        collection(db, "voice_logs"),
-        orderBy("timestamp", "desc"),
-        limit(100)
-      );
-
-      onSnapshot(logsQuery, (snapshot) => {
-        this.voiceLogs = [];
-        let successCount = 0;
-
-        snapshot.forEach((docSnap) => {
-          const log = docSnap.data();
-          this.voiceLogs.push(log);
-          if (log.success) successCount++;
-        });
-
-        // تحديث نسبة الدقة
-        const total = this.voiceLogs.length;
-        const accuracy = total > 0 ? Math.round((successCount / total) * 100) : 100;
-        this.dom.statVoiceAccuracy.textContent = `${accuracy}%`;
-        this.dom.statVoiceCount.textContent = `${total} أمر صوتي مسجل`;
-
-        this.renderVoiceLogsTable();
-      }, (err) => {
-        console.warn('Voice logs snapshot error:', err.message);
-        this.dom.voiceLogsTableBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-amber-400">بانتظار تفعيل قواعد أمان Firestore</td></tr>`;
+      const snap = await getDocs(collection(db, "voice_logs"));
+      snap.forEach(docSnap => {
+        rawLogs.push({ id: docSnap.id, ...docSnap.data() });
       });
-    } catch (e) {
-      console.error(e);
+    } catch (sdkErr) {
+      console.warn('Firestore SDK getDocs(voice_logs) failed, attempting REST API fallback:', sdkErr.message);
+      // محاولة 2: عبر Firestore REST API
+      rawLogs = await this.fetchVoiceLogsViaRestApi();
+    }
+
+    if (rawLogs && rawLogs.length > 0) {
+      this.processAndRenderVoiceLogs(rawLogs);
     }
   }
 
+  async fetchVoiceLogsViaRestApi() {
+    try {
+      const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/voice_logs?pageSize=100`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const docs = json.documents || [];
+      return docs.map(d => this.parseFirestoreRestDoc(d));
+    } catch (err) {
+      console.warn('REST API voice logs fetch error:', err);
+      return [];
+    }
+  }
+
+  processAndRenderVoiceLogs(rawLogs) {
+    // ترتيب الأوامر الصوتية تنازلياً حسب التوقيت بأمان تام
+    rawLogs.sort((a, b) => {
+      const tA = this.extractTimestamp(a.timestamp);
+      const tB = this.extractTimestamp(b.timestamp);
+      return tB - tA;
+    });
+
+    this.voiceLogs = rawLogs;
+    let successCount = 0;
+    this.voiceLogs.forEach(l => {
+      if (l.success) successCount++;
+    });
+
+    const total = this.voiceLogs.length;
+    const accuracy = total > 0 ? Math.round((successCount / total) * 100) : 100;
+
+    if (this.dom.statVoiceAccuracy) {
+      this.dom.statVoiceAccuracy.textContent = `${accuracy}%`;
+    }
+    if (this.dom.statVoiceCount) {
+      this.dom.statVoiceCount.textContent = `${total} أمر صوتي مسجل`;
+    }
+
+    this.renderVoiceLogsTable();
+  }
+
   renderVoiceLogsTable() {
-    const search = this.dom.voiceSearchInput.value.trim().toLowerCase();
-    const filter = this.dom.voiceFilterSelect.value;
+    if (!this.dom.voiceLogsTableBody) return;
+
+    const search = this.dom.voiceSearchInput ? this.dom.voiceSearchInput.value.trim().toLowerCase() : '';
+    const filter = this.dom.voiceFilterSelect ? this.dom.voiceFilterSelect.value : 'all';
 
     const filtered = this.voiceLogs.filter((log) => {
       const matchSearch = !search || (log.rawTranscript && log.rawTranscript.toLowerCase().includes(search));
@@ -338,7 +482,15 @@ class AdminDashboard {
     }
 
     this.dom.voiceLogsTableBody.innerHTML = filtered.map((l) => {
-      const time = l.timeString || (l.timestamp?.toDate ? l.timestamp.toDate().toLocaleTimeString('ar-EG') : 'الآن');
+      let time = l.timeString || 'الآن';
+      if (!l.timeString && l.timestamp) {
+        if (typeof l.timestamp.toDate === 'function') {
+          time = l.timestamp.toDate().toLocaleTimeString('ar-EG');
+        } else if (l.timestamp.seconds) {
+          time = new Date(l.timestamp.seconds * 1000).toLocaleTimeString('ar-EG');
+        }
+      }
+
       const uid = l.uid ? l.uid.substring(0, 8) + '...' : 'ضيف';
       const statusBadge = l.success 
         ? `<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">فُهِم بنجاح</span>`
@@ -357,78 +509,139 @@ class AdminDashboard {
     }).join('');
   }
 
-  // 3. مراقبة وإرسال تنبيه البث المباشر
-  subscribeToBroadcastConfig() {
+  // 3. جلب تنبيه البث المباشر
+  async fetchBroadcastConfig() {
     try {
-      const alertRef = doc(db, "system_config", "broadcast");
-      onSnapshot(alertRef, (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          if (data.active && data.message) {
-            this.dom.broadcastStatus.textContent = 'نشط حالياً';
-            this.dom.broadcastStatus.className = 'text-xs px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 font-bold';
-            this.dom.broadcastInput.value = data.message;
-            this.dom.broadcastVoiceToggle.checked = !!data.voiceAlert;
-          } else {
-            this.dom.broadcastStatus.textContent = 'متوقف';
-            this.dom.broadcastStatus.className = 'text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-400';
-          }
+      const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/system_config/broadcast`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const json = await res.json();
+        const data = this.parseFirestoreRestDoc(json);
+        this.updateBroadcastUI(data);
+      }
+    } catch (e) {
+      console.warn('Broadcast config fetch skipped:', e);
+    }
+  }
+
+  updateBroadcastUI(data) {
+    if (!this.dom.broadcastStatus) return;
+    if (data && data.active && data.message) {
+      this.dom.broadcastStatus.textContent = 'نشط حالياً';
+      this.dom.broadcastStatus.className = 'text-xs px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 font-bold';
+      if (this.dom.broadcastInput) this.dom.broadcastInput.value = data.message;
+      if (this.dom.broadcastVoiceToggle) this.dom.broadcastVoiceToggle.checked = !!data.voiceAlert;
+    } else {
+      this.dom.broadcastStatus.textContent = 'متوقف';
+      this.dom.broadcastStatus.className = 'text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-400';
+    }
+  }
+
+  // 4. تفعيل الاشتراكات الحية اللحظية (Realtime Live Subscriptions)
+  startRealtimeSubscriptions() {
+    try {
+      // مراقبة المستخدمين لحظياً
+      this.unsubUsers = onSnapshot(collection(db, "users"), (snapshot) => {
+        const liveUsers = [];
+        snapshot.forEach(d => liveUsers.push({ id: d.id, ...d.data() }));
+        if (liveUsers.length > 0) {
+          this.processAndRenderUsers(liveUsers);
+          this.updateStatus('success', `🟢 متصل لحظياً: تم تحديث ${this.usersData.length} جهازاً`, new Date().toLocaleTimeString('ar-EG'));
         }
+      }, (err) => {
+        console.warn('Users live stream notice:', err.message);
+      });
+
+      // مراقبة سجلات الصوت لحظياً
+      this.unsubLogs = onSnapshot(collection(db, "voice_logs"), (snapshot) => {
+        const liveLogs = [];
+        snapshot.forEach(d => liveLogs.push({ id: d.id, ...d.data() }));
+        if (liveLogs.length > 0) {
+          this.processAndRenderVoiceLogs(liveLogs);
+        }
+      }, (err) => {
+        console.warn('Voice logs live stream notice:', err.message);
+      });
+
+      // مراقبة البث المباشر
+      this.unsubBroadcast = onSnapshot(doc(db, "system_config", "broadcast"), (docSnap) => {
+        if (docSnap.exists()) {
+          this.updateBroadcastUI(docSnap.data());
+        }
+      }, (err) => {
+        console.warn('Broadcast live stream notice:', err.message);
       });
     } catch (e) {
-      console.warn('Broadcast config error:', e);
+      console.warn('Realtime listeners initialization:', e);
     }
   }
 
   bindDashboardEvents() {
+    // زر التحديث الفوري اليدوي
+    if (this.dom.refreshDataBtn) {
+      this.dom.refreshDataBtn.addEventListener('click', () => {
+        this.fetchAllData(true);
+      });
+    }
+
     // إرسال تنبيه البث
-    this.dom.sendBroadcastBtn.addEventListener('click', async () => {
-      const message = this.dom.broadcastInput.value.trim();
-      if (!message) return;
-      try {
-        const alertRef = doc(db, "system_config", "broadcast");
-        await setDoc(alertRef, {
-          message: message,
-          voiceAlert: this.dom.broadcastVoiceToggle.checked,
-          active: true,
-          updatedAt: serverTimestamp()
-        });
-        alert('تم نشر التنبيه بنجاح، وسيظهر لجميع المستخدمين فوراً!');
-      } catch (err) {
-        alert('حدث خطأ في حفظ التنبيه: ' + err.message);
-      }
-    });
+    if (this.dom.sendBroadcastBtn) {
+      this.dom.sendBroadcastBtn.addEventListener('click', async () => {
+        const message = this.dom.broadcastInput ? this.dom.broadcastInput.value.trim() : '';
+        if (!message) return;
+        try {
+          const alertRef = doc(db, "system_config", "broadcast");
+          await setDoc(alertRef, {
+            message: message,
+            voiceAlert: this.dom.broadcastVoiceToggle ? this.dom.broadcastVoiceToggle.checked : false,
+            active: true,
+            updatedAt: serverTimestamp()
+          });
+          alert('تم نشر التنبيه بنجاح، وسيظهر لجميع المستخدمين فوراً!');
+        } catch (err) {
+          alert('حدث خطأ في حفظ التنبيه: ' + err.message);
+        }
+      });
+    }
 
     // مسح التنبيه
-    this.dom.clearBroadcastBtn.addEventListener('click', async () => {
-      try {
-        const alertRef = doc(db, "system_config", "broadcast");
-        await setDoc(alertRef, {
-          message: '',
-          active: false,
-          updatedAt: serverTimestamp()
-        });
-        this.dom.broadcastInput.value = '';
-        alert('تم إيقاف التنبيه.');
-      } catch (err) {
-        alert('حدث خطأ: ' + err.message);
-      }
-    });
+    if (this.dom.clearBroadcastBtn) {
+      this.dom.clearBroadcastBtn.addEventListener('click', async () => {
+        try {
+          const alertRef = doc(db, "system_config", "broadcast");
+          await setDoc(alertRef, {
+            message: '',
+            active: false,
+            updatedAt: serverTimestamp()
+          });
+          if (this.dom.broadcastInput) this.dom.broadcastInput.value = '';
+          alert('تم إيقاف التنبيه.');
+        } catch (err) {
+          alert('حدث خطأ: ' + err.message);
+        }
+      });
+    }
 
     // فلترة وبحث سجلات الصوت
-    this.dom.voiceSearchInput.addEventListener('input', () => this.renderVoiceLogsTable());
-    this.dom.voiceFilterSelect.addEventListener('change', () => this.renderVoiceLogsTable());
+    if (this.dom.voiceSearchInput) {
+      this.dom.voiceSearchInput.addEventListener('input', () => this.renderVoiceLogsTable());
+    }
+    if (this.dom.voiceFilterSelect) {
+      this.dom.voiceFilterSelect.addEventListener('change', () => this.renderVoiceLogsTable());
+    }
 
     // تصدير سجلات الصوت
-    this.dom.exportVoiceLogsBtn.addEventListener('click', () => {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.voiceLogs, null, 2));
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `quran-voice-logs-${new Date().toISOString().slice(0, 10)}.json`);
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
-    });
+    if (this.dom.exportVoiceLogsBtn) {
+      this.dom.exportVoiceLogsBtn.addEventListener('click', () => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.voiceLogs, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `quran-voice-logs-${new Date().toISOString().slice(0, 10)}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+      });
+    }
 
     // تفعيل إعدادات Gemini AI
     this.initGeminiSettings();
@@ -437,10 +650,8 @@ class AdminDashboard {
   initGeminiSettings() {
     if (!this.dom.geminiApiKeyInput) return;
 
-    // ملء المفتاح الحالي
     this.dom.geminiApiKeyInput.value = getGeminiApiKey();
 
-    // ربط اختيار لهجة التعرف الصوتي الافتراضية
     if (this.dom.adminSpeechLangSelect) {
       const currentLang = localStorage.getItem('speech_lang') || 'ar-EG';
       this.dom.adminSpeechLangSelect.value = currentLang;
@@ -450,7 +661,6 @@ class AdminDashboard {
       };
     }
 
-    // إظهار/إخفاء
     if (this.dom.toggleGeminiKeyVisBtn) {
       this.dom.toggleGeminiKeyVisBtn.onclick = () => {
         const isPass = this.dom.geminiApiKeyInput.type === 'password';
@@ -459,33 +669,42 @@ class AdminDashboard {
       };
     }
 
-    // حفظ المفتاح
     if (this.dom.saveGeminiKeyBtn) {
       this.dom.saveGeminiKeyBtn.onclick = () => {
-        const val = this.dom.geminiApiKeyInput.value.trim();
-        setGeminiApiKey(val);
-        this.showGeminiResult('success', 'تم حفظ مفتاح Gemini API بنجاح في الإعدادات!');
+        const key = this.dom.geminiApiKeyInput.value.trim();
+        setGeminiApiKey(key);
+        this.showGeminiResult('success', 'تم حفظ مفتاح Gemini API بنجاح في التخزين المحلي!');
+        if (this.dom.geminiLiveStatusBadge) {
+          this.dom.geminiLiveStatusBadge.textContent = key ? 'مفعل محلياً 🔑' : 'غير مضبوط ⚠️';
+          this.dom.geminiLiveStatusBadge.className = key 
+            ? 'text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+            : 'text-[11px] px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40';
+        }
       };
     }
 
-    // استعادة المفتاح الافتراضي
     if (this.dom.resetGeminiKeyBtn) {
       this.dom.resetGeminiKeyBtn.onclick = () => {
-        setGeminiApiKey('');
-        this.dom.geminiApiKeyInput.value = getGeminiApiKey();
-        this.showGeminiResult('info', 'تمت استعادة مفتاح Gemini الافتراضي المدمج في النظام.');
+        if (confirm('هل أنت متأكد من رغبتك في حذف المفتاح المحفوظ والرجوع للمفتاح الافتراضي؟')) {
+          setGeminiApiKey('');
+          this.dom.geminiApiKeyInput.value = '';
+          this.showGeminiResult('info', 'تمت استعادة المفتاح المدمج الافتراضي بنجاح.');
+          if (this.dom.geminiLiveStatusBadge) {
+            this.dom.geminiLiveStatusBadge.textContent = 'المفتاح الافتراضي ⚡';
+            this.dom.geminiLiveStatusBadge.className = 'text-[11px] px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40';
+          }
+        }
       };
     }
 
-    // اختبار الاتصال الحي
     if (this.dom.testGeminiKeyBtn) {
       this.dom.testGeminiKeyBtn.onclick = async () => {
-        const val = this.dom.geminiApiKeyInput.value.trim();
+        const key = this.dom.geminiApiKeyInput.value.trim();
         this.dom.testGeminiKeyBtn.disabled = true;
-        this.dom.testGeminiKeyBtn.innerHTML = '<span>⏳</span><span>جاري الفحص...</span>';
-        this.showGeminiResult('loading', 'جاري إرسال طلب تجريبي لـ Google Gemini للتأكد من استجابة المفتاح...');
+        this.dom.testGeminiKeyBtn.innerHTML = '<span class="animate-spin inline-block">⏳</span><span>جاري الفحص...</span>';
+        this.showGeminiResult('info', 'جاري إرسال اختبار تجريبي لنموذج Gemini...');
 
-        const res = await testGeminiConnection(val);
+        const res = await testGeminiConnection(key);
         this.dom.testGeminiKeyBtn.disabled = false;
         this.dom.testGeminiKeyBtn.innerHTML = '<span>⚡</span><span>فحص الاتصال الحي</span>';
 
@@ -518,6 +737,57 @@ class AdminDashboard {
       this.dom.geminiTestResult.classList.add('bg-slate-900', 'border-slate-700', 'text-slate-300');
     }
     this.dom.geminiTestResult.textContent = text;
+  }
+
+  // دوال مساعدة لاستخراج التوقيت وتحليل كائنات Firestore REST
+  extractTimestamp(ts) {
+    if (!ts) return 0;
+    if (typeof ts.toMillis === 'function') return ts.toMillis();
+    if (typeof ts.toDate === 'function') return ts.toDate().getTime();
+    if (ts.seconds) return ts.seconds * 1000;
+    if (typeof ts === 'string' || typeof ts === 'number') {
+      const parsed = new Date(ts).getTime();
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  }
+
+  parseFirestoreRestDoc(doc) {
+    const id = (doc.name || '').split('/').pop();
+    const result = { id, uid: id };
+    if (!doc.fields) return result;
+    for (const [key, valObj] of Object.entries(doc.fields)) {
+      result[key] = this.parseFirestoreRestValue(valObj);
+    }
+    return result;
+  }
+
+  parseFirestoreRestValue(val) {
+    if (!val || typeof val !== 'object') return val;
+    if ('stringValue' in val) return val.stringValue;
+    if ('integerValue' in val) return parseInt(val.integerValue, 10);
+    if ('doubleValue' in val) return parseFloat(val.doubleValue);
+    if ('booleanValue' in val) return val.booleanValue;
+    if ('timestampValue' in val) {
+      const dt = new Date(val.timestampValue);
+      return {
+        toDate: () => dt,
+        toMillis: () => dt.getTime(),
+        seconds: Math.floor(dt.getTime() / 1000)
+      };
+    }
+    if ('mapValue' in val) {
+      const res = {};
+      const fields = val.mapValue.fields || {};
+      for (const [k, v] of Object.entries(fields)) {
+        res[k] = this.parseFirestoreRestValue(v);
+      }
+      return res;
+    }
+    if ('arrayValue' in val) {
+      return (val.arrayValue.values || []).map(v => this.parseFirestoreRestValue(v));
+    }
+    return null;
   }
 }
 

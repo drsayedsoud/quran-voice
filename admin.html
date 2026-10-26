@@ -123,6 +123,10 @@
         </div>
 
         <div class="flex items-center space-x-1.5 sm:space-x-3 space-x-reverse shrink-0">
+          <button id="refreshDataBtn" class="px-2 sm:px-3 py-1.5 sm:py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 text-[11px] sm:text-xs font-bold rounded-xl shadow transition-all flex items-center space-x-1 space-x-reverse cursor-pointer" title="تحديث فوري لجميع البيانات">
+            <span id="refreshBtnIcon">🔄</span>
+            <span class="hidden sm:inline">تحديث فوري</span>
+          </button>
           <a href="tests.html" class="px-2 sm:px-4 py-1.5 sm:py-2 bg-indigo-700 hover:bg-indigo-600 text-white text-[11px] sm:text-xs font-bold rounded-xl shadow transition-all flex items-center space-x-1 space-x-reverse" title="لوحة فحص الاختبارات الآلية">
             <span>🧪</span>
             <span class="hidden sm:inline">منظومة الاختبارات</span>
@@ -139,6 +143,15 @@
     </header>
 
     <div class="max-w-7xl mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
+
+      <!-- شريط حالة الاتصال ومزامنة البيانات -->
+      <div id="adminDataStatusBar" class="text-xs px-4 py-2.5 rounded-2xl bg-slate-900/90 border border-slate-800 text-slate-300 flex items-center justify-between shadow-lg">
+        <div class="flex items-center space-x-2 space-x-reverse">
+          <span id="adminDataStatusDot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+          <span id="adminDataStatusText" class="font-medium">جاري جلب بيانات الأجهزة والأوامر الصوتية من السحابة...</span>
+        </div>
+        <div id="adminDataLastUpdated" class="text-[11px] text-slate-400 font-mono"></div>
+      </div>
 
       <!-- 1. بطاقات المؤشرات الرئيسية (KPI Cards) -->
       <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
@@ -347,7 +360,7 @@
             </thead>
             <tbody id="usersTableBody" class="divide-y divide-slate-800">
               <tr>
-                <td colspan="8" class="p-6 text-center text-slate-500">جاري تحميل بيانات المستخدمين من Firestore...</td>
+                <td colspan="9" class="p-6 text-center text-slate-500">جاري تحميل بيانات المستخدمين من Firestore...</td>
               </tr>
             </tbody>
           </table>
