@@ -173,6 +173,10 @@ class QuranVoiceApp {
     const savedSize = localStorage.getItem('quran_font_size_idx');
     this.currentFontSizeIdx = savedSize !== null ? parseInt(savedSize, 10) : 1;
 
+    this.sleepTimerId = null;
+    this.sleepTimerMinutes = null;
+    this.stopAtSurahEnd = false;
+
     this.deferredInstallPrompt = null;
 
     this.init();
@@ -266,6 +270,16 @@ class QuranVoiceApp {
 
     // عند تغير الآية (تبديل فوري 0ms بين المشغلين أو انتقال يدوي)
     this.player.onAyahChange = (surah, ayah, reciter, isAutoTransition) => {
+      if (this.stopAtSurahEnd && ayah === 1 && isAutoTransition) {
+        this.stopAtSurahEnd = false;
+        this.pause();
+        sound.speak('تم إيقاف التلاوة عند اكتمال السورة المباركة');
+        if (this.dom.voiceStatus) {
+          this.dom.voiceStatus.textContent = 'تم الإيقاف عند اكتمال السورة 💤';
+        }
+        return;
+      }
+
       this.currentSurah = surah;
       this.currentAyah = ayah;
       this.currentReciter = reciter;
@@ -289,6 +303,16 @@ class QuranVoiceApp {
 
     // عند تغير السورة في نمط التدفق المستمر (Surah Streaming Mode)
     this.player.onSurahChange = (surah, reciter) => {
+      if (this.stopAtSurahEnd) {
+        this.stopAtSurahEnd = false;
+        this.pause();
+        sound.speak('تم إيقاف التلاوة عند اكتمال السورة المباركة');
+        if (this.dom.voiceStatus) {
+          this.dom.voiceStatus.textContent = 'تم الإيقاف عند اكتمال السورة 💤';
+        }
+        return;
+      }
+
       this.currentSurah = surah;
       this.currentAyah = 1;
       if (reciter) this.currentReciter = reciter;
@@ -846,10 +870,134 @@ class QuranVoiceApp {
         this.openAdminPinModal();
         break;
 
+      case 'PLAY_JUZ':
+        if (this.player) this.player.clearLoop();
+        this.repeatCount = 1;
+        this.currentRepeat = 1;
+        this.topicPlaylist = [];
+        this.topicIndex = 0;
+        this.currentSurah = parsed.payload.surah;
+        this.currentAyah = parsed.payload.ayahNumber;
+        if (parsed.payload.reciter) {
+          this.currentReciter = parsed.payload.reciter;
+        }
+        this.dom.voiceStatus.textContent = `📖 ${parsed.message}`;
+        sound.playSuccessChime();
+        sound.speak(parsed.message);
+        this.playCurrentAyah();
+        break;
+
+      case 'SPEED_NORMAL':
+      case 'SPEED_UP':
+      case 'SPEED_DOWN':
+      case 'SET_SPEED':
+        const targetRate = parsed.payload?.rate || 1.0;
+        const actualRate = this.player ? this.player.setPlaybackRate(targetRate) : targetRate;
+        sound.playSuccessChime();
+        sound.speak(parsed.message || `تم ضبط سرعة التلاوة على ${actualRate}`);
+        if (this.dom.voiceStatus) {
+          this.dom.voiceStatus.textContent = `⚡ سرعة التلاوة: ${actualRate}x`;
+        }
+        break;
+
+      case 'SEEK_FORWARD':
+        const fwdSec = parsed.payload?.seconds || 15;
+        if (this.player) {
+          this.player.seekRelative(fwdSec);
+        }
+        if (sound.playAyahTick) sound.playAyahTick(true);
+        else sound.playSuccessChime();
+        if (this.dom.voiceStatus) {
+          this.dom.voiceStatus.textContent = `⏩ تقديم +${fwdSec} ثانية`;
+        }
+        break;
+
+      case 'SEEK_BACKWARD':
+        const bwdSec = parsed.payload?.seconds || 15;
+        if (this.player) {
+          this.player.seekRelative(-bwdSec);
+        }
+        if (sound.playAyahTick) sound.playAyahTick(true);
+        else sound.playSuccessChime();
+        if (this.dom.voiceStatus) {
+          this.dom.voiceStatus.textContent = `⏪ ترجيع -${bwdSec} ثانية`;
+        }
+        break;
+
+      case 'SLEEP_TIMER':
+        sound.playSuccessChime();
+        if (parsed.payload?.type === 'SURAH_END') {
+          this.stopAtSurahEnd = true;
+          if (this.sleepTimerId) {
+            clearTimeout(this.sleepTimerId);
+            this.sleepTimerId = null;
+          }
+          sound.speak(parsed.message || 'سيتم إيقاف التلاوة عند اكتمال السورة الحالية');
+          if (this.dom.voiceStatus) {
+            this.dom.voiceStatus.textContent = '⏳ إيقاف التلاوة عند اكتمال السورة';
+          }
+        } else {
+          this.stopAtSurahEnd = false;
+          if (this.sleepTimerId) {
+            clearTimeout(this.sleepTimerId);
+          }
+          const mins = parsed.payload?.minutes || 30;
+          this.sleepTimerMinutes = mins;
+          this.sleepTimerId = setTimeout(() => {
+            this.handleSleepTimerExpired();
+          }, mins * 60 * 1000);
+
+          sound.speak(parsed.message || `تم ضبط مؤقت النوم للإيقاف بعد ${mins} دقيقة`);
+          if (this.dom.voiceStatus) {
+            this.dom.voiceStatus.textContent = `⏳ مؤقت النوم: ${mins} دقيقة`;
+          }
+        }
+        break;
+
+      case 'CANCEL_SLEEP_TIMER':
+        if (this.sleepTimerId) {
+          clearTimeout(this.sleepTimerId);
+          this.sleepTimerId = null;
+        }
+        this.stopAtSurahEnd = false;
+        sound.playSuccessChime();
+        sound.speak(parsed.message || 'تم إلغاء مؤقت النوم ومتابعة التلاوة');
+        if (this.dom.voiceStatus) {
+          this.dom.voiceStatus.textContent = 'تم إلغاء مؤقت النوم';
+        }
+        break;
+
+      case 'SHUFFLE_PLAY':
+        if (this.player) this.player.clearLoop();
+        this.repeatCount = 1;
+        this.currentRepeat = 1;
+        this.topicPlaylist = [];
+        this.topicIndex = 0;
+        const randomSurah = SURAHS[Math.floor(Math.random() * SURAHS.length)];
+        this.currentSurah = randomSurah;
+        this.currentAyah = 1;
+        if (parsed.payload.reciter) {
+          this.currentReciter = parsed.payload.reciter;
+        }
+        const shuffleMsg = `تم اختيار سورة ${randomSurah.name} بصوت الشيخ ${this.currentReciter.name}`;
+        sound.playSuccessChime();
+        sound.speak(shuffleMsg);
+        this.dom.voiceStatus.textContent = `📻 ${shuffleMsg}`;
+        this.playCurrentAyah();
+        break;
+
+      case 'WHO_IS_RECITING':
+        sound.playSuccessChime();
+        const whoMsg = `أنت تستمع إلى سورة ${this.currentSurah.name}، الآية ${this.currentAyah}، بصوت الشيخ ${this.currentReciter.name}`;
+        this.dom.voiceStatus.textContent = whoMsg;
+        sound.speak(whoMsg);
+        break;
+
       default:
         success = false;
         sound.playErrorChime();
-        this.dom.voiceStatus.textContent = 'عذراً، لم أفهم الأمر. جرب قول: سورة الكهف أو كرر الآية';
+        sound.speak('لم أتمكن من فهم طلبك، يمكنك قول: شغل سورة الكهف، أو جزء عم، أو مؤقت النوم نصف ساعة');
+        this.dom.voiceStatus.textContent = 'عذراً لم أفهم. جرب: سورة الكهف، جزء عم، أو مؤقت النوم';
         break;
     }
 
@@ -888,6 +1036,17 @@ class QuranVoiceApp {
     }
     this.updateUI();
     saveLastPosition(this.currentSurah, this.currentAyah, this.currentReciter.id);
+  }
+
+  // معالجة انتهاء وقت مؤقت النوم
+  handleSleepTimerExpired() {
+    this.pause();
+    this.sleepTimerId = null;
+    this.sleepTimerMinutes = null;
+    sound.speak('تقبل الله منا ومنكم صالح الأعمال، تم إيقاف التلاوة بحسب مؤقت النوم');
+    if (this.dom.voiceStatus) {
+      this.dom.voiceStatus.textContent = 'تم إيقاف التلاوة بموجب مؤقت النوم 💤';
+    }
   }
 
   // إلغاء وضع التكرار وحلقات التحفيظ يدوياً أو صوتياً
@@ -2413,6 +2572,9 @@ class QuranVoiceApp {
 
   // تطبيق وضع التوفير وتحديث السلوك الداخلي
   applySaverMode(isSaver) {
+    if (this.player && typeof this.player.setSaverMode === 'function') {
+      this.player.setSaverMode(isSaver);
+    }
     if (isSaver) {
       document.body.classList.add('saver-mode-active');
       if (this.player) this.player.prefetchCount = 1;

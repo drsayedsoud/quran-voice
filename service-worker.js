@@ -3,7 +3,8 @@
  * يتيح العمل أوفلاين وتشغيل الـ PWA بسرعة فائقة
  */
 
-const CACHE_NAME = 'quran-voice-v26';
+const CACHE_NAME = 'quran-voice-v27';
+const AUDIO_CACHE_NAME = 'quran-audio-cache';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -56,7 +57,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_NAME) {
+          if (key !== CACHE_NAME && key !== AUDIO_CACHE_NAME) {
             return caches.delete(key);
           }
         })
@@ -66,13 +67,75 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// معالجة تدفق المقاطع الصوتية ونظام التخزين المؤقت المتقدم (SoundCloud-Style Range Caching)
+async function handleAudioFetch(request) {
+  const cache = await caches.open(AUDIO_CACHE_NAME);
+  const cleanUrl = request.url;
+  const cachedResponse = await cache.match(cleanUrl);
+  const rangeHeader = request.headers.get('range');
+
+  if (cachedResponse) {
+    if (!rangeHeader) {
+      return cachedResponse;
+    }
+
+    try {
+      const arrayBuffer = await cachedResponse.arrayBuffer();
+      const totalBytes = arrayBuffer.byteLength;
+      const match = rangeHeader.match(/bytes=(\d+)-(\d+)?/);
+      if (match) {
+        const start = parseInt(match[1], 10);
+        const end = match[2] ? parseInt(match[2], 10) : totalBytes - 1;
+        const chunk = arrayBuffer.slice(start, end + 1);
+        return new Response(chunk, {
+          status: 206,
+          statusText: 'Partial Content',
+          headers: {
+            'Content-Type': cachedResponse.headers.get('Content-Type') || 'audio/mpeg',
+            'Content-Range': `bytes ${start}-${end}/${totalBytes}`,
+            'Content-Length': String(chunk.byteLength),
+            'Accept-Ranges': 'bytes',
+            'Cache-Control': 'public, max-age=31536000'
+          }
+        });
+      }
+    } catch (e) {
+      return cachedResponse;
+    }
+    return cachedResponse;
+  }
+
+  // إذا لم يكن مخزناً مسبقاً، جلبه من الشبكة وتخزينه إذا كان كاملاً
+  try {
+    const netResponse = await fetch(request);
+    if (netResponse && netResponse.status === 200) {
+      cache.put(cleanUrl, netResponse.clone()).catch(() => {});
+    }
+    return netResponse;
+  } catch (err) {
+    console.warn('[ServiceWorker] Offline audio unavailable:', cleanUrl);
+    return new Response('Audio not available offline', {
+      status: 503,
+      statusText: 'Service Unavailable'
+    });
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // استثناء طلبات Firebase والمقاطع الصوتية الكبيرة من الكاش الثابت
+  // استثناء طلبات Firebase
   if (url.origin.includes('firestore.googleapis.com') || 
-      url.origin.includes('firebase') || 
-      url.pathname.endsWith('.mp3')) {
+      url.origin.includes('firebase')) {
+    return;
+  }
+
+  // معالجة مقاطع الصوت بأسلوب ساوند كلاود الذكي
+  const isAudioFile = url.pathname.endsWith('.mp3') || 
+                      url.hostname.includes('everyayah.com') || 
+                      url.hostname.includes('mp3quran.net');
+  if (isAudioFile) {
+    event.respondWith(handleAudioFetch(event.request));
     return;
   }
 

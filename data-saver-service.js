@@ -30,6 +30,27 @@ export class DataSaverService {
     this.listeners = new Set();
     this.refreshDate();
     this.initNetworkObserver();
+    this.detectSystemDataSaver();
+  }
+
+  // الاستكشاف التلقائي لميزة توفير البيانات في نظام المستخدم أو شبكة الجوال (SoundCloud Network Adapt)
+  detectSystemDataSaver() {
+    if (typeof navigator !== 'undefined' && navigator.connection) {
+      try {
+        const conn = navigator.connection;
+        const isSystemDataSaver = Boolean(conn.saveData);
+        const isSlowNetwork = conn.effectiveType === '2g' || conn.effectiveType === 'slow-2g';
+        if (isSystemDataSaver || isSlowNetwork) {
+          if (!this.state.saverMode) {
+            this.setSaverMode(true);
+            return true;
+          }
+        }
+      } catch (e) {
+        // تجاهل في المتصفحات غير المتوافقة
+      }
+    }
+    return Boolean(this.state.saverMode);
   }
 
   loadState() {

@@ -125,6 +125,15 @@
     <div id="testOutputSummary" style="opacity:0;position:absolute;width:0;height:0;overflow:hidden;" data-status="pending" data-passed="0" data-failed="0" data-total="0"></div>
   </div>
 
+  <script>
+    window.addEventListener('error', (e) => {
+      const hook = document.getElementById('testOutputSummary');
+      if (hook) {
+        hook.textContent = JSON.stringify({ error: (e.message || 'Script error') + ' at ' + (e.filename || '') + ':' + (e.lineno || '') });
+      }
+    });
+  </script>
+
   <!-- سكربت تشغيل الاختبارات -->
   <script type="module">
     import {

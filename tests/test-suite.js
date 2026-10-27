@@ -8,7 +8,7 @@
  * 3. AudioUrlsTestSuite: فحص سلامة روابط السور والآيات وقابليتها للتشغيل عبر الخوادم
  */
 
-import { SURAHS, RECITERS, getAyahAudioUrl, getSurahAudioUrl } from '../quran-data.js';
+import { SURAHS, RECITERS, getAyahAudioUrl, getSurahAudioUrl, getEffectiveReciterFolder } from '../quran-data.js';
 import { parseVoiceCommand, normalizeArabic, extractNumber } from '../voice-engine.js';
 import { DualQuranPlayer } from '../dual-player.js';
 import { getTafsir, extractTermMeaning, seedTafsirIfNeeded } from '../tafsir-service.js';
@@ -363,6 +363,210 @@ export function registerVoiceEngineTests(runner) {
       t.assertEqual(parseVoiceCommand('اقرأ التفسير').intent, 'TAFSIR');
       t.assertEqual(parseVoiceCommand('اسمع التفسير').intent, 'TAFSIR');
     });
+
+    // --- 1.10 فحص أوامر أجزاء القرآن الكريم الـ 30 ---
+    await t.test('أمر أجزاء القرآن: جزء عم (#30)', () => {
+      const res = parseVoiceCommand('شغل جزء عم');
+      t.assertEqual(res.intent, 'PLAY_JUZ');
+      t.assertEqual(res.payload.juz?.juz, 30);
+      t.assertEqual(res.payload.surah?.id, 78);
+      t.assertEqual(res.payload.ayahNumber, 1);
+    });
+
+    await t.test('أمر أجزاء القرآن: جزء تبارك (#29)', () => {
+      const res = parseVoiceCommand('اقرأ جزء تبارك');
+      t.assertEqual(res.intent, 'PLAY_JUZ');
+      t.assertEqual(res.payload.juz?.juz, 29);
+      t.assertEqual(res.payload.surah?.id, 67);
+      t.assertEqual(res.payload.ayahNumber, 1);
+    });
+
+    await t.test('أمر أجزاء القرآن: جزء قد سمع (#28)', () => {
+      const res = parseVoiceCommand('شغل جزء قد سمع');
+      t.assertEqual(res.intent, 'PLAY_JUZ');
+      t.assertEqual(res.payload.juz?.juz, 28);
+      t.assertEqual(res.payload.surah?.id, 58);
+      t.assertEqual(res.payload.ayahNumber, 1);
+    });
+
+    await t.test('أمر أجزاء القرآن: الجزء الأول (#1)', () => {
+      const res = parseVoiceCommand('شغل الجزء الأول');
+      t.assertEqual(res.intent, 'PLAY_JUZ');
+      t.assertEqual(res.payload.juz?.juz, 1);
+      t.assertEqual(res.payload.surah?.id, 1);
+      t.assertEqual(res.payload.ayahNumber, 1);
+    });
+
+    await t.test('أمر أجزاء القرآن بالأرقام: الجزء 15 (#15)', () => {
+      const res = parseVoiceCommand('شغل الجزء 15');
+      t.assertEqual(res.intent, 'PLAY_JUZ');
+      t.assertEqual(res.payload.juz?.juz, 15);
+      t.assertEqual(res.payload.surah?.id, 17);
+      t.assertEqual(res.payload.ayahNumber, 1);
+    });
+
+    // --- 1.11 فحص الآيات والمقاطع القرآنية الشهيرة ---
+    await t.test('الآيات الشهيرة: آية الدين (البقرة 282)', () => {
+      const res = parseVoiceCommand('شغل آية الدين');
+      t.assertEqual(res.intent, 'PLAY_AYAH');
+      t.assertEqual(res.payload.surah?.id, 2);
+      t.assertEqual(res.payload.ayahNumber, 282);
+    });
+
+    await t.test('الآيات الشهيرة: آية النور (النور 35)', () => {
+      const res = parseVoiceCommand('اقرأ آية النور');
+      t.assertEqual(res.intent, 'PLAY_AYAH');
+      t.assertEqual(res.payload.surah?.id, 24);
+      t.assertEqual(res.payload.ayahNumber, 35);
+    });
+
+    await t.test('الآيات الشهيرة: آية الملك (آل عمران 26)', () => {
+      const res = parseVoiceCommand('شغل آية الملك');
+      t.assertEqual(res.intent, 'PLAY_AYAH');
+      t.assertEqual(res.payload.surah?.id, 3);
+      t.assertEqual(res.payload.ayahNumber, 26);
+    });
+
+    await t.test('الآيات الشهيرة: آية الصيام (البقرة 183)', () => {
+      const res = parseVoiceCommand('شغل آية الصيام');
+      t.assertEqual(res.intent, 'PLAY_AYAH');
+      t.assertEqual(res.payload.surah?.id, 2);
+      t.assertEqual(res.payload.ayahNumber, 183);
+    });
+
+    // --- 1.12 فحص مطالع وبدايات السور المشهورة ---
+    await t.test('مطلع سورة: قل هو الله أحد -> الإخلاص', () => {
+      const res = parseVoiceCommand('قل هو الله أحد');
+      t.assertEqual(res.intent, 'PLAY_SURAH');
+      t.assertEqual(res.payload.surah?.id, 112);
+    });
+
+    await t.test('مطلع سورة: تبارك الذي بيده الملك -> الملك', () => {
+      const res = parseVoiceCommand('تبارك الذي بيده الملك');
+      t.assertEqual(res.intent, 'PLAY_SURAH');
+      t.assertEqual(res.payload.surah?.id, 67);
+    });
+
+    await t.test('مطلع سورة: عم يتساءلون -> النبأ', () => {
+      const res = parseVoiceCommand('عم يتساءلون');
+      t.assertEqual(res.intent, 'PLAY_SURAH');
+      t.assertEqual(res.payload.surah?.id, 78);
+    });
+
+    await t.test('مطلع سورة: إنا أعطيناك الكوثر -> الكوثر', () => {
+      const res = parseVoiceCommand('إنا أعطيناك الكوثر');
+      t.assertEqual(res.intent, 'PLAY_SURAH');
+      t.assertEqual(res.payload.surah?.id, 108);
+    });
+
+    await t.test('المعوذتان: شغل المعوذات -> الفلق (#113)', () => {
+      const res = parseVoiceCommand('شغل المعوذات');
+      t.assertEqual(res.intent, 'PLAY_SURAH');
+      t.assertEqual(res.payload.surah?.id, 113);
+    });
+
+    // --- 1.13 فحص مؤقت النوم (Sleep Timer) ---
+    await t.test('مؤقت النوم: مؤقت النوم 15 دقيقة', () => {
+      const res = parseVoiceCommand('مؤقت النوم 15 دقيقة');
+      t.assertEqual(res.intent, 'SLEEP_TIMER');
+      t.assertEqual(res.payload.minutes, 15);
+    });
+
+    await t.test('مؤقت النوم: اطفي بعد نصف ساعة', () => {
+      const res = parseVoiceCommand('اطفي بعد نصف ساعة');
+      t.assertEqual(res.intent, 'SLEEP_TIMER');
+      t.assertEqual(res.payload.minutes, 30);
+    });
+
+    await t.test('مؤقت النوم: وقف بعد ما السورة تخلص', () => {
+      const res = parseVoiceCommand('وقف بعد ما السورة تخلص');
+      t.assertEqual(res.intent, 'SLEEP_TIMER');
+      t.assertEqual(res.payload.type, 'SURAH_END');
+    });
+
+    await t.test('مؤقت النوم: إلغاء مؤقت النوم', () => {
+      const res = parseVoiceCommand('إلغاء مؤقت النوم');
+      t.assertEqual(res.intent, 'CANCEL_SLEEP_TIMER');
+    });
+
+    // --- 1.14 فحص سرعة التلاوة (Playback Speed) ---
+    await t.test('سرعة التلاوة: سرع الصوت', () => {
+      const res = parseVoiceCommand('سرع الصوت');
+      t.assertEqual(res.intent, 'SPEED_UP');
+      t.assertEqual(res.payload.rate, 1.25);
+    });
+
+    await t.test('سرعة التلاوة: بطئ الصوت', () => {
+      const res = parseVoiceCommand('بطئ الصوت');
+      t.assertEqual(res.intent, 'SPEED_DOWN');
+      t.assertEqual(res.payload.rate, 0.75);
+    });
+
+    await t.test('سرعة التلاوة: السرعة العادية', () => {
+      const res = parseVoiceCommand('السرعة العادية');
+      t.assertEqual(res.intent, 'SPEED_NORMAL');
+      t.assertEqual(res.payload.rate, 1.0);
+    });
+
+    // --- 1.15 فحص التقديم والتأخير (Seek) ---
+    await t.test('تقديم التلاوة: قدم عشر ثواني', () => {
+      const res = parseVoiceCommand('قدم عشر ثواني');
+      t.assertEqual(res.intent, 'SEEK_FORWARD');
+      t.assertEqual(res.payload.seconds, 10);
+    });
+
+    await t.test('ترجيع التلاوة: رجع دقيقة', () => {
+      const res = parseVoiceCommand('رجع دقيقة');
+      t.assertEqual(res.intent, 'SEEK_BACKWARD');
+      t.assertEqual(res.payload.seconds, 60);
+    });
+
+    // --- 1.16 فحص الإذاعة والتلاوة العشوائية والاستفسار عن القارئ ---
+    await t.test('الإذاعة والتلاوة العشوائية: شغل إذاعة القرآن / شغل عشوائي', () => {
+      t.assertEqual(parseVoiceCommand('شغل إذاعة القرآن').intent, 'SHUFFLE_PLAY');
+      t.assertEqual(parseVoiceCommand('شغل عشوائي').intent, 'SHUFFLE_PLAY');
+    });
+
+    await t.test('الاستفسار عن القارئ: مين بيقرأ؟ / صوت مين؟', () => {
+      t.assertEqual(parseVoiceCommand('مين بيقرأ').intent, 'WHO_IS_RECITING');
+      t.assertEqual(parseVoiceCommand('صوت مين').intent, 'WHO_IS_RECITING');
+      t.assertEqual(parseVoiceCommand('مين القارئ').intent, 'WHO_IS_RECITING');
+    });
+
+    // --- 1.17 فحص أول وآخر السورة ---
+    await t.test('أول السورة: أول سورة الكهف -> آية 1', () => {
+      const res = parseVoiceCommand('أول سورة الكهف');
+      t.assertEqual(res.intent, 'PLAY_SURAH');
+      t.assertEqual(res.payload.surah?.id, 18);
+      t.assertEqual(res.payload.ayahNumber, 1);
+    });
+
+    await t.test('آخر السورة: آخر سورة البقرة -> أواخر الآيات', () => {
+      const res = parseVoiceCommand('آخر سورة البقرة');
+      t.assertEqual(res.intent, 'PLAY_SURAH');
+      t.assertEqual(res.payload.surah?.id, 2);
+      t.assertEqual(res.payload.ayahNumber, 282); // 286 - 4 = 282
+    });
+
+    // --- 1.18 فحص باقات الرقية والشفاء والسكينة الفورية ---
+    await t.test('باقة الرقية الشرعية الفورية: شغل الرقية الشرعية', () => {
+      const res = parseVoiceCommand('شغل الرقية الشرعية');
+      t.assertEqual(res.intent, 'PLAY_TOPIC');
+      t.assertEqual(res.payload.topic, 'آيات الرقية الشرعية المباركة');
+      t.assert(res.payload.passages?.length >= 5, 'عدد آيات الرقية يجب أن يكون 5 على الأقل');
+    });
+
+    await t.test('باقة آيات الشفاء الفورية: آيات الشفاء', () => {
+      const res = parseVoiceCommand('آيات الشفاء');
+      t.assertEqual(res.intent, 'PLAY_TOPIC');
+      t.assertEqual(res.payload.topic, 'آيات الشفاء الست');
+    });
+
+    await t.test('باقة آيات السكينة الفورية: آيات السكينة', () => {
+      const res = parseVoiceCommand('آيات السكينة والطمأنينة');
+      t.assertEqual(res.intent, 'PLAY_TOPIC');
+      t.assertEqual(res.payload.topic, 'آيات السكينة والطمأنينة وتفريج الكرب');
+    });
   });
 }
 
@@ -700,6 +904,54 @@ export function registerDataSaverTests(runner) {
       const toggled = ds.toggleSaverMode();
       t.assertEqual(toggled, true);
       t.assertEqual(ds.isSaverModeActive(), true);
+    });
+
+    await t.test('توجيه روابط القراء لجودة 64kbps الاقتصادية تلقائياً في وضع التوفير (SoundCloud-Style)', () => {
+      const afasy = RECITERS.find(r => r.id === 'afasy');
+      t.assertNotNull(afasy, 'العفاسي يجب أن يكون موجوداً');
+      t.assertEqual(afasy.folder, 'Alafasy_128kbps');
+      t.assertEqual(getEffectiveReciterFolder(afasy, false), 'Alafasy_128kbps', 'في الوضع العادي يطلب 128kbps');
+      t.assertEqual(getEffectiveReciterFolder(afasy, true), 'Alafasy_64kbps', 'في وضع التوفير يطلب 64kbps');
+
+      const husaryMujawwad = RECITERS.find(r => r.id === 'husary_mujawwad');
+      t.assertEqual(getEffectiveReciterFolder(husaryMujawwad, true), 'Husary_64kbps', 'المصحف المجود يحول لـ 64kbps في وضع التوفير');
+    });
+
+    await t.test('مشغل القرآن: تقليل التحميل المسبق وضبط preload=metadata في وضع التوفير', () => {
+      const p = new DualQuranPlayer({
+        initialSurah: SURAHS.find(s => s.id === 1),
+        initialAyah: 1,
+        initialReciter: RECITERS.find(r => r.id === 'afasy')
+      });
+      p.deckA.pause = () => {};
+      p.deckB.pause = () => {};
+      p.deckA.play = () => Promise.resolve();
+      p.deckB.play = () => Promise.resolve();
+
+      // الوضع الافتراضي
+      t.assertEqual(p.isSaverMode, false);
+      t.assertEqual(p.prefetchCount, 5);
+      t.assertEqual(p.getEffectiveFolder(), 'Alafasy_128kbps');
+
+      // تفعيل وضع التوفير
+      p.setSaverMode(true);
+      t.assertEqual(p.isSaverMode, true);
+      t.assertEqual(p.prefetchCount, 1, 'يجب أن ينخفض Lookahead Buffer لآية واحدة فقط');
+      t.assertEqual(p.deckA.preload, 'metadata', 'يجب أن يضبط preload=metadata لمنع السحب التلقائي الزائد');
+      t.assertEqual(p.deckB.preload, 'metadata');
+      t.assertEqual(p.getEffectiveFolder(), 'Alafasy_64kbps', 'يجب أن يتحول المجلد للنسخة الاقتصادية');
+
+      // تعطيل وضع التوفير
+      p.setSaverMode(false);
+      t.assertEqual(p.isSaverMode, false);
+      t.assertEqual(p.prefetchCount, 5);
+      t.assertEqual(p.deckA.preload, 'auto');
+      t.assertEqual(p.getEffectiveFolder(), 'Alafasy_128kbps');
+    });
+
+    await t.test('فحص استكشاف وضع التوفير لنظام الهاتف ومراعاة الشبكة (detectSystemDataSaver)', () => {
+      const isDetected = ds.detectSystemDataSaver();
+      t.assert(typeof isDetected === 'boolean');
     });
   });
 }

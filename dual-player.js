@@ -4,16 +4,20 @@
  * مع نظام تخزين مؤقت استباقي في الخلفية (Lookahead Buffer) للـ 5 آيات القادمة
  */
 
-import { SURAHS, getAyahAudioUrl, getSurahAudioUrl } from './quran-data.js';
+import { SURAHS, getAyahAudioUrl, getSurahAudioUrl, getEffectiveReciterFolder } from './quran-data.js';
 
 export class DualQuranPlayer {
   constructor(options = {}) {
+    // وضع التوفير الذكي (SoundCloud Data Saver)
+    this.isSaverMode = Boolean(options.isSaverMode);
+
     // مشغلا الصوت التبادليان (Deck A & Deck B)
     this.deckA = new Audio();
     this.deckB = new Audio();
 
-    this.deckA.preload = 'auto';
-    this.deckB.preload = 'auto';
+    const initialPreload = this.isSaverMode ? 'metadata' : 'auto';
+    this.deckA.preload = initialPreload;
+    this.deckB.preload = initialPreload;
 
     // تعيين المشغل النشط والمشغل الاحتياطي
     this.activeDeck = this.deckA;
@@ -26,6 +30,7 @@ export class DualQuranPlayer {
     this.currentReciter = options.initialReciter || null;
     this.isPlaying = false;
     this.volume = 1.0;
+    this.playbackRate = 1.0;
     this.repeatCount = 1;
     this.currentRepeat = 1;
 
@@ -71,7 +76,7 @@ export class DualQuranPlayer {
     this.standbyTrack = null;
 
     // إعدادات التحميل المسبق
-    this.prefetchCount = options.prefetchCount || 5;
+    this.prefetchCount = options.prefetchCount !== undefined ? options.prefetchCount : (this.isSaverMode ? 1 : 5);
     this.audioCacheName = 'quran-audio-cache';
     this.prefetchAbortController = null;
 
@@ -336,6 +341,9 @@ export class DualQuranPlayer {
     } catch (e) {}
 
     this.activeDeck.volume = this.volume;
+    if (this.playbackRate && this.playbackRate !== 1.0) {
+      this.activeDeck.playbackRate = this.playbackRate;
+    }
     const playPromise = this.activeDeck.play();
 
     if (playPromise !== undefined) {
@@ -386,7 +394,8 @@ export class DualQuranPlayer {
     this.currentSurah = surah;
     this.currentAyah = ayah;
 
-    const url = getAyahAudioUrl(this.currentReciter.folder, surah.id, ayah);
+    const folder = this.getEffectiveFolder(this.currentReciter);
+    const url = getAyahAudioUrl(folder, surah.id, ayah);
     const filename = `${String(surah.id).padStart(3, '0')}${String(ayah).padStart(3, '0')}.mp3`;
 
     // إذا كانت الآية المطلوبة هي المحملة بالفعل في الـ standbyDeck
@@ -407,13 +416,16 @@ export class DualQuranPlayer {
     } else {
       // تحميل عادي في المشغل النشط
       this.activeDeck.src = url;
-      this.activeDeck.preload = 'auto';
+      this.activeDeck.preload = this.isSaverMode ? 'metadata' : 'auto';
     }
 
     // تفعيل أذونات الصوت للمشغل الاحتياطي في المتصفحات المحمولة (Mobile Audio Unlock)
     this.unlockMobileAudio();
 
     this.activeDeck.volume = this.volume;
+    if (this.playbackRate && this.playbackRate !== 1.0) {
+      this.activeDeck.playbackRate = this.playbackRate;
+    }
     this.isPlaying = true;
 
     this.activeDeck.play().catch(err => {
@@ -454,7 +466,7 @@ export class DualQuranPlayer {
 
     this.standbyTrack = track;
     this.standbyDeck.src = track.url;
-    this.standbyDeck.preload = 'auto';
+    this.standbyDeck.preload = this.isSaverMode ? 'metadata' : 'auto';
     this.standbyDeck.volume = this.volume;
     this.standbyDeck.load(); // فك التشفير والتخزين في ذاكرة المتصفح مسبقاً
   }
@@ -471,14 +483,15 @@ export class DualQuranPlayer {
     }
   }
 
-  // سحب الـ 5 آيات القادمة وتخزينها في الكاش المسبق (Background Lookahead Buffer)
+  // سحب الآيات القادمة وتخزينها في الكاش المسبق (Background Lookahead Buffer)
   async prefetchUpcoming(count = 5) {
+    const effectiveCount = this.isSaverMode ? Math.min(1, count) : count;
     this.abortLookahead();
     this.prefetchAbortController = new AbortController();
     const signal = this.prefetchAbortController.signal;
 
-    // استخراج قائمة الآيات الخمس التالية
-    const upcoming = this.getUpcomingTracksList(count);
+    // استخراج قائمة الآيات التالية وفق الحد المسموح
+    const upcoming = this.getUpcomingTracksList(effectiveCount);
     if (upcoming.length === 0) return;
 
     for (const track of upcoming) {
@@ -506,6 +519,7 @@ export class DualQuranPlayer {
   // استخراج قائمة المسارات القادمة
   getUpcomingTracksList(count = 5) {
     const list = [];
+    const folder = this.getEffectiveFolder(this.currentReciter);
     let curS = this.currentSurah;
     let curA = this.currentAyah;
 
@@ -519,7 +533,7 @@ export class DualQuranPlayer {
             surah: p.surah,
             ayah: p.ayahNumber,
             reciter: this.currentReciter,
-            url: getAyahAudioUrl(this.currentReciter.folder, p.surah.id, p.ayahNumber)
+            url: getAyahAudioUrl(folder, p.surah.id, p.ayahNumber)
           });
         }
       }
@@ -540,7 +554,7 @@ export class DualQuranPlayer {
           surah: s,
           ayah: nextA,
           reciter: this.currentReciter,
-          url: getAyahAudioUrl(this.currentReciter.folder, s.id, nextA)
+          url: getAyahAudioUrl(folder, s.id, nextA)
         });
       }
       return list;
@@ -563,7 +577,7 @@ export class DualQuranPlayer {
         surah: curS,
         ayah: curA,
         reciter: this.currentReciter,
-        url: getAyahAudioUrl(this.currentReciter.folder, curS.id, curA)
+        url: getAyahAudioUrl(folder, curS.id, curA)
       });
     }
 
@@ -572,6 +586,8 @@ export class DualQuranPlayer {
 
   // حساب الآية التالية مباشرة
   computeNextTrack() {
+    const folder = this.getEffectiveFolder(this.currentReciter);
+
     if (this.topicPlaylist && this.topicPlaylist.length > 0) {
       if (this.topicIndex < this.topicPlaylist.length - 1) {
         const nextP = this.topicPlaylist[this.topicIndex + 1];
@@ -579,7 +595,7 @@ export class DualQuranPlayer {
           surah: nextP.surah,
           ayah: nextP.ayahNumber,
           reciter: this.currentReciter,
-          url: getAyahAudioUrl(this.currentReciter.folder, nextP.surah.id, nextP.ayahNumber),
+          url: getAyahAudioUrl(folder, nextP.surah.id, nextP.ayahNumber),
           filename: `${String(nextP.surah.id).padStart(3, '0')}${String(nextP.ayahNumber).padStart(3, '0')}.mp3`,
           isJump: nextP.isJump,
           sceneTitle: nextP.sceneTitle,
@@ -600,7 +616,7 @@ export class DualQuranPlayer {
           surah: s,
           ayah: nextAyah,
           reciter: this.currentReciter,
-          url: getAyahAudioUrl(this.currentReciter.folder, s.id, nextAyah),
+          url: getAyahAudioUrl(folder, s.id, nextAyah),
           filename: `${String(s.id).padStart(3, '0')}${String(nextAyah).padStart(3, '0')}.mp3`
         };
       } else {
@@ -612,7 +628,7 @@ export class DualQuranPlayer {
             surah: s,
             ayah: startAyah,
             reciter: this.currentReciter,
-            url: getAyahAudioUrl(this.currentReciter.folder, s.id, startAyah),
+            url: getAyahAudioUrl(folder, s.id, startAyah),
             filename: `${String(s.id).padStart(3, '0')}${String(startAyah).padStart(3, '0')}.mp3`,
             isLoopReset: true
           };
@@ -632,7 +648,7 @@ export class DualQuranPlayer {
           surah: s,
           ayah: nextAyah,
           reciter: this.currentReciter,
-          url: getAyahAudioUrl(this.currentReciter.folder, s.id, nextAyah),
+          url: getAyahAudioUrl(folder, s.id, nextAyah),
           filename: `${String(s.id).padStart(3, '0')}${String(nextAyah).padStart(3, '0')}.mp3`
         };
       } else {
@@ -641,7 +657,7 @@ export class DualQuranPlayer {
             surah: s,
             ayah: 1,
             reciter: this.currentReciter,
-            url: getAyahAudioUrl(this.currentReciter.folder, s.id, 1),
+            url: getAyahAudioUrl(folder, s.id, 1),
             filename: `${String(s.id).padStart(3, '0')}001.mp3`,
             isLoopReset: true
           };
@@ -677,6 +693,8 @@ export class DualQuranPlayer {
 
   // حساب المسار الذي يلي سورة وآية محددتين
   computeTrackAfter(surah, ayah) {
+    const folder = this.getEffectiveFolder(this.currentReciter);
+
     // في حال كانت باقة موضوعية أو قصة قرآنية: نأخذ الآية التالية لما يعزف الآن
     if (this.topicPlaylist && this.topicPlaylist.length > 0) {
       const nextNextIdx = this.topicIndex + 1;
@@ -686,7 +704,7 @@ export class DualQuranPlayer {
           surah: p.surah,
           ayah: p.ayahNumber,
           reciter: this.currentReciter,
-          url: getAyahAudioUrl(this.currentReciter.folder, p.surah.id, p.ayahNumber),
+          url: getAyahAudioUrl(folder, p.surah.id, p.ayahNumber),
           filename: `${String(p.surah.id).padStart(3, '0')}${String(p.ayahNumber).padStart(3, '0')}.mp3`,
           isJump: p.isJump,
           sceneTitle: p.sceneTitle,
@@ -717,7 +735,7 @@ export class DualQuranPlayer {
       surah: nextS,
       ayah: nextA,
       reciter: this.currentReciter,
-      url: getAyahAudioUrl(this.currentReciter.folder, nextS.id, nextA),
+      url: getAyahAudioUrl(folder, nextS.id, nextA),
       filename: `${String(nextS.id).padStart(3, '0')}${String(nextA).padStart(3, '0')}.mp3`
     };
   }
@@ -768,6 +786,49 @@ export class DualQuranPlayer {
 
   getVolume() {
     return this.volume;
+  }
+
+  // الحصول على مجلد القارئ المعتمد (مع دعم الجودة الاقتصادية تلقائياً في وضع التوفير)
+  getEffectiveFolder(reciter = this.currentReciter) {
+    return getEffectiveReciterFolder(reciter, this.isSaverMode);
+  }
+
+  // تفعيل أو تعطيل وضع توفير استهلاك البيانات الذكي (SoundCloud Data Saver)
+  setSaverMode(enabled) {
+    this.isSaverMode = Boolean(enabled);
+    this.prefetchCount = this.isSaverMode ? 1 : 5;
+    const preloadVal = this.isSaverMode ? 'metadata' : 'auto';
+    if (this.deckA) this.deckA.preload = preloadVal;
+    if (this.deckB) this.deckB.preload = preloadVal;
+    return this.isSaverMode;
+  }
+
+  getSaverMode() {
+    return Boolean(this.isSaverMode);
+  }
+
+  // ضبط سرعة القراءة والتلاوة (Playback Rate)
+  setPlaybackRate(rate) {
+    this.playbackRate = Math.max(0.5, Math.min(2.0, rate));
+    if (this.deckA) this.deckA.playbackRate = this.playbackRate;
+    if (this.deckB) this.deckB.playbackRate = this.playbackRate;
+    return this.playbackRate;
+  }
+
+  getPlaybackRate() {
+    return this.playbackRate || 1.0;
+  }
+
+  // التقديم والترجيع اللحظي بالثواني
+  seekRelative(seconds) {
+    if (this.activeDeck && !isNaN(this.activeDeck.duration)) {
+      const dur = this.activeDeck.duration;
+      const cur = this.activeDeck.currentTime || 0;
+      const target = Math.max(0, Math.min(dur, cur + seconds));
+      this.activeDeck.currentTime = target;
+      return target;
+    }
+    return 0;
   }
 
   getCurrentTime() {

@@ -151,6 +151,7 @@ export const RECITERS = [
     name: "محمود خليل الحصري (المصحف المعلم)",
     subname: "ترديد أطفال",
     folder: "Husary_Muallim_128kbps",
+    ecoFolder: "Husary_64kbps",
     surahServer: "archive.org/download/Quran--alhosary--teacher-repeat-kids-high-quality",
     sampleText: "المصحف المعلم برواية حفص بصوت الشيخ الحصري مع ترديد الأطفال لتعليم مخارج الحروف وأحكام التلاوة",
     aliases: [
@@ -181,6 +182,7 @@ export const RECITERS = [
     name: "محمد صديق المنشاوي (المصحف المجود)",
     subname: "مجود",
     folder: "Minshawy_Mujawwad_192kbps",
+    ecoFolder: "Minshawy_Murattal_128kbps",
     surahServer: "cdn.mp3quran.net/audio/muhammad-minshawi/r2",
     sampleText: "تلاوة مجودة بالمقامات الخاشعة والأداء الشجي الفريد",
     aliases: ["المنشاوي مجود", "منشاوي مجود", "مجود المنشاوي", "تلاوة مجودة المنشاوي", "المصحف المجود المنشاوي", "مجود", "المصحف المجود", "تلاوة مجودة"]
@@ -190,6 +192,7 @@ export const RECITERS = [
     name: "عبد الباسط عبد الصمد (المصحف المجود)",
     subname: "مجود",
     folder: "Abdul_Basit_Mujawwad_128kbps",
+    ecoFolder: "Abdul_Basit_Murattal_64kbps",
     surahServer: "cdn.mp3quran.net/audio/abdulbasit-abdulsamad/r2",
     sampleText: "التلاوة المجودة التاريخية الخالدة برواية حفص",
     aliases: ["عبد الباسط مجود", "عبدالباسط مجود", "مجود عبد الباسط", "تلاوة مجودة عبد الباسط", "المصحف المجود عبد الباسط"]
@@ -199,6 +202,7 @@ export const RECITERS = [
     name: "محمود خليل الحصري (المصحف المجود)",
     subname: "مجود",
     folder: "Husary_128kbps_Mujawwad",
+    ecoFolder: "Husary_64kbps",
     surahServer: "cdn.mp3quran.net/audio/mahmoud-husary/r2",
     sampleText: "المصحف المجود المتقن بأعلى درجات ضبط أحكام التجويد ومخارج الحروف",
     aliases: ["الحصري مجود", "حصري مجود", "مجود الحصري", "تلاوة مجودة الحصري", "المصحف المجود الحصري"]
@@ -208,6 +212,7 @@ export const RECITERS = [
     name: "مشاري بن راشد العفاسي",
     subname: "مرتل",
     folder: "Alafasy_128kbps",
+    ecoFolder: "Alafasy_64kbps",
     surahServer: "server8.mp3quran.net/afs",
     sampleText: "أداء مميز وصوت عذب حديث",
     aliases: ["العفاسي", "عفاسي", "مشاري"]
@@ -287,6 +292,18 @@ export const RECITERS = [
 ];
 
 /**
+ * تحديد مجلد القارئ الفعال بناءً على وضع توفير البيانات (SoundCloud Data Saver)
+ * يختار النسخة الاقتصادية (40-64kbps) تلقائياً لتوفير 50-65% من الاستهلاك
+ */
+export function getEffectiveReciterFolder(reciter, isSaverMode = false) {
+  if (!reciter) return 'Husary_64kbps';
+  if (isSaverMode && reciter.ecoFolder) {
+    return reciter.ecoFolder;
+  }
+  return reciter.folder || 'Husary_64kbps';
+}
+
+/**
  * دالة مساعدة لبناء رابط صوت الآية المباشر من مستودع EveryAyah عالي السرعة
  */
 export function getAyahAudioUrl(reciterFolder, surahNumber, ayahNumber) {
@@ -306,3 +323,41 @@ export function getSurahAudioUrl(reciter, surahNumber) {
   server = server.replace(/^https?:\/\//, '').replace(/\/$/, '');
   return `https://${server}/${s}.mp3`;
 }
+
+/**
+ * بيانات الأجزاء الثلاثين للقرآن الكريم (The 30 Quranic Ajzaa)
+ * تتيح التنقل المباشر والسريع للأجزاء صوتياً للمكفوفين وحفّاظ كتاب الله
+ */
+export const JUZ_DATA = [
+  { juz: 1, surahId: 1, ayahNumber: 1, name: "الجزء الأول", alias: "الفاتحة", title: "الم" },
+  { juz: 2, surahId: 2, ayahNumber: 142, name: "الجزء الثاني", alias: "سيقول", title: "سيقول السفهاء" },
+  { juz: 3, surahId: 2, ayahNumber: 253, name: "الجزء الثالث", alias: "تلك الرسل", title: "تلك الرسل" },
+  { juz: 4, surahId: 3, ayahNumber: 93, name: "الجزء الرابع", alias: "لن تنالوا", title: "لن تنالوا البر" },
+  { juz: 5, surahId: 4, ayahNumber: 24, name: "الجزء الخامس", alias: "والمحصنات", title: "والمحصنات" },
+  { juz: 6, surahId: 4, ayahNumber: 148, name: "الجزء السادس", alias: "لا يحب الله", title: "لا يحب الله" },
+  { juz: 7, surahId: 5, ayahNumber: 82, name: "الجزء السابع", alias: "لتجدن", title: "لتجدن أشد الناس" },
+  { juz: 8, surahId: 6, ayahNumber: 111, name: "الجزء الثامن", alias: "ولو اننا", title: "ولو أننا نزلنا" },
+  { juz: 9, surahId: 7, ayahNumber: 88, name: "الجزء التاسع", alias: "قال الملا", title: "قال الملأ" },
+  { juz: 10, surahId: 8, ayahNumber: 41, name: "الجزء العاشر", alias: "واعلموا", title: "واعلموا أنما غنمتم" },
+  { juz: 11, surahId: 9, ayahNumber: 93, name: "الجزء الحادي عشر", alias: "يعتذرون", title: "إنما السبيل" },
+  { juz: 12, surahId: 11, ayahNumber: 6, name: "الجزء الثاني عشر", alias: "وما من دابة", title: "وما من دابة" },
+  { juz: 13, surahId: 12, ayahNumber: 53, name: "الجزء الثالث عشر", alias: "وما ابرئ نفسي", title: "وما أبرئ نفسي" },
+  { juz: 14, surahId: 15, ayahNumber: 1, name: "الجزء الرابع عشر", alias: "ربما", title: "الر تلك آيات الكتاب" },
+  { juz: 15, surahId: 17, ayahNumber: 1, name: "الجزء الخامس عشر", alias: "سبحان", title: "سبحان الذي أسرى" },
+  { juz: 16, surahId: 18, ayahNumber: 75, name: "الجزء السادس عشر", alias: "قال الم", title: "قال ألم أقل لك" },
+  { juz: 17, surahId: 21, ayahNumber: 1, name: "الجزء السابع عشر", alias: "اقترب", title: "اقترب للناس حسابهم" },
+  { juz: 18, surahId: 23, ayahNumber: 1, name: "الجزء الثامن عشر", alias: "قد افلح", title: "قد أفلح المؤمنون" },
+  { juz: 19, surahId: 25, ayahNumber: 21, name: "الجزء التاسع عشر", alias: "وقال الذين لا يرجون", title: "وقال الذين لا يرجون" },
+  { juz: 20, surahId: 27, ayahNumber: 56, name: "الجزء العشرون", alias: "فما كان", title: "فما كان جواب قومه" },
+  { juz: 21, surahId: 29, ayahNumber: 46, name: "الجزء الحادي والعشرون", alias: "ولا تجادلوا", title: "اتل ما أوحي إليك" },
+  { juz: 22, surahId: 33, ayahNumber: 31, name: "الجزء الثاني والعشرون", alias: "ومن يقنت", title: "ومن يقنت منكن" },
+  { juz: 23, surahId: 36, ayahNumber: 28, name: "الجزء الثالث والعشرون", alias: "وما انزلنا", title: "وما أنزلنا على قومه" },
+  { juz: 24, surahId: 39, ayahNumber: 32, name: "الجزء الرابع والعشرون", alias: "فمن اظلم", title: "فمن أظلم ممن كذب" },
+  { juz: 25, surahId: 41, ayahNumber: 47, name: "الجزء الخامس والعشرون", alias: "اليه يرد", title: "إليه يرد علم الساعة" },
+  { juz: 26, surahId: 46, ayahNumber: 1, name: "الجزء السادس والعشرون", alias: "حم", title: "حم تنزيل الكتاب" },
+  { juz: 27, surahId: 51, ayahNumber: 31, name: "الجزء السابع والعشرون", alias: "قال فما خطبكم", title: "قال فما خطبكم أيها المرسلون" },
+  { juz: 28, surahId: 58, ayahNumber: 1, name: "الجزء الثامن والعشرون", alias: "قد سمع", title: "قد سمع الله قول التي تجادلك" },
+  { juz: 29, surahId: 67, ayahNumber: 1, name: "الجزء التاسع والعشرون", alias: "تبارك", title: "تبارك الذي بيده الملك" },
+  { juz: 30, surahId: 78, ayahNumber: 1, name: "الجزء الثلاثون", alias: "عم", title: "عم يتساءلون" }
+];
+

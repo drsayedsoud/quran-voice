@@ -3,7 +3,7 @@
  * مصمم لفهم اللهجات والتحدث التلقائي لفاقدي البصر وكبار السن
  */
 
-import { SURAHS, RECITERS } from './quran-data.js';
+import { SURAHS, RECITERS, JUZ_DATA } from './quran-data.js';
 import { findStoryByQuery, compileStoryPlaylist } from './quran-stories.js';
 
 // تنظيف وتوحيد النص العربي لتسهيل المطابقة الدقيقة
@@ -41,6 +41,10 @@ export function cleanQuranicTranscript(text) {
   cleaned = cleaned.replace(/\b(صورة|صوره)\b/g, 'سورة');
   // تصحيح كتابة آية
   cleaned = cleaned.replace(/\b(ايه|اية|أيه|أية)\b/g, 'آية');
+  // تصحيح كتابة جزء
+  cleaned = cleaned.replace(/\b(جزأ|جزءا)\b/g, 'جزء');
+  // تصحيح مؤقت
+  cleaned = cleaned.replace(/\b(موقت|مئقت)\b/g, 'مؤقت');
   // تصحيح أسماء السور المشهورة بأخطاء الإملاء الصوتي
   cleaned = cleaned.replace(/\b(طاها|طاهه)\b/g, 'طه');
   cleaned = cleaned.replace(/\b(ياسين)\b/g, 'يس');
@@ -92,7 +96,7 @@ export function pickBestAlternative(resultItem) {
   for (let i = 0; i < resultItem.length; i++) {
     const raw = resultItem[i].transcript || '';
     const norm = normalizeArabic(raw);
-    if (norm.includes('سوره') || norm.includes('ايه') || norm.includes('القران') || norm.includes('تفسير') || norm.includes('ايات')) {
+    if (norm.includes('سوره') || norm.includes('ايه') || norm.includes('جزء') || norm.includes('القران') || norm.includes('تفسير') || norm.includes('ايات') || norm.includes('موقت') || norm.includes('مؤقت')) {
       return raw;
     }
     for (const surah of SURAHS) {
@@ -110,12 +114,12 @@ export function isThematicQuery(text) {
   if (!text) return false;
   const norm = normalizeArabic(text);
 
-  // إذا ذكر المستخدم كلمة "سورة"، فهو يطلب سورة محددة وليس بحثاً موضوعياً
-  if (norm.includes('سوره') || norm.includes('سورة')) {
+  // إذا ذكر المستخدم كلمة "سورة" أو "جزء"، فهو طلب مباشر وليس بحثاً موضوعياً
+  if (norm.includes('سوره') || norm.includes('سورة') || norm.includes('جزء') || norm.includes('الجزء') || norm.includes('جزا') || norm.includes('الجزا')) {
     return false;
   }
 
-  const thematicKeywords = ['ايات', 'موضوع', 'قصة', 'احاديث', 'فضل', 'تحدث عن', 'عايز ايات', 'هات ايات'];
+  const thematicKeywords = ['ايات', 'موضوع', 'قصة', 'قصه', 'احاديث', 'فضل', 'تحدث عن', 'عايز ايات', 'هات ايات', 'رقيه', 'شفا', 'سكين'];
   if (thematicKeywords.some(kw => norm.includes(kw))) {
     return true;
   }
@@ -129,7 +133,7 @@ export function isThematicQuery(text) {
   return false;
 }
 
-// باقات مدمجة لأشهر الموضوعات القرآنية للعمل اللحظي الفوري بدون انتظار الشبكة
+// باقات مدمجة لأشهر الموضوعات والآيات القرآنية للعمل اللحظي الفوري بدون انتظار الشبكة (0ms)
 export const COMMON_TOPICS = {
   'صلاه': {
     topic: 'آيات الصلاة',
@@ -142,7 +146,7 @@ export const COMMON_TOPICS = {
     ]
   },
   'صبر': {
-    topic: 'آيات الصبر',
+    topic: 'آيات الصبر والاحتساب',
     passages: [
       { surahId: 2, ayahNumber: 153, label: 'سورة البقرة (153)' },
       { surahId: 2, ayahNumber: 155, label: 'سورة البقرة (155)' },
@@ -173,39 +177,319 @@ export const COMMON_TOPICS = {
       { surahId: 65, ayahNumber: 3, label: 'سورة الطلاق (3)' },
       { surahId: 11, ayahNumber: 6, label: 'سورة هود (6)' }
     ]
+  },
+  'رقيه': {
+    topic: 'آيات الرقية الشرعية المباركة',
+    passages: [
+      { surahId: 1, ayahNumber: 1, label: 'سورة الفاتحة' },
+      { surahId: 2, ayahNumber: 255, label: 'آية الكرسي' },
+      { surahId: 2, ayahNumber: 284, label: 'أواخر سورة البقرة' },
+      { surahId: 112, ayahNumber: 1, label: 'سورة الإخلاص' },
+      { surahId: 113, ayahNumber: 1, label: 'سورة الفلق' },
+      { surahId: 114, ayahNumber: 1, label: 'سورة الناس' }
+    ]
+  },
+  'شفا': {
+    topic: 'آيات الشفاء الست',
+    passages: [
+      { surahId: 9, ayahNumber: 14, label: 'سورة التوبة (14)' },
+      { surahId: 10, ayahNumber: 57, label: 'سورة يونس (57)' },
+      { surahId: 16, ayahNumber: 69, label: 'سورة النحل (69)' },
+      { surahId: 17, ayahNumber: 82, label: 'سورة الإسراء (82)' },
+      { surahId: 26, ayahNumber: 80, label: 'سورة الشعراء (80)' },
+      { surahId: 41, ayahNumber: 44, label: 'سورة فصلت (44)' }
+    ]
+  },
+  'سكين': {
+    topic: 'آيات السكينة والطمأنينة وتفريج الكرب',
+    passages: [
+      { surahId: 2, ayahNumber: 248, label: 'سورة البقرة (248)' },
+      { surahId: 9, ayahNumber: 26, label: 'سورة التوبة (26)' },
+      { surahId: 9, ayahNumber: 40, label: 'سورة التوبة (40)' },
+      { surahId: 48, ayahNumber: 4, label: 'سورة الفتح (4)' },
+      { surahId: 48, ayahNumber: 18, label: 'سورة الفتح (18)' },
+      { surahId: 94, ayahNumber: 1, label: 'سورة الشرح (1)' }
+    ]
   }
 };
 
-// تحويل الكلمات الرقمية المنطوقة إلى أرقام صحيحة
-const ARABIC_NUMBERS = {
-  'صفر': 0, 'واحد': 1, 'واحدة': 1, 'اول': 1, 'الاولي': 1, 'الاولى': 1, 'اثنين': 2, 'اثنان': 2, 'تانية': 2, 'ثانية': 2,
-  'مرتين': 2, 'مرتان': 2,
-  'تلاتة': 3, 'ثلاثة': 3, 'ثلاث': 3, 'تلات': 3, 'اربعة': 4, 'اربع': 4, 'خمسة': 5, 'خمس': 5,
-  'ستة': 6, 'ست': 6, 'سبعة': 7, 'سبع': 7, 'ثمانية': 8, 'تمانية': 8, 'تمان': 8, 'ثمان': 8,
-  'تسعة': 9, 'تسع': 9, 'عشرة': 10, 'عشر': 10,
-  'حادي عشر': 11, 'اثنا عشر': 12, 'ثلاثة عشر': 13, 'اربعة عشر': 14, 'خمسة عشر': 15,
-  'عشرين': 20, 'عشرون': 20, 'ثلاثين': 30, 'ثلاثون': 30, 'اربعين': 40, 'اربعون': 40,
-  'خمسين': 50, 'خمسون': 50, 'ستين': 60, 'ستون': 60, 'سبعين': 70, 'سبعون': 70,
-  'ثمانين': 80, 'ثمانون': 80, 'تسعين': 90, 'تسعون': 90, 'مية': 100, 'مئة': 100, 'مائة': 100,
-  'ميتين': 200, 'مئتان': 200, 'مائتان': 200
-};
+// الآيات والمقاطع القرآنية الشهيرة المستقلة
+export const FAMOUS_AYAHS = [
+  {
+    keys: ['اية الكرسي', 'ايه الكرسي', 'الكرسي'],
+    surahId: 2,
+    ayahNumber: 255,
+    name: 'آية الكرسي'
+  },
+  {
+    keys: ['خواتيم البقرة', 'خواتيم البقره', 'اواخر البقرة', 'اواخر البقره', 'اخر البقرة', 'اخر البقره', 'امن الرسول'],
+    surahId: 2,
+    ayahNumber: 284,
+    name: 'أواخر سورة البقرة'
+  },
+  {
+    keys: ['اوائل البقرة', 'اوائل البقره', 'اول البقرة', 'اول البقره', 'بداية البقرة', 'بداية البقره'],
+    surahId: 2,
+    ayahNumber: 1,
+    name: 'أوائل سورة البقرة'
+  },
+  {
+    keys: ['اية الدين', 'ايه الدين', 'اطول اية', 'اطول ايه'],
+    surahId: 2,
+    ayahNumber: 282,
+    name: 'آية الدَّيْن'
+  },
+  {
+    keys: ['اية النور', 'ايه النور'],
+    surahId: 24,
+    ayahNumber: 35,
+    name: 'آية النور'
+  },
+  {
+    keys: ['اية الملك', 'ايه الملك'],
+    surahId: 3,
+    ayahNumber: 26,
+    name: 'آية الملك'
+  },
+  {
+    keys: ['اية البر', 'ايه البر'],
+    surahId: 2,
+    ayahNumber: 177,
+    name: 'آية البر'
+  },
+  {
+    keys: ['اية الوضوء', 'ايه الوضوء'],
+    surahId: 5,
+    ayahNumber: 6,
+    name: 'آية الوضوء'
+  },
+  {
+    keys: ['اية الصيام', 'ايه الصيام'],
+    surahId: 2,
+    ayahNumber: 183,
+    name: 'آية الصيام'
+  },
+  {
+    keys: ['اية السيف', 'ايه السيف'],
+    surahId: 9,
+    ayahNumber: 5,
+    name: 'آية السيف'
+  }
+];
 
+// مطالع وبدايات السور المشهورة التي ينطقها المستخدم بدلاً من اسم السورة
+export const FAMOUS_OPENINGS = [
+  { keys: ['قل هو الله احد'], surahId: 112 },
+  { keys: ['قل اعوذ برب الفلق'], surahId: 113 },
+  { keys: ['قل اعوذ برب الناس'], surahId: 114 },
+  { keys: ['قل يا ايها الكافرون'], surahId: 109 },
+  { keys: ['انا اعطيناك الكوثر'], surahId: 108 },
+  { keys: ['تبارك الذي بيده الملك'], surahId: 67 },
+  { keys: ['عم يتساءلون'], surahId: 78 },
+  { keys: ['اذا جاء نصر الله والفتح'], surahId: 110 },
+  { keys: ['تبت يدا ابي لهب'], surahId: 111 },
+  { keys: ['الم تر كيف فعل ربك باصحاب الفيل', 'الم تر كيف فعل ربك'], surahId: 105 },
+  { keys: ['لايلاف قريش', 'لا يلاف قريش'], surahId: 106 },
+  { keys: ['ارايت الذي يكذب بالدين', 'ارايت الذي يكذب'], surahId: 107 },
+  { keys: ['ويل لكل همزة لمزة', 'ويل لكل همزة'], surahId: 104 },
+  { keys: ['والعصر ان الانسان لفي خسر', 'والعصر ان الانسان'], surahId: 103 },
+  { keys: ['الهاكم التكاثر'], surahId: 102 },
+  { keys: ['القارعة ما القارعة', 'القارعه ما القارعه'], surahId: 101 },
+  { keys: ['والعاديات ضبحا'], surahId: 100 },
+  { keys: ['اذا زلزلت الارض زلزالها', 'اذا زلزلت الارض'], surahId: 99 },
+  { keys: ['لم يكن الذين كفروا من اهل الكتاب', 'لم يكن الذين كفروا'], surahId: 98 },
+  { keys: ['انا انزلناه في ليلة القدر'], surahId: 97 },
+  { keys: ['اقرا باسم ربك الذي خلق', 'اقرا باسم ربك'], surahId: 96 },
+  { keys: ['والتين والزيتون'], surahId: 95 },
+  { keys: ['الم نشرح لك صدرك'], surahId: 94 },
+  { keys: ['والضحى والليل اذا سجى', 'والضحى والليل'], surahId: 93 },
+  { keys: ['والليل اذا يغشى'], surahId: 92 },
+  { keys: ['والشمس وضحاها'], surahId: 91 },
+  { keys: ['لا اقسم بهذا البلد'], surahId: 90 },
+  { keys: ['والفجر وليال عشر'], surahId: 89 },
+  { keys: ['هل اتاك حديث الغاشية', 'هل اتاك حديث الغاشيه'], surahId: 88 },
+  { keys: ['سبح اسم ربك الاعلى'], surahId: 87 },
+  { keys: ['والسماء والطارق'], surahId: 86 },
+  { keys: ['والسماء ذات البروج'], surahId: 85 },
+  { keys: ['اذا السماء انشقت'], surahId: 84 },
+  { keys: ['ويل للمطففين'], surahId: 83 },
+  { keys: ['اذا السماء انفطرت'], surahId: 82 },
+  { keys: ['اذا الشمس كورت'], surahId: 81 },
+  { keys: ['عبس وتولى'], surahId: 80 },
+  { keys: ['والنازعات غرقا'], surahId: 79 },
+  { keys: ['يس والقران الحكيم'], surahId: 36 },
+  { keys: ['طه ما انزلنا عليك القران لتشقى', 'طه ما انزلنا عليك القران'], surahId: 20 },
+  { keys: ['الحمد لله رب العالمين'], surahId: 1 }
+];
+
+// تحويل واستخراج الأرقام المنطوقة والمكتوبة (بما فيها الأعداد المركبة والمعطوفة)
 export function extractNumber(text) {
   if (!text) return null;
-  // فحص الأرقام المكتوبة كأرقام أولاً (1, 2, 255...)
-  const digitMatch = text.match(/\b\d+\b/);
+  // 1. فحص الأرقام المكتوبة كأرقام أولاً (1, 2, 255...)
+  const digitMatch = text.match(/\b\d+(\.\d+)?\b/);
   if (digitMatch) {
-    return parseInt(digitMatch[0], 10);
+    return parseFloat(digitMatch[0]);
   }
 
-  // مطابقة الأرقام المركبة المنطوقة
-  for (const [word, num] of Object.entries(ARABIC_NUMBERS)) {
-    if (text.includes(word)) {
-      return num;
+  const norm = normalizeArabic(text);
+
+  // 2. الكلمات الكسرية الخاصة
+  if (norm.includes('واحد وربع') || norm.includes('واحد و ربع')) return 1.25;
+  if (norm.includes('واحد ونص') || norm.includes('واحد ونصف')) return 1.5;
+  if (norm.includes('نص') || norm.includes('نصف')) return 0.5;
+  if (norm.includes('ربع')) return 0.25;
+  if (norm.includes('تلت') || norm.includes('ثلث')) return 0.33;
+
+  // 3. تحليل الكلمات العربية للأعداد (المركبة والمعطوفة: مائتين وخمسة وخمسين)
+  let total = 0;
+  let matched = false;
+
+  // المئات
+  const hundreds = [
+    { word: 'ثلاثمائة', val: 300 }, { word: 'تلاتمية', val: 300 },
+    { word: 'مائتان', val: 200 }, { word: 'مئتان', val: 200 }, { word: 'ميتين', val: 200 },
+    { word: 'مائة', val: 100 }, { word: 'مئة', val: 100 }, { word: 'مية', val: 100 }
+  ];
+  for (const h of hundreds) {
+    if (norm.includes(h.word)) {
+      total += h.val;
+      matched = true;
+      break;
     }
   }
+
+  // العقود (العشرات)
+  const tens = [
+    { word: 'تسعين', val: 90 }, { word: 'تسعون', val: 90 },
+    { word: 'ثمانين', val: 80 }, { word: 'ثمانون', val: 80 }, { word: 'تمانين', val: 80 },
+    { word: 'سبعين', val: 70 }, { word: 'سبعون', val: 70 },
+    { word: 'ستين', val: 60 }, { word: 'ستون', val: 60 },
+    { word: 'خمسين', val: 50 }, { word: 'خمسون', val: 50 },
+    { word: 'اربعين', val: 40 }, { word: 'اربعون', val: 40 },
+    { word: 'ثلاثين', val: 30 }, { word: 'ثلاثون', val: 30 }, { word: 'تلاتين', val: 30 },
+    { word: 'عشرين', val: 20 }, { word: 'عشرون', val: 20 }
+  ];
+  for (const t of tens) {
+    if (norm.includes(t.word)) {
+      total += t.val;
+      matched = true;
+      break;
+    }
+  }
+
+  // الأعداد من 11 إلى 19
+  const teens = [
+    { word: 'تسعه عشر', val: 19 }, { word: 'تسع عشر', val: 19 },
+    { word: 'ثمانيه عشر', val: 18 }, { word: 'تمانيه عشر', val: 18 }, { word: 'ثمان عشر', val: 18 },
+    { word: 'سبعه عشر', val: 17 }, { word: 'سبع عشر', val: 17 },
+    { word: 'سته عشر', val: 16 }, { word: 'ست عشر', val: 16 },
+    { word: 'خمسه عشر', val: 15 }, { word: 'خمس عشر', val: 15 },
+    { word: 'اربعه عشر', val: 14 }, { word: 'اربع عشر', val: 14 },
+    { word: 'ثلاثه عشر', val: 13 }, { word: 'تلاته عشر', val: 13 }, { word: 'ثلاث عشر', val: 13 },
+    { word: 'اثنا عشر', val: 12 }, { word: 'اثني عشر', val: 12 }, { word: 'اتناشر', val: 12 },
+    { word: 'حادي عشر', val: 11 }, { word: 'احد عشر', val: 11 }, { word: 'حداشر', val: 11 }
+  ];
+  for (const tn of teens) {
+    if (norm.includes(tn.word)) {
+      total += tn.val;
+      return total;
+    }
+  }
+
+  // الآحاد والترتيبية
+  const ones = [
+    { word: 'عاشر', val: 10 }, { word: 'عشره', val: 10 }, { word: 'عشر', val: 10 },
+    { word: 'تاسع', val: 9 }, { word: 'تسعه', val: 9 }, { word: 'تسع', val: 9 },
+    { word: 'ثامن', val: 8 }, { word: 'ثمانيه', val: 8 }, { word: 'تمانيه', val: 8 }, { word: 'ثمان', val: 8 }, { word: 'تمان', val: 8 },
+    { word: 'سابع', val: 7 }, { word: 'سبعه', val: 7 }, { word: 'سبع', val: 7 },
+    { word: 'سادس', val: 6 }, { word: 'سته', val: 6 }, { word: 'ست', val: 6 },
+    { word: 'خامس', val: 5 }, { word: 'خمسه', val: 5 }, { word: 'خمس', val: 5 },
+    { word: 'رابع', val: 4 }, { word: 'اربعه', val: 4 }, { word: 'اربع', val: 4 },
+    { word: 'ثالث', val: 3 }, { word: 'ثلاثه', val: 3 }, { word: 'تلاته', val: 3 }, { word: 'ثلاث', val: 3 }, { word: 'تلات', val: 3 },
+    { word: 'تاني', val: 2 }, { word: 'ثاني', val: 2 }, { word: 'تانيه', val: 2 }, { word: 'ثانيه', val: 2 },
+    { word: 'اثنين', val: 2 }, { word: 'اثنان', val: 2 }, { word: 'مرتين', val: 2 }, { word: 'مرتان', val: 2 },
+    { word: 'اول', val: 1 }, { word: 'اولى', val: 1 }, { word: 'اولي', val: 1 }, { word: 'واحد', val: 1 }, { word: 'واحده', val: 1 },
+    { word: 'صفر', val: 0 }
+  ];
+  for (const o of ones) {
+    const padded = ` ${norm} `;
+    if (padded.includes(` ${o.word} `) || norm.startsWith(o.word + ' ') || norm.endsWith(' ' + o.word) || norm === o.word) {
+      total += o.val;
+      matched = true;
+      break;
+    }
+  }
+
+  if (matched) return total;
+
   return null;
 }
+
+// استخراج ومطابقة أجزاء القرآن الـ 30 بدقة
+export function extractJuz(norm) {
+  if (!norm || !JUZ_DATA) return null;
+  const hasJuzKeyword = norm.includes('جزء') || norm.includes('الجزء') || norm.includes('جزا') || norm.includes('الجزا') || norm.includes('اجزا') || norm.includes('اجزاء');
+
+  // أسماء الأجزاء الشهيرة الشائعة
+  if (norm.includes('جزء عم') || norm.includes('جزا عم') || (hasJuzKeyword && (norm.includes('عم') || norm.includes('عما')))) {
+    return JUZ_DATA[29]; // الجزء 30
+  }
+  if (norm.includes('جزء تبارك') || norm.includes('جزا تبارك') || (hasJuzKeyword && norm.includes('تبارك'))) {
+    return JUZ_DATA[28]; // الجزء 29
+  }
+  if (norm.includes('جزء قد سمع') || norm.includes('جزا قد سمع') || (hasJuzKeyword && norm.includes('قد سمع'))) {
+    return JUZ_DATA[27]; // الجزء 28
+  }
+
+  if (hasJuzKeyword) {
+    const ordinalJuz = [
+      { text: 'الاول', num: 1 }, { text: 'الاولي', num: 1 },
+      { text: 'الثاني', num: 2 }, { text: 'التاني', num: 2 },
+      { text: 'الثالث', num: 3 }, { text: 'التالت', num: 3 },
+      { text: 'الرابع', num: 4 },
+      { text: 'الخامس', num: 5 },
+      { text: 'السادس', num: 6 },
+      { text: 'السابع', num: 7 },
+      { text: 'الثامن', num: 8 }, { text: 'التامن', num: 8 },
+      { text: 'التاسع', num: 9 },
+      { text: 'العاشر', num: 10 },
+      { text: 'الحادي عشر', num: 11 }, { text: 'حداشر', num: 11 },
+      { text: 'الثاني عشر', num: 12 }, { text: 'اتناشر', num: 12 },
+      { text: 'الثالث عشر', num: 13 },
+      { text: 'الرابع عشر', num: 14 },
+      { text: 'الخامس عشر', num: 15 },
+      { text: 'السادس عشر', num: 16 },
+      { text: 'السابع عشر', num: 17 },
+      { text: 'الثامن عشر', num: 18 },
+      { text: 'التاسع عشر', num: 19 },
+      { text: 'العشرون', num: 20 }, { text: 'العشرين', num: 20 },
+      { text: 'الحادي والعشرون', num: 21 }, { text: 'الحادي والعشرين', num: 21 },
+      { text: 'الثاني والعشرون', num: 22 }, { text: 'الثاني والعشرين', num: 22 },
+      { text: 'الثالث والعشرون', num: 23 }, { text: 'الثالث والعشرين', num: 23 },
+      { text: 'الرابع والعشرون', num: 24 }, { text: 'الرابع والعشرين', num: 24 },
+      { text: 'الخامس والعشرون', num: 25 }, { text: 'الخامس والعشرين', num: 25 },
+      { text: 'السادس والعشرون', num: 26 }, { text: 'السادس والعشرين', num: 26 },
+      { text: 'السابع والعشرون', num: 27 }, { text: 'السابع والعشرين', num: 27 },
+      { text: 'الثامن والعشرون', num: 28 }, { text: 'الثامن والعشرين', num: 28 },
+      { text: 'التاسع والعشرون', num: 29 }, { text: 'التاسع والعشرين', num: 29 },
+      { text: 'الثلاثون', num: 30 }, { text: 'الثلاثين', num: 30 }
+    ];
+
+    for (const item of ordinalJuz) {
+      if (norm.includes(item.text)) {
+        return JUZ_DATA[item.num - 1];
+      }
+    }
+
+    const num = extractNumber(norm);
+    if (num && num >= 1 && num <= 30) {
+      return JUZ_DATA[num - 1];
+    }
+  }
+
+  return null;
+}
+
 
 /**
  * تحليل الأمر الصوتي واستخراج النية (Intent Recognition)
@@ -260,8 +544,8 @@ export function parseVoiceCommand(rawTranscript) {
   }
 
   // 3. فحص أوامر التحكم العاجلة (إيقاف وتوقف التلاوة)
-  // لا نعتبره إيقافاً عاماً إذا كان أمراً مستهدفاً لإيقاف وضع محدد (كإيقاف التكرار أو القيادة أو التوفير)
-  const isTargetedStop = norm.includes('تكرار') || norm.includes('تحفيظ') || norm.includes('قياده') || norm.includes('سواقه') || norm.includes('سياره') || norm.includes('سفر') || norm.includes('توفير') || norm.includes('المصحف') || norm.includes('الشاشه');
+  // لا نعتبره إيقافاً عاماً إذا كان أمراً مستهدفاً لإيقاف وضع محدد (كإيقاف التكرار أو القيادة أو التوفير أو المؤقت)
+  const isTargetedStop = norm.includes('تكرار') || norm.includes('تحفيظ') || norm.includes('قياده') || norm.includes('سواقه') || norm.includes('سياره') || norm.includes('سفر') || norm.includes('توفير') || norm.includes('المصحف') || norm.includes('الشاشه') || norm.includes('موقت') || norm.includes('مؤقت') || norm.includes('وقف بعد') || norm.includes('اطفي بعد') || norm.includes('اقفل بعد');
   if (!isTargetedStop && (norm.match(/^(توقف|وقف|ايقاف|اسكت|اصمت|لحظه|استني|استنى|pause|stop)/) || norm.includes('توقف') || norm.includes('وقف القراءه') || norm.includes('ايقاف مؤقت') || norm === 'كفايه')) {
     result.intent = 'PAUSE';
     result.message = 'تم إيقاف التلاوة وحفظ الموضع';
@@ -280,6 +564,23 @@ export function parseVoiceCommand(rawTranscript) {
     result.payload = { term: term };
     result.message = 'قراءة التفسير الميسر للآية';
     return result;
+  }
+
+  // فحص أجزاء القرآن الكريم الـ 30 (The 30 Quranic Ajzaa)
+  const matchedJuz = extractJuz(norm);
+  if (matchedJuz) {
+    const juzSurah = SURAHS.find(s => s.id === matchedJuz.surahId);
+    if (juzSurah) {
+      result.intent = 'PLAY_JUZ';
+      result.payload = {
+        juz: matchedJuz,
+        surah: juzSurah,
+        ayahNumber: matchedJuz.ayahNumber,
+        reciter: matchedReciter
+      };
+      result.message = `تشغيل ${matchedJuz.name} (${matchedJuz.alias}) من سورة ${juzSurah.name}`;
+      return result;
+    }
   }
 
   // 5. استئناف أو متابعة
@@ -608,6 +909,126 @@ export function parseVoiceCommand(rawTranscript) {
     return result;
   }
 
+  // أوامر التحكم في سرعة التلاوة (Playback Speed)
+  if (norm.includes('السرعه العاديه') || norm.includes('السرعه الطبيعيه') || norm.includes('السرعه الاصليه') || norm === 'سرعه 1' || norm === 'سرعه واحد') {
+    result.intent = 'SPEED_NORMAL';
+    result.payload = { rate: 1.0 };
+    result.message = 'تم إعادة سرعة التلاوة إلى الوضع الطبيعي (1.0x)';
+    return result;
+  }
+  if (norm.includes('سرع') || norm.includes('اقرا اسرع') || norm.includes('تلاوة سريعه') || norm.includes('تلاوه سريعه') || norm.includes('زود السرعه')) {
+    let rate = 1.25;
+    if (norm.includes('واحد ونص') || norm.includes('واحد ونصف') || norm.includes('1.5')) {
+      rate = 1.5;
+    } else if (norm.includes('اتنين') || norm.includes('ضعف') || norm.includes('2')) {
+      rate = 2.0;
+    }
+    result.intent = 'SPEED_UP';
+    result.payload = { rate: rate };
+    result.message = `تسريع التلاوة إلى ${rate}x`;
+    return result;
+  }
+  if (norm.includes('بطئ') || norm.includes('اقرا بالراحه') || norm.includes('على مهلك') || norm.includes('تلاوة هاديه') || norm.includes('تلاوه هاديه') || norm.includes('قلل السرعه') || norm.includes('اخفض السرعه')) {
+    let rate = 0.75;
+    if (norm.includes('نص') || norm.includes('نصف') || norm.includes('0.5')) {
+      rate = 0.5;
+    }
+    result.intent = 'SPEED_DOWN';
+    result.payload = { rate: rate };
+    result.message = `إبطاء التلاوة إلى ${rate}x`;
+    return result;
+  }
+
+  // أوامر التقديم والتأخير اللحظي بالثواني (Seek Forward / Backward)
+  const isSeekCmd = norm.includes('قدم') || norm.includes('تخطي') || norm.includes('رجع') || norm.includes('تاخير') || norm.includes('اخر');
+  const hasSeekUnit = norm.includes('ثواني') || norm.includes('ثانيه') || norm.includes('دقيقه') || norm.includes('دقايق') || norm.includes('شوية') || norm.includes('شويه');
+  if (isSeekCmd && hasSeekUnit && !norm.includes('ايه') && !norm.includes('الايه') && !norm.includes('سوره') && !norm.includes('سورة')) {
+    let seconds = 15;
+    if (norm.includes('دقيقه') || norm.includes('دقيقة')) {
+      seconds = 60;
+    } else if (norm.includes('نصف دقيقه') || norm.includes('نص دقيقه') || norm.includes('30 ثانيه') || norm.includes('ثلاثين ثانيه')) {
+      seconds = 30;
+    } else if (norm.includes('عشر ثواني') || norm.includes('10 ثواني')) {
+      seconds = 10;
+    } else {
+      const extractedSec = extractNumber(norm);
+      if (extractedSec && extractedSec > 0 && extractedSec <= 300) {
+        seconds = extractedSec;
+      }
+    }
+
+    if (norm.includes('قدم') || norm.includes('تخطي')) {
+      result.intent = 'SEEK_FORWARD';
+      result.payload = { seconds: seconds };
+      result.message = `تقديم التلاوة بمقدار ${seconds} ثانية`;
+      return result;
+    } else {
+      result.intent = 'SEEK_BACKWARD';
+      result.payload = { seconds: seconds };
+      result.message = `ترجيع التلاوة بمقدار ${seconds} ثانية`;
+      return result;
+    }
+  }
+
+  // أوامر مؤقت النوم والإيقاف المجدول (Sleep Timer)
+  const isSleepTimerContext = norm.includes('موقت') || norm.includes('مؤقت') || norm.includes('اطفي بعد') || norm.includes('اقفل بعد') || norm.includes('وقف بعد');
+  if (isSleepTimerContext) {
+    if (norm.includes('الغا') || norm.includes('الغي') || norm.includes('وقف الموقت') || norm.includes('وقف المؤقت') || norm.includes('تعطيل') || norm.includes('بدون موقت') || norm.includes('بدون مؤقت')) {
+      result.intent = 'CANCEL_SLEEP_TIMER';
+      result.message = 'تم إلغاء مؤقت النوم ومتابعة التشغيل';
+      return result;
+    }
+
+    if (norm.includes('تخلص') || norm.includes('تنتهي') || norm.includes('انتهاء السوره') || norm.includes('نهاية السوره') || norm.includes('اخر السوره')) {
+      result.intent = 'SLEEP_TIMER';
+      result.payload = { type: 'SURAH_END' };
+      result.message = 'تم ضبط الإيقاف التلقائي عند اكتمال السورة الحالية';
+      return result;
+    }
+
+    let minutes = 30; // افتراضي نصف ساعة
+    if (norm.includes('ربع ساعه') || norm.includes('15 دقيقه') || norm.includes('خمسة عشر دقيقة')) {
+      minutes = 15;
+    } else if (norm.includes('نص ساعه') || norm.includes('نصف ساعه') || norm.includes('30 دقيقه') || norm.includes('ثلاثين دقيقة')) {
+      minutes = 30;
+    } else if (norm.includes('تلت ساعه') || norm.includes('ثلث ساعه') || norm.includes('20 دقيقه') || norm.includes('عشرين دقيقة')) {
+      minutes = 20;
+    } else if (norm.includes('ساعه الا ربع') || norm.includes('45 دقيقه')) {
+      minutes = 45;
+    } else if (norm.includes('ساعتين') || norm.includes('ساعتان') || norm.includes('120 دقيقه')) {
+      minutes = 120;
+    } else if (norm.includes('ساعه') || norm.includes('ساعة') || norm.includes('60 دقيقه') || norm.includes('ستين دقيقة')) {
+      minutes = 60;
+    } else if (norm.includes('عشر دقائق') || norm.includes('10 دقائق')) {
+      minutes = 10;
+    } else {
+      const extractedMin = extractNumber(norm);
+      if (extractedMin && extractedMin > 0 && extractedMin <= 300) {
+        minutes = extractedMin;
+      }
+    }
+
+    result.intent = 'SLEEP_TIMER';
+    result.payload = { minutes: minutes, type: 'MINUTES' };
+    result.message = `تم ضبط مؤقت النوم للإيقاف بعد ${minutes} دقيقة`;
+    return result;
+  }
+
+  // إذاعة القرآن الكريم والتشغيل العشوائي (Radio & Shuffle Play)
+  if (norm.includes('اذاعه القران') || norm.includes('اذاعة القران') || norm.includes('راديو القران') || norm.includes('شغل عشوائي') || norm.includes('تلاوة عشوائيه') || norm.includes('تلاوه عشوائيه') || norm.includes('اختر لي سوره') || norm.includes('اي سوره على ذوقك') || norm === 'شغل اي حاجه' || norm === 'شغل اي سوره') {
+    result.intent = 'SHUFFLE_PLAY';
+    result.payload = { reciter: matchedReciter };
+    result.message = 'تشغيل تلاوة عشوائية مباركة';
+    return result;
+  }
+
+  // الاستعلام عن القارئ الحالي (Who is reciting?)
+  if (norm.includes('مين بيقرا') || norm.includes('مين بيقرأ') || norm.includes('مين القارئ') || norm.includes('من القارئ') || norm.includes('صوت مين') || norm.includes('مين الشيخ') || norm.includes('من هو القارئ') || norm.includes('اسم القارئ')) {
+    result.intent = 'WHO_IS_RECITING';
+    result.message = 'الاستعلام عن القارئ الحالي';
+    return result;
+  }
+
   // فتح صفحة الإدارة ولوحة التحكم
   if (norm.includes('ادمن') || norm.includes('admin') || norm.includes('لوحه الاداره') || norm.includes('صفحه الاداره') || norm.includes('لوحه التحكم') || norm.includes('صفحه التحكم') || norm.includes('لوحه المشرف') || norm.includes('صفحه المشرف') || norm.includes('افتح الاداره') || norm.includes('افتح التحكم') || norm.includes('الاداره') || norm === 'اداره') {
     result.intent = 'OPEN_ADMIN';
@@ -650,31 +1071,55 @@ export function parseVoiceCommand(rawTranscript) {
     }
   }
 
-  // استثناء خاص لـ: "اية الكرسي"
-  if (norm.includes('اية الكرسي') || norm.includes('ايه الكرسي')) {
-    result.intent = 'PLAY_AYAH';
+  // فحص الآيات القرآنية الشهيرة (آية الكرسي، خواتيم البقرة، آية الدين، آية النور، آية الملك...)
+  for (const fa of FAMOUS_AYAHS) {
+    if (fa.keys.some(k => norm.includes(normalizeArabic(k)))) {
+      const s = SURAHS.find(sur => sur.id === fa.surahId);
+      if (s) {
+        result.intent = 'PLAY_AYAH';
+        result.payload = {
+          surah: s,
+          ayahNumber: fa.ayahNumber,
+          reciter: matchedReciter,
+          title: fa.name
+        };
+        result.message = `تشغيل ${fa.name} من سورة ${s.name}`;
+        return result;
+      }
+    }
+  }
+
+  // فحص المعوذات والمعوذتين (سورة الفلق وسورة الناس)
+  if (norm.includes('المعوذات') || norm.includes('المعوذتين') || norm.includes('المعوذتان')) {
+    const falaq = SURAHS.find(s => s.id === 113);
+    result.intent = 'PLAY_SURAH';
     result.payload = {
-      surah: SURAHS.find(s => s.id === 2),
-      ayahNumber: 255,
+      surah: falaq,
+      ayahNumber: 1,
       reciter: matchedReciter
     };
-    result.message = 'تشغيل آية الكرسي من سورة البقرة';
+    result.message = 'تشغيل المعوذتين (سورة الفلق وسورة الناس)';
     return result;
   }
 
-  // استثناء خاص لـ: "خواتيم سورة البقرة"
-  if (norm.includes('خواتيم البقره') || norm.includes('اخر البقره')) {
-    result.intent = 'PLAY_AYAH';
-    result.payload = {
-      surah: SURAHS.find(s => s.id === 2),
-      ayahNumber: 284,
-      reciter: matchedReciter
-    };
-    result.message = 'تشغيل أواخر سورة البقرة';
-    return result;
+  // فحص مطالع وبدايات السور القرآنية المشهورة التي ينطقها المستخدم بدلاً من اسم السورة
+  for (const opening of FAMOUS_OPENINGS) {
+    if (opening.keys.some(k => norm.includes(normalizeArabic(k)))) {
+      const s = SURAHS.find(sur => sur.id === opening.surahId);
+      if (s) {
+        result.intent = 'PLAY_SURAH';
+        result.payload = {
+          surah: s,
+          ayahNumber: 1,
+          reciter: matchedReciter
+        };
+        result.message = `تشغيل سورة ${s.name}${matchedReciter ? ` بصوت الشيخ ${matchedReciter.name}` : ''}`;
+        return result;
+      }
+    }
   }
 
-  // 3. البحث عن السورة ورقم الآية
+  // البحث عن السورة ورقم الآية
   let matchedSurah = null;
 
   // فحص أسماء السور ومرادفاتها بالمطابقة الدقيقة للكلمة لتفادي تشابه الحروف
@@ -698,9 +1143,13 @@ export function parseVoiceCommand(rawTranscript) {
   }
 
   if (matchedSurah) {
-    // استخراج رقم الآية إن وجد
+    // استخراج رقم الآية إن وجد أو فحص أول / آخر السورة
     let ayahNum = 1;
-    if (norm.includes('ايه') || norm.includes('اية') || norm.includes('رقم')) {
+    if (norm.includes('اخر') || norm.includes('اواخر') || norm.includes('نهاية') || norm.includes('نهايه')) {
+      ayahNum = Math.max(1, matchedSurah.ayahs - 4);
+    } else if (norm.includes('اول') || norm.includes('اوائل') || norm.includes('بداية') || norm.includes('بدايه') || norm.includes('من اول')) {
+      ayahNum = 1;
+    } else if (norm.includes('ايه') || norm.includes('اية') || norm.includes('رقم')) {
       const extracted = extractNumber(norm);
       if (extracted && extracted <= matchedSurah.ayahs) {
         ayahNum = extracted;

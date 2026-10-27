@@ -28,7 +28,7 @@ if (-not $browserPath) {
 
 Write-Host ""
 Write-Host "=================================================================" -ForegroundColor Cyan
-Write-Host "   Automated Test Suite for Quran Voice PWA (377 Tests)" -ForegroundColor Cyan
+Write-Host "   Automated Test Suite for Quran Voice PWA (447 Tests)" -ForegroundColor Cyan
 Write-Host "=================================================================" -ForegroundColor Cyan
 Write-Host "Executing tests via headless browser: $browserPath" -ForegroundColor Yellow
 
