@@ -15,9 +15,8 @@ export class DualQuranPlayer {
     this.deckA = new Audio();
     this.deckB = new Audio();
 
-    const initialPreload = this.isSaverMode ? 'metadata' : 'auto';
-    this.deckA.preload = initialPreload;
-    this.deckB.preload = initialPreload;
+    this.deckA.preload = 'auto';
+    this.deckB.preload = 'auto';
 
     // تعيين المشغل النشط والمشغل الاحتياطي
     this.activeDeck = this.deckA;
@@ -113,6 +112,7 @@ export class DualQuranPlayer {
   // معالجة تحديث شريط التقدم والوقت
   handleTimeUpdate(deck) {
     if (deck !== this.activeDeck) return;
+    this._retryCount = 0;
 
     // فحص اختبار الذاكرة (Blind Memory Prompt Cutoff): إيقاف مفاجئ في أول ثوانٍ للتحقق من حفظ المستخدم
     if (this.memoryPrompt && this.memoryPrompt.active && !this.memoryPrompt.triggered) {
@@ -138,10 +138,38 @@ export class DualQuranPlayer {
     }
   }
 
-  // معالجة الأخطاء
+  // معالجة الأخطاء مع نظام الإنعاش الذاتي التلقائي (Self-Healing Auto Recovery)
   handleError(deck, e) {
     if (deck !== this.activeDeck) return;
     console.warn(`[DualPlayer] Error on Deck ${this.activeDeckName}:`, e);
+
+    if (this._retryCount === undefined) this._retryCount = 0;
+
+    // محاولة الإنعاش التلقائي مرتين قبل إشعار الواجهة
+    if (this._retryCount < 2 && this.isPlaying) {
+      this._retryCount++;
+      const retryAyah = this.currentAyah;
+      const retrySurah = this.currentSurah;
+      const retryReciter = this.currentReciter;
+      console.log(`[DualPlayer] Auto-recovering playback (attempt ${this._retryCount})...`);
+
+      setTimeout(() => {
+        if (this.isPlaying && this.currentAyah === retryAyah && this.currentSurah.id === retrySurah.id) {
+          const folder = this.getEffectiveFolder(retryReciter);
+          const freshUrl = getAyahAudioUrl(folder, retrySurah.id, retryAyah);
+          this.activeDeck.src = freshUrl;
+          this.activeDeck.load();
+          this.activeDeck.play().then(() => {
+            this._retryCount = 0;
+          }).catch(err => {
+            console.warn('[DualPlayer] Auto-recovery attempt failed:', err);
+          });
+        }
+      }, 700);
+      return;
+    }
+
+    this._retryCount = 0;
     if (this.onError) {
       this.onError(e, {
         surah: this.currentSurah,
@@ -416,7 +444,7 @@ export class DualQuranPlayer {
     } else {
       // تحميل عادي في المشغل النشط
       this.activeDeck.src = url;
-      this.activeDeck.preload = this.isSaverMode ? 'metadata' : 'auto';
+      this.activeDeck.preload = 'auto';
     }
 
     // تفعيل أذونات الصوت للمشغل الاحتياطي في المتصفحات المحمولة (Mobile Audio Unlock)
@@ -466,7 +494,7 @@ export class DualQuranPlayer {
 
     this.standbyTrack = track;
     this.standbyDeck.src = track.url;
-    this.standbyDeck.preload = this.isSaverMode ? 'metadata' : 'auto';
+    this.standbyDeck.preload = 'auto';
     this.standbyDeck.volume = this.volume;
     this.standbyDeck.load(); // فك التشفير والتخزين في ذاكرة المتصفح مسبقاً
   }
@@ -797,9 +825,6 @@ export class DualQuranPlayer {
   setSaverMode(enabled) {
     this.isSaverMode = Boolean(enabled);
     this.prefetchCount = this.isSaverMode ? 1 : 5;
-    const preloadVal = this.isSaverMode ? 'metadata' : 'auto';
-    if (this.deckA) this.deckA.preload = preloadVal;
-    if (this.deckB) this.deckB.preload = preloadVal;
     return this.isSaverMode;
   }
 

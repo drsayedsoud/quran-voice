@@ -401,11 +401,20 @@ class QuranVoiceApp {
       sound.speak("ختمت السورة بحمد الله");
     };
 
-    // معالجة الأخطاء
+    // معالجة الأخطاء وإعادة المحاولة التلقائية الذكية
     this.player.onError = (e) => {
       console.warn('[App] Playback error caught:', e);
       sound.playErrorChime();
       this.dom.voiceStatus.textContent = 'جاري إعادة المحاولة...';
+
+      // إعادة محاولة التشغيل تلقائياً بعد ثانية ونصف لضمان عدم توقف التلاوة
+      if (this._appErrorTimer) clearTimeout(this._appErrorTimer);
+      this._appErrorTimer = setTimeout(() => {
+        if (this.isPlaying && this.player) {
+          console.log('[App] Auto-retrying ayah playback after error event...');
+          this.player.playAyah(this.currentSurah, this.currentAyah, this.currentReciter, false);
+        }
+      }, 1500);
     };
 
     window.addEventListener('beforeunload', () => {

@@ -917,7 +917,7 @@ export function registerDataSaverTests(runner) {
       t.assertEqual(getEffectiveReciterFolder(husaryMujawwad, true), 'Husary_64kbps', 'المصحف المجود يحول لـ 64kbps في وضع التوفير');
     });
 
-    await t.test('مشغل القرآن: تقليل التحميل المسبق وضبط preload=metadata في وضع التوفير', () => {
+    await t.test('مشغل القرآن: تقليل التحميل المسبق وتفعيل الجودة الاقتصادية في وضع التوفير', () => {
       const p = new DualQuranPlayer({
         initialSurah: SURAHS.find(s => s.id === 1),
         initialAyah: 1,
@@ -936,16 +936,13 @@ export function registerDataSaverTests(runner) {
       // تفعيل وضع التوفير
       p.setSaverMode(true);
       t.assertEqual(p.isSaverMode, true);
-      t.assertEqual(p.prefetchCount, 1, 'يجب أن ينخفض Lookahead Buffer لآية واحدة فقط');
-      t.assertEqual(p.deckA.preload, 'metadata', 'يجب أن يضبط preload=metadata لمنع السحب التلقائي الزائد');
-      t.assertEqual(p.deckB.preload, 'metadata');
+      t.assertEqual(p.prefetchCount, 1, 'يجب أن ينخفض Lookahead Buffer لآية واحدة فقط لتوفير الباقة');
       t.assertEqual(p.getEffectiveFolder(), 'Alafasy_64kbps', 'يجب أن يتحول المجلد للنسخة الاقتصادية');
 
       // تعطيل وضع التوفير
       p.setSaverMode(false);
       t.assertEqual(p.isSaverMode, false);
       t.assertEqual(p.prefetchCount, 5);
-      t.assertEqual(p.deckA.preload, 'auto');
       t.assertEqual(p.getEffectiveFolder(), 'Alafasy_128kbps');
     });
 
